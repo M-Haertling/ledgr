@@ -10,6 +10,7 @@ export const accounts = pgTable('accounts', {
 
 export const accountsRelations = relations(accounts, ({ many }) => ({
   transactions: many(transactions),
+  mappings: many(mappings),
 }));
 
 export const categories = pgTable('categories', {
@@ -91,7 +92,17 @@ export const categorizationRulesRelations = relations(categorizationRules, ({ on
 
 export const mappings = pgTable('mappings', {
   id: serial('id').primaryKey(),
-  accountId: integer('account_id').references(() => accounts.id).notNull().unique(),
+  accountId: integer('account_id').references(() => accounts.id).notNull(),
+  name: text('name').notNull(),
   config: jsonb('config').notNull(),
   createdAt: timestamp('created_at').defaultNow().notNull(),
-});
+}, (table) => [
+  { unique_template: [table.accountId, table.name] }
+]);
+
+export const mappingsRelations = relations(mappings, ({ one }) => ({
+  account: one(accounts, {
+    fields: [mappings.accountId],
+    references: [accounts.id],
+  }),
+}));

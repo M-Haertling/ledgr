@@ -5,20 +5,23 @@ import { NextResponse } from 'next/server';
 
 export async function POST(req: Request) {
   try {
-    const { accountId, csvData, mapping } = await req.json();
+    const { accountId, csvData, mapping, templateName, saveTemplate } = await req.json();
 
     if (!accountId || !csvData || !mapping) {
       return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
     }
 
-    // Save mapping for future use
-    await db.insert(mappings).values({
-      accountId: parseInt(accountId),
-      config: mapping,
-    }).onConflictDoUpdate({
-      target: mappings.accountId,
-      set: { config: mapping },
-    });
+    // Save/Update template if requested
+    if (saveTemplate && templateName) {
+      await db.insert(mappings).values({
+        accountId: parseInt(accountId),
+        name: templateName,
+        config: mapping,
+      }).onConflictDoUpdate({
+        target: [mappings.accountId, mappings.name],
+        set: { config: mapping },
+      });
+    }
 
     // Get categorization rules for auto-categorization
     const rules = await db.query.categorizationRules.findMany({
