@@ -165,12 +165,25 @@ export default function UploadForm({ accounts, templates }: { accounts: any[], t
 
             <div className="mt-4">
               <h4 className="mb-2">Preview (First 3 rows)</h4>
-              <div className="list-container" style={{ fontSize: '0.75rem' }}>
-                {csvData.slice(1, 4).map((row, i) => (
-                  <div key={i} className="list-item">
-                    {row.join(' | ')}
-                  </div>
-                ))}
+              <div className="table-container">
+                <table className="table">
+                  <thead>
+                    <tr>
+                      {csvData[0].map((col, idx) => (
+                        <th key={idx}>{col || `Column ${idx + 1}`}</th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {csvData.slice(1, 4).map((row, i) => (
+                      <tr key={i}>
+                        {row.map((cell, j) => (
+                          <td key={j}>{cell}</td>
+                        ))}
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
               </div>
             </div>
 
