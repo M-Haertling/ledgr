@@ -43,6 +43,6 @@ See `features.md`.
 - [x] Phase 3: Automation & Categorization
     - [x] Rule-based auto-categorization engine
     - [x] Tagging system
-- [ ] Phase 4: Reporting & UI Polish
-    - [ ] Spending reports
-    - [ ] Refine CSS styling
+- [x] Phase 4: Reporting & UI Polish
+    - [x] Spending reports
+    - [x] Refine CSS styling
