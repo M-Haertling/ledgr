@@ -34,7 +34,7 @@ export const transactions = pgTable('transactions', {
   createdAt: timestamp('created_at').defaultNow().notNull(),
 });
 
-export const transactionsRelations = relations(transactions, ({ one }) => ({
+export const transactionsRelations = relations(transactions, ({ one, many }) => ({
   account: one(accounts, {
     fields: [transactions.accountId],
     references: [accounts.id],
@@ -43,6 +43,7 @@ export const transactionsRelations = relations(transactions, ({ one }) => ({
     fields: [transactions.categoryId],
     references: [categories.id],
   }),
+  transactionTags: many(transactionTags),
 }));
 
 export const tags = pgTable('tags', {
@@ -51,12 +52,27 @@ export const tags = pgTable('tags', {
   createdAt: timestamp('created_at').defaultNow().notNull(),
 });
 
+export const tagsRelations = relations(tags, ({ many }) => ({
+  transactionTags: many(transactionTags),
+}));
+
 export const transactionTags = pgTable('transaction_tags', {
   transactionId: integer('transaction_id').references(() => transactions.id).notNull(),
   tagId: integer('tag_id').references(() => tags.id).notNull(),
 }, (table) => [
   { pk: [table.transactionId, table.tagId] }
 ]);
+
+export const transactionTagsRelations = relations(transactionTags, ({ one }) => ({
+  transaction: one(transactions, {
+    fields: [transactionTags.transactionId],
+    references: [transactions.id],
+  }),
+  tag: one(tags, {
+    fields: [transactionTags.tagId],
+    references: [tags.id],
+  }),
+}));
 
 export const categorizationRules = pgTable('categorization_rules', {
   id: serial('id').primaryKey(),
@@ -65,6 +81,13 @@ export const categorizationRules = pgTable('categorization_rules', {
   priority: integer('priority').default(0).notNull(),
   createdAt: timestamp('created_at').defaultNow().notNull(),
 });
+
+export const categorizationRulesRelations = relations(categorizationRules, ({ one }) => ({
+  category: one(categories, {
+    fields: [categorizationRules.categoryId],
+    references: [categories.id],
+  }),
+}));
 
 export const mappings = pgTable('mappings', {
   id: serial('id').primaryKey(),

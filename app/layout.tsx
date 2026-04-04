@@ -30,6 +30,12 @@ export default function RootLayout({
               <Link href="/categories" className="nav-link">
                 Categories
               </Link>
+              <Link href="/tags" className="nav-link">
+                Tags
+              </Link>
+              <Link href="/automation" className="nav-link">
+                Automation
+              </Link>
               <Link href="/reports" className="nav-link">
                 Reports
               </Link>

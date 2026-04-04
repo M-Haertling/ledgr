@@ -40,9 +40,9 @@ See `features.md`.
     - [x] CRUD for Accounts and Categories
     - [x] CSV Upload & Mapping Logic
     - [x] Transaction Listing with Filtering/Search
-- [ ] Phase 3: Automation & Categorization
-    - [ ] Rule-based auto-categorization engine
-    - [ ] Tagging system
+- [x] Phase 3: Automation & Categorization
+    - [x] Rule-based auto-categorization engine
+    - [x] Tagging system
 - [ ] Phase 4: Reporting & UI Polish
     - [ ] Spending reports
     - [ ] Refine CSS styling
