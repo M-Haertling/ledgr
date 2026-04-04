@@ -1,4 +1,5 @@
 import { pgTable, serial, text, decimal, boolean, timestamp, integer, jsonb } from 'drizzle-orm/pg-core';
+import { relations } from 'drizzle-orm';
 
 export const accounts = pgTable('accounts', {
   id: serial('id').primaryKey(),
@@ -7,12 +8,20 @@ export const accounts = pgTable('accounts', {
   createdAt: timestamp('created_at').defaultNow().notNull(),
 });
 
+export const accountsRelations = relations(accounts, ({ many }) => ({
+  transactions: many(transactions),
+}));
+
 export const categories = pgTable('categories', {
   id: serial('id').primaryKey(),
   name: text('name').notNull(),
   color: text('color'),
   createdAt: timestamp('created_at').defaultNow().notNull(),
 });
+
+export const categoriesRelations = relations(categories, ({ many }) => ({
+  transactions: many(transactions),
+}));
 
 export const transactions = pgTable('transactions', {
   id: serial('id').primaryKey(),
@@ -24,6 +33,17 @@ export const transactions = pgTable('transactions', {
   categoryId: integer('category_id').references(() => categories.id),
   createdAt: timestamp('created_at').defaultNow().notNull(),
 });
+
+export const transactionsRelations = relations(transactions, ({ one }) => ({
+  account: one(accounts, {
+    fields: [transactions.accountId],
+    references: [accounts.id],
+  }),
+  category: one(categories, {
+    fields: [transactions.categoryId],
+    references: [categories.id],
+  }),
+}));
 
 export const tags = pgTable('tags', {
   id: serial('id').primaryKey(),
@@ -48,7 +68,7 @@ export const categorizationRules = pgTable('categorization_rules', {
 
 export const mappings = pgTable('mappings', {
   id: serial('id').primaryKey(),
-  accountId: integer('account_id').references(() => accounts.id).notNull(),
+  accountId: integer('account_id').references(() => accounts.id).notNull().unique(),
   config: jsonb('config').notNull(),
   createdAt: timestamp('created_at').defaultNow().notNull(),
 });
