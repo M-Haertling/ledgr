@@ -1,0 +1,30 @@
+# Feature List
+- Transaction upload
+    - Support mapping of CSV exports from various banks
+    - Support duplicate transaction tracking
+    - Attach the upload to a specifid account
+    - Save the mapping for each account upload
+    - Some uploads separate credit and debit into columns, others denote it with a positive (credit) or negative (debit) number
+- Transaction details
+    - Date
+    - Description
+    - Credit/debit
+    - Account
+    - Description
+- Transaction categorization
+    - Customized categories
+    - Apply rules to automatically categorize
+- Reporting
+    - Expenses over time
+        - By category
+- View uncategorized items and easily apply a category
+- Adding new rules for categorization should be quick and easy
+- Tagging
+    - Unlike categories, an item can have multiple tags
+    - Used to making search easier
+    - Tags can also be applied using rules
+- Search
+    - Category
+    - Tags
+    - Description
+    - etc.
