@@ -1,72 +1,82 @@
 'use server';
 
 import { db } from '@/lib/db';
-import { categorizationRules, transactions, transactionTags } from '@/lib/db/schema';
-import { eq, isNull } from 'drizzle-orm';
+import { categorizationRules, transactions, transactionTags, ruleTags } from '@/lib/db/schema';
+import { eq, isNull, ilike } from 'drizzle-orm';
 import { revalidatePath } from 'next/cache';
 
 function patternToRegex(pattern: string): RegExp {
-  // Escape special regex chars except *, then convert * to .*
   const escaped = pattern.replace(/[.+?^${}()|[\]\\]/g, '\\$&').replace(/\*/g, '.*');
   return new RegExp(escaped, 'i');
+}
+
+async function syncRuleTags(ruleId: number, tagIds: number[]) {
+  await db.delete(ruleTags).where(eq(ruleTags.ruleId, ruleId));
+  if (tagIds.length > 0) {
+    await db.insert(ruleTags).values(tagIds.map(tagId => ({ ruleId, tagId })));
+  }
 }
 
 export async function createRule(formData: FormData) {
   const pattern = formData.get('pattern') as string;
   const categoryIdRaw = formData.get('categoryId') as string;
-  const tagIdRaw = formData.get('tagId') as string;
   const accountIdRaw = formData.get('accountId') as string;
   const priority = parseInt(formData.get('priority') as string) || 0;
+  const tagIdStrings = formData.getAll('tagIds') as string[];
 
   const categoryId = categoryIdRaw ? parseInt(categoryIdRaw) : null;
-  const tagId = tagIdRaw ? parseInt(tagIdRaw) : null;
   const accountId = accountIdRaw ? parseInt(accountIdRaw) : null;
+  const tagIds = tagIdStrings.map(Number).filter(Boolean);
 
-  if (!pattern || (!categoryId && !tagId)) {
+  if (!pattern || (!categoryId && tagIds.length === 0)) {
     throw new Error('Pattern and at least one of category or tag are required');
   }
 
-  await db.insert(categorizationRules).values({
+  const [rule] = await db.insert(categorizationRules).values({
     pattern,
     categoryId,
-    tagId,
     accountId,
     priority,
-  });
+  }).returning({ id: categorizationRules.id });
 
+  await syncRuleTags(rule.id, tagIds);
   revalidatePath('/automation');
 }
 
 export async function updateRule(id: number, formData: FormData) {
   const pattern = formData.get('pattern') as string;
   const categoryIdRaw = formData.get('categoryId') as string;
-  const tagIdRaw = formData.get('tagId') as string;
   const accountIdRaw = formData.get('accountId') as string;
   const priority = parseInt(formData.get('priority') as string) || 0;
+  const tagIdStrings = formData.getAll('tagIds') as string[];
 
   const categoryId = categoryIdRaw ? parseInt(categoryIdRaw) : null;
-  const tagId = tagIdRaw ? parseInt(tagIdRaw) : null;
   const accountId = accountIdRaw ? parseInt(accountIdRaw) : null;
+  const tagIds = tagIdStrings.map(Number).filter(Boolean);
 
-  if (!pattern || (!categoryId && !tagId)) {
+  if (!pattern || (!categoryId && tagIds.length === 0)) {
     throw new Error('Pattern and at least one of category or tag are required');
   }
 
   await db.update(categorizationRules)
-    .set({ pattern, categoryId, tagId, accountId, priority })
+    .set({ pattern, categoryId, accountId, priority })
     .where(eq(categorizationRules.id, id));
 
+  await syncRuleTags(id, tagIds);
   revalidatePath('/automation');
 }
 
 export async function deleteRule(id: number, formData: FormData) {
+  // rule_tags deleted automatically via ON DELETE CASCADE
   await db.delete(categorizationRules).where(eq(categorizationRules.id, id));
   revalidatePath('/automation');
 }
 
 export async function applyRulesToUncategorized() {
   const rules = await db.query.categorizationRules.findMany({
-    orderBy: (rules, { desc }) => [desc(rules.priority)],
+    with: { ruleTags: { with: { tag: true } } },
+    // Higher priority first; equal priority: earlier rule (lower id) wins
+    orderBy: (r, { desc, asc }) => [desc(r.priority), asc(r.id)],
   });
 
   const uncategorized = await db.query.transactions.findMany({
@@ -76,28 +86,25 @@ export async function applyRulesToUncategorized() {
   let updatedCount = 0;
   for (const tx of uncategorized) {
     for (const rule of rules) {
-      // Skip rules scoped to a different account
       if (rule.accountId && rule.accountId !== tx.accountId) continue;
 
       const regex = patternToRegex(rule.pattern);
       if (!regex.test(tx.description)) continue;
 
-      // Apply category if set
       if (rule.categoryId) {
         await db.update(transactions)
           .set({ categoryId: rule.categoryId })
           .where(eq(transactions.id, tx.id));
       }
 
-      // Apply tag if set
-      if (rule.tagId) {
+      for (const rt of rule.ruleTags) {
         await db.insert(transactionTags)
-          .values({ transactionId: tx.id, tagId: rule.tagId })
+          .values({ transactionId: tx.id, tagId: rt.tagId })
           .onConflictDoNothing();
       }
 
       updatedCount++;
-      break; // Stop at first matching rule
+      break;
     }
   }
 

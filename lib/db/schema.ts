@@ -57,6 +57,7 @@ export const tags = pgTable('tags', {
 
 export const tagsRelations = relations(tags, ({ many }) => ({
   transactionTags: many(transactionTags),
+  ruleTags: many(ruleTags),
 }));
 
 export const transactionTags = pgTable('transaction_tags', {
@@ -81,24 +82,38 @@ export const categorizationRules = pgTable('categorization_rules', {
   id: serial('id').primaryKey(),
   pattern: text('pattern').notNull(),
   categoryId: integer('category_id').references(() => categories.id),
-  tagId: integer('tag_id').references(() => tags.id),
   accountId: integer('account_id').references(() => accounts.id),
   priority: integer('priority').default(0).notNull(),
   createdAt: timestamp('created_at').defaultNow().notNull(),
 });
 
-export const categorizationRulesRelations = relations(categorizationRules, ({ one }) => ({
+export const categorizationRulesRelations = relations(categorizationRules, ({ one, many }) => ({
   category: one(categories, {
     fields: [categorizationRules.categoryId],
     references: [categories.id],
   }),
-  tag: one(tags, {
-    fields: [categorizationRules.tagId],
-    references: [tags.id],
-  }),
   account: one(accounts, {
     fields: [categorizationRules.accountId],
     references: [accounts.id],
+  }),
+  ruleTags: many(ruleTags),
+}));
+
+export const ruleTags = pgTable('rule_tags', {
+  ruleId: integer('rule_id').references(() => categorizationRules.id, { onDelete: 'cascade' }).notNull(),
+  tagId: integer('tag_id').references(() => tags.id, { onDelete: 'cascade' }).notNull(),
+}, (table) => [
+  { pk: [table.ruleId, table.tagId] }
+]);
+
+export const ruleTagsRelations = relations(ruleTags, ({ one }) => ({
+  rule: one(categorizationRules, {
+    fields: [ruleTags.ruleId],
+    references: [categorizationRules.id],
+  }),
+  tag: one(tags, {
+    fields: [ruleTags.tagId],
+    references: [tags.id],
   }),
 }));
 

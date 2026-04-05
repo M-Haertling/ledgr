@@ -3,16 +3,16 @@
 import { useState } from 'react';
 
 type Option = { id: number; name: string; color?: string | null };
+type RuleTag = { tagId: number; tag: { id: number; name: string } };
 type Rule = {
   id: number;
   pattern: string;
   priority: number;
   categoryId: number | null;
-  tagId: number | null;
   accountId: number | null;
   category: { id: number; name: string; color: string | null } | null;
-  tag: { id: number; name: string } | null;
   account: { id: number; name: string } | null;
+  ruleTags: RuleTag[];
 };
 
 export default function EditRuleForm({
@@ -29,6 +29,7 @@ export default function EditRuleForm({
   updateAction: (formData: FormData) => Promise<void>;
 }) {
   const [editing, setEditing] = useState(false);
+  const currentTagIds = new Set(rule.ruleTags.map(rt => rt.tagId));
 
   if (!editing) {
     return (
@@ -45,11 +46,11 @@ export default function EditRuleForm({
               {rule.category.name}
             </span>
           )}
-          {rule.tag && (
-            <span className="badge" style={{ borderColor: 'var(--border)' }}>
-              #{rule.tag.name}
+          {rule.ruleTags.map(rt => (
+            <span key={rt.tagId} className="badge" style={{ borderColor: 'var(--border)' }}>
+              #{rt.tag.name}
             </span>
-          )}
+          ))}
           <span className="list-item-subtitle">Priority: {rule.priority}</span>
           <button className="btn btn-secondary btn-sm" onClick={() => setEditing(true)}>
             Edit
@@ -97,15 +98,24 @@ export default function EditRuleForm({
             ))}
           </select>
         </div>
-        <div className="form-group" style={{ marginBottom: 0, minWidth: '140px', flex: 1 }}>
-          <label className="form-label">Tag</label>
-          <select name="tagId" className="form-select" defaultValue={rule.tagId ?? ''}>
-            <option value="">No Tag</option>
-            {allTags.map(tag => (
-              <option key={tag.id} value={tag.id}>#{tag.name}</option>
-            ))}
-          </select>
-        </div>
+        {allTags.length > 0 && (
+          <div className="form-group" style={{ marginBottom: 0, minWidth: '200px', flex: 2 }}>
+            <label className="form-label">Tags</label>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem', marginTop: '0.25rem' }}>
+              {allTags.map(tag => (
+                <label key={tag.id} style={{ display: 'flex', alignItems: 'center', gap: '0.375rem', cursor: 'pointer', fontSize: '0.875rem' }}>
+                  <input
+                    type="checkbox"
+                    name="tagIds"
+                    value={tag.id}
+                    defaultChecked={currentTagIds.has(tag.id)}
+                  />
+                  #{tag.name}
+                </label>
+              ))}
+            </div>
+          </div>
+        )}
         <div className="form-group" style={{ marginBottom: 0, width: '90px' }}>
           <label className="form-label">Priority</label>
           <input

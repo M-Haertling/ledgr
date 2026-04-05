@@ -29,7 +29,8 @@ export async function POST(req: Request) {
 
     // Get categorization rules for auto-categorization
     const rules = await db.query.categorizationRules.findMany({
-      orderBy: (rules, { desc }) => [desc(rules.priority)],
+      with: { ruleTags: true },
+      orderBy: (rules, { desc, asc }) => [desc(rules.priority), asc(rules.id)],
     });
 
     const rows = csvData.slice(1); // Skip header
@@ -88,13 +89,13 @@ export async function POST(req: Request) {
 
       // Auto-categorize and auto-tag
       let categoryId = null;
-      let matchedTagId = null;
+      let matchedTagIds: number[] = [];
       for (const rule of rules) {
         if (rule.accountId && rule.accountId !== parseInt(accountId)) continue;
         const regex = patternToRegex(rule.pattern);
         if (!regex.test(description)) continue;
         if (rule.categoryId) categoryId = rule.categoryId;
-        if (rule.tagId) matchedTagId = rule.tagId;
+        matchedTagIds = rule.ruleTags.map((rt: { tagId: number }) => rt.tagId);
         break;
       }
 
@@ -110,9 +111,9 @@ export async function POST(req: Request) {
 
       if (insertResult[0]) {
         imported++;
-        if (matchedTagId) {
+        for (const tagId of matchedTagIds) {
           await db.insert(transactionTags)
-            .values({ transactionId: insertResult[0].id, tagId: matchedTagId })
+            .values({ transactionId: insertResult[0].id, tagId })
             .onConflictDoNothing();
         }
       } else {
