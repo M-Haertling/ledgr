@@ -114,3 +114,39 @@ export async function deduplicateTransactions(): Promise<number> {
   revalidatePath('/transactions');
   return ids.length;
 }
+
+export async function autoMapTransfers(): Promise<{ linked: number }> {
+  // Find unlinked transactions that can be automatically mapped
+  // Criteria: opposite type, same amount, dates within 7 days
+  const unlinkedTransactions = await db.query.transactions.findMany({
+    where: isNull(transactions.transferPairId),
+  });
+
+  let linked = 0;
+  for (const tx of unlinkedTransactions) {
+    const candidates = await db.query.transactions.findMany({
+      where: and(
+        eq(transactions.amount, tx.amount),
+        eq(transactions.isCredit, !tx.isCredit),
+        isNull(transactions.transferPairId)
+      ),
+    });
+
+    // Filter by date range (within 7 days)
+    const dateCandidates = candidates.filter(c => {
+      const daysDiff = Math.abs(
+        (c.date.getTime() - tx.date.getTime()) / (1000 * 60 * 60 * 24)
+      );
+      return daysDiff <= 7;
+    });
+
+    // If exactly one candidate, auto-link
+    if (dateCandidates.length === 1) {
+      await linkTransferPair(tx.id, dateCandidates[0].id);
+      linked++;
+    }
+  }
+
+  revalidatePath('/transactions');
+  return { linked };
+}

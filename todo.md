@@ -19,7 +19,7 @@
 * Do not display transfers in any of the reports
 * For category based reporting
     * For standard categories, show the net of credits and debits (this should remove any returns)
-    * Do not show net positive categories?
+    * Do not show net positive/credit categories or report them separately
 * Change the category and tag filters in Reports to match how they are done in Transactions
 * Add a Previous Month option in the Period selection
 

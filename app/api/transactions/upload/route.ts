@@ -1,5 +1,6 @@
 import { db } from '@/lib/db';
-import { transactions, mappings, categorizationRules, transactionTags } from '@/lib/db/schema';
+import { transactions, mappings, categorizationRules, transactionTags, categories } from '@/lib/db/schema';
+import { eq } from 'drizzle-orm';
 import { NextResponse } from 'next/server';
 
 function patternToRegex(pattern: string): RegExp {
@@ -50,6 +51,21 @@ export async function POST(req: Request) {
       const date = new Date(dateStr);
       if (isNaN(date.getTime())) { failed++; continue; }
 
+      // Check for category from CSV if column is mapped
+      let categoryIdFromCsv: number | null = null;
+      if (mapping.category !== undefined) {
+        const categoryName = row[mapping.category]?.trim();
+        if (categoryName) {
+          const categoryMatch = await db
+            .select({ id: categories.id })
+            .from(categories)
+            .where(eq(categories.name, categoryName));
+          if (categoryMatch.length > 0) {
+            categoryIdFromCsv = categoryMatch[0].id;
+          }
+        }
+      }
+
       let amount: number;
       let isCredit: boolean;
 
@@ -88,13 +104,13 @@ export async function POST(req: Request) {
       amount = Math.abs(amount);
 
       // Auto-categorize and auto-tag
-      let categoryId = null;
+      let categoryId = categoryIdFromCsv || null;
       let matchedTagIds: number[] = [];
       for (const rule of rules) {
         if (rule.accountId && rule.accountId !== parseInt(accountId)) continue;
         const regex = patternToRegex(rule.pattern);
         if (!regex.test(description)) continue;
-        if (rule.categoryId) categoryId = rule.categoryId;
+        if (rule.categoryId && !categoryId) categoryId = rule.categoryId;
         matchedTagIds = rule.ruleTags.map((rt: { tagId: number }) => rt.tagId);
         break;
       }

@@ -1,11 +1,13 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { deleteTemplate } from '@/lib/actions/mappings';
 
 type AmountMode = 'single' | 'split';
 type UploadResult = { imported: number; skipped: number; failed: number };
 
-export default function UploadForm({ accounts, templates }: { accounts: any[], templates: any[] }) {
+export default function UploadForm({ accounts, templates: initialTemplates }: { accounts: any[], templates: any[] }) {
+  const [templates, setTemplates] = useState(initialTemplates);
   const [file, setFile] = useState<File | null>(null);
   const [accountId, setAccountId] = useState<string>(accounts[0]?.id.toString() || '');
   const [csvData, setCsvData] = useState<string[][] | null>(null);
@@ -16,6 +18,35 @@ export default function UploadForm({ accounts, templates }: { accounts: any[], t
   const [amountMode, setAmountMode] = useState<AmountMode>('single');
   const [uploading, setUploading] = useState(false);
   const [result, setResult] = useState<UploadResult | null>(null);
+
+  // Persist form state to localStorage to survive page refresh
+  useEffect(() => {
+    const saved = localStorage.getItem('uploadFormState');
+    if (saved) {
+      try {
+        const state = JSON.parse(saved);
+        setAccountId(state.accountId || accounts[0]?.id.toString() || '');
+        setMapping(state.mapping || {});
+        setAmountMode(state.amountMode || 'single');
+        setTemplateName(state.templateName || '');
+      } catch (e) {
+        // Ignore JSON parse errors
+      }
+    }
+  }, []);
+
+  const saveFormState = () => {
+    localStorage.setItem('uploadFormState', JSON.stringify({
+      accountId,
+      mapping,
+      amountMode,
+      templateName,
+    }));
+  };
+
+  const clearFormState = () => {
+    localStorage.removeItem('uploadFormState');
+  };
 
   const accountTemplates = templates.filter(t => t.accountId.toString() === accountId);
 
@@ -32,9 +63,19 @@ export default function UploadForm({ accounts, templates }: { accounts: any[], t
         } else {
           setAmountMode('single');
         }
+        saveFormState();
       }
     }
   }, [selectedTemplateId, templates]);
+
+  const handleDeleteTemplate = async (templateId: number, templateName: string) => {
+    if (confirm(`Delete template "${templateName}"?`)) {
+      await deleteTemplate(templateId);
+      setTemplates(templates.filter(t => t.id !== templateId));
+      setSelectedTemplateId('');
+      clearFormState();
+    }
+  };
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files) {
@@ -56,6 +97,7 @@ export default function UploadForm({ accounts, templates }: { accounts: any[], t
     { name: 'description', label: 'Description', required: true },
     { name: 'amount', label: 'Amount', required: true },
     { name: 'isCredit', label: 'Is Credit (Optional)', required: false },
+    { name: 'category', label: 'Category (Optional)', required: false },
   ];
 
   const splitFields = [
@@ -63,11 +105,12 @@ export default function UploadForm({ accounts, templates }: { accounts: any[], t
     { name: 'description', label: 'Description', required: true },
     { name: 'credit', label: 'Credit Amount (Optional)', required: false },
     { name: 'debit', label: 'Debit Amount (Optional)', required: false },
+    { name: 'category', label: 'Category (Optional)', required: false },
   ];
 
   const activeFields = amountMode === 'single' ? singleFields : splitFields;
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.SyntheticEvent<HTMLFormElement>) => {
     e.preventDefault();
     if (!file || !accountId || !csvData) return;
 
@@ -88,6 +131,7 @@ export default function UploadForm({ accounts, templates }: { accounts: any[], t
       if (response.ok) {
         const data = await response.json();
         setResult({ imported: data.imported, skipped: data.skipped, failed: data.failed });
+        clearFormState();
       } else {
         alert('Upload failed');
       }
@@ -119,16 +163,32 @@ export default function UploadForm({ accounts, templates }: { accounts: any[], t
         {accountTemplates.length > 0 && (
           <div className="form-group">
             <label className="form-label">Load Saved Template (Optional)</label>
-            <select
-              className="form-select"
-              value={selectedTemplateId}
-              onChange={(e) => setSelectedTemplateId(e.target.value)}
-            >
-              <option value="">-- Select Template --</option>
-              {accountTemplates.map(t => (
-                <option key={t.id} value={t.id}>{t.name}</option>
-              ))}
-            </select>
+            <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'flex-start' }}>
+              <select
+                className="form-select"
+                value={selectedTemplateId}
+                onChange={(e) => setSelectedTemplateId(e.target.value)}
+                style={{ flex: 1 }}
+              >
+                <option value="">-- Select Template --</option>
+                {accountTemplates.map(t => (
+                  <option key={t.id} value={t.id}>{t.name}</option>
+                ))}
+              </select>
+              {selectedTemplateId && (
+                <button
+                  type="button"
+                  className="btn btn-secondary"
+                  onClick={() => {
+                    const template = accountTemplates.find(t => t.id.toString() === selectedTemplateId);
+                    if (template) handleDeleteTemplate(template.id, template.name);
+                  }}
+                  style={{ marginTop: '0.25rem' }}
+                >
+                  Delete
+                </button>
+              )}
+            </div>
           </div>
         )}
 
@@ -160,6 +220,7 @@ export default function UploadForm({ accounts, templates }: { accounts: any[], t
                       setAmountMode('single');
                       const { credit, debit, ...rest } = mapping;
                       setMapping(rest);
+                      saveFormState();
                     }}
                   />
                   Single amount column
@@ -174,6 +235,7 @@ export default function UploadForm({ accounts, templates }: { accounts: any[], t
                       setAmountMode('split');
                       const { amount, isCredit, ...rest } = mapping;
                       setMapping(rest);
+                      saveFormState();
                     }}
                   />
                   Separate credit &amp; debit columns
@@ -202,6 +264,7 @@ export default function UploadForm({ accounts, templates }: { accounts: any[], t
                     } else {
                       setMapping({ ...mapping, [field.name]: parseInt(val) });
                     }
+                    saveFormState();
                   }}
                   required={field.required}
                 >
@@ -292,7 +355,11 @@ export default function UploadForm({ accounts, templates }: { accounts: any[], t
                   <button
                     type="button"
                     className="btn btn-secondary w-full"
-                    onClick={() => setResult(null)}
+                    onClick={() => {
+                      setResult(null);
+                      setFile(null);
+                      setCsvData(null);
+                    }}
                   >
                     Upload Another
                   </button>
