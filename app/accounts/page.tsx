@@ -1,7 +1,8 @@
 import { db } from '@/lib/db';
 import { accounts } from '@/lib/db/schema';
-import { createAccount, deleteAccount } from '@/lib/actions/accounts';
+import { createAccount, deleteAccount, updateAccount } from '@/lib/actions/accounts';
 import { desc } from 'drizzle-orm';
+import EditAccountForm from './EditAccountForm';
 
 export default async function AccountsPage() {
   const allAccounts = await db.query.accounts.findMany({
@@ -11,20 +12,20 @@ export default async function AccountsPage() {
   return (
     <div>
       <h1 className="mb-4">Manage Accounts</h1>
-      
+
       <div className="card">
         <h2 className="card-title">Add New Account</h2>
         <form action={createAccount}>
           <div className="flex gap-4">
             <div className="form-group w-full">
               <label htmlFor="name" className="form-label">Account Name</label>
-              <input 
-                type="text" 
-                id="name" 
-                name="name" 
-                className="form-input" 
-                placeholder="e.g. Main Checking" 
-                required 
+              <input
+                type="text"
+                id="name"
+                name="name"
+                className="form-input"
+                placeholder="e.g. Main Checking"
+                required
               />
             </div>
             <div className="form-group w-full">
@@ -52,10 +53,7 @@ export default async function AccountsPage() {
         ) : (
           allAccounts.map((account) => (
             <div key={account.id} className="list-item">
-              <div>
-                <div className="list-item-title">{account.name}</div>
-                <div className="list-item-subtitle">{account.type}</div>
-              </div>
+              <EditAccountForm account={account} updateAction={updateAccount.bind(null, account.id)} />
               <div className="flex gap-2">
                 <form action={deleteAccount.bind(null, account.id)}>
                   <button type="submit" className="btn btn-danger btn-sm">Delete</button>

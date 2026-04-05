@@ -46,3 +46,14 @@ export async function detachTag(transactionId: number, tagId: number) {
 
   revalidatePath('/transactions');
 }
+
+export async function updateTag(id: number, formData: FormData) {
+  const name = formData.get('name') as string;
+
+  if (!name) {
+    throw new Error('Name is required');
+  }
+
+  await db.update(tags).set({ name }).where(eq(tags.id, id));
+  revalidatePath('/tags');
+}

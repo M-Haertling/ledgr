@@ -24,6 +24,9 @@ export default function RootLayout({
               <Link href="/transactions" className="nav-link">
                 Transactions
               </Link>
+              <Link href="/transactions/upload" className="nav-link">
+                Upload
+              </Link>
               <Link href="/accounts" className="nav-link">
                 Accounts
               </Link>

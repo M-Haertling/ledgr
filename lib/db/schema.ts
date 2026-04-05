@@ -78,7 +78,9 @@ export const transactionTagsRelations = relations(transactionTags, ({ one }) => 
 export const categorizationRules = pgTable('categorization_rules', {
   id: serial('id').primaryKey(),
   pattern: text('pattern').notNull(),
-  categoryId: integer('category_id').references(() => categories.id).notNull(),
+  categoryId: integer('category_id').references(() => categories.id),
+  tagId: integer('tag_id').references(() => tags.id),
+  accountId: integer('account_id').references(() => accounts.id),
   priority: integer('priority').default(0).notNull(),
   createdAt: timestamp('created_at').defaultNow().notNull(),
 });
@@ -87,6 +89,14 @@ export const categorizationRulesRelations = relations(categorizationRules, ({ on
   category: one(categories, {
     fields: [categorizationRules.categoryId],
     references: [categories.id],
+  }),
+  tag: one(tags, {
+    fields: [categorizationRules.tagId],
+    references: [tags.id],
+  }),
+  account: one(accounts, {
+    fields: [categorizationRules.accountId],
+    references: [accounts.id],
   }),
 }));
 

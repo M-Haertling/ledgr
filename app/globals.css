@@ -284,3 +284,98 @@ a:hover {
 .table tr:last-child td {
   border-bottom: none;
 }
+
+/* Sortable table headers */
+.table th.sortable {
+  cursor: pointer;
+  user-select: none;
+}
+.table th.sortable:hover {
+  background-color: var(--border);
+}
+.sort-indicator {
+  margin-left: 0.25rem;
+  color: var(--primary);
+}
+
+/* Pagination */
+.pagination {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 1rem;
+  margin-top: 1rem;
+  font-size: 0.875rem;
+}
+
+/* Multi-select dropdown */
+.multi-select {
+  position: relative;
+  display: inline-block;
+}
+.multi-select-panel {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  z-index: 20;
+  background: var(--card-bg);
+  border: 1px solid var(--border);
+  border-radius: 0.375rem;
+  padding: 0.5rem;
+  min-width: 200px;
+  max-height: 250px;
+  overflow-y: auto;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+}
+.multi-select-option {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.375rem 0.5rem;
+  cursor: pointer;
+  font-size: 0.875rem;
+  border-radius: 0.25rem;
+}
+.multi-select-option:hover {
+  background-color: var(--bg);
+}
+
+/* Chart containers */
+.chart-container {
+  width: 100%;
+  height: 300px;
+  margin-top: 1rem;
+}
+
+/* Inline edit form */
+.inline-edit-form {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+  flex-wrap: wrap;
+}
+.inline-edit-form .form-input,
+.inline-edit-form .form-select {
+  padding: 0.25rem 0.5rem;
+  font-size: 0.875rem;
+}
+
+/* Preset button group */
+.btn-group {
+  display: flex;
+  border: 1px solid var(--border);
+  border-radius: 0.375rem;
+  overflow: hidden;
+}
+.btn-group .btn {
+  border-radius: 0;
+  border: none;
+  border-right: 1px solid var(--border);
+}
+.btn-group .btn:last-child {
+  border-right: none;
+}
+.btn-group .btn.active {
+  background-color: var(--primary);
+  color: #fff;
+}

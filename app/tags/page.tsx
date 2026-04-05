@@ -1,7 +1,8 @@
 import { db } from '@/lib/db';
 import { tags } from '@/lib/db/schema';
-import { createTag, deleteTag } from '@/lib/actions/tags';
+import { createTag, deleteTag, updateTag } from '@/lib/actions/tags';
 import { desc } from 'drizzle-orm';
+import EditTagForm from './EditTagForm';
 
 export default async function TagsPage() {
   const allTags = await db.query.tags.findMany({
@@ -11,20 +12,20 @@ export default async function TagsPage() {
   return (
     <div>
       <h1 className="mb-4">Manage Tags</h1>
-      
+
       <div className="card">
         <h2 className="card-title">Add New Tag</h2>
         <form action={createTag}>
           <div className="flex gap-4">
             <div className="form-group w-full">
               <label htmlFor="name" className="form-label">Tag Name</label>
-              <input 
-                type="text" 
-                id="name" 
-                name="name" 
-                className="form-input" 
-                placeholder="e.g. Personal, Business, Vacation" 
-                required 
+              <input
+                type="text"
+                id="name"
+                name="name"
+                className="form-input"
+                placeholder="e.g. Personal, Business, Vacation"
+                required
               />
             </div>
             <div className="flex items-center mt-4">
@@ -42,9 +43,7 @@ export default async function TagsPage() {
         ) : (
           allTags.map((tag) => (
             <div key={tag.id} className="list-item">
-              <div>
-                <div className="list-item-title">#{tag.name}</div>
-              </div>
+              <EditTagForm tag={tag} updateAction={updateTag.bind(null, tag.id)} />
               <div className="flex gap-2">
                 <form action={deleteTag.bind(null, tag.id)}>
                   <button type="submit" className="btn btn-danger btn-sm">Delete</button>

@@ -1,22 +1,36 @@
 'use server';
 
 import { db } from '@/lib/db';
-import { categorizationRules, transactions } from '@/lib/db/schema';
-import { eq, ilike, isNull } from 'drizzle-orm';
+import { categorizationRules, transactions, transactionTags } from '@/lib/db/schema';
+import { eq, isNull } from 'drizzle-orm';
 import { revalidatePath } from 'next/cache';
+
+function patternToRegex(pattern: string): RegExp {
+  // Escape special regex chars except *, then convert * to .*
+  const escaped = pattern.replace(/[.+?^${}()|[\]\\]/g, '\\$&').replace(/\*/g, '.*');
+  return new RegExp(escaped, 'i');
+}
 
 export async function createRule(formData: FormData) {
   const pattern = formData.get('pattern') as string;
-  const categoryId = parseInt(formData.get('categoryId') as string);
+  const categoryIdRaw = formData.get('categoryId') as string;
+  const tagIdRaw = formData.get('tagId') as string;
+  const accountIdRaw = formData.get('accountId') as string;
   const priority = parseInt(formData.get('priority') as string) || 0;
 
-  if (!pattern || isNaN(categoryId)) {
-    throw new Error('Pattern and category are required');
+  const categoryId = categoryIdRaw ? parseInt(categoryIdRaw) : null;
+  const tagId = tagIdRaw ? parseInt(tagIdRaw) : null;
+  const accountId = accountIdRaw ? parseInt(accountIdRaw) : null;
+
+  if (!pattern || (!categoryId && !tagId)) {
+    throw new Error('Pattern and at least one of category or tag are required');
   }
 
   await db.insert(categorizationRules).values({
     pattern,
     categoryId,
+    tagId,
+    accountId,
     priority,
   });
 
@@ -40,13 +54,28 @@ export async function applyRulesToUncategorized() {
   let updatedCount = 0;
   for (const tx of uncategorized) {
     for (const rule of rules) {
-      if (tx.description.toLowerCase().includes(rule.pattern.toLowerCase())) {
+      // Skip rules scoped to a different account
+      if (rule.accountId && rule.accountId !== tx.accountId) continue;
+
+      const regex = patternToRegex(rule.pattern);
+      if (!regex.test(tx.description)) continue;
+
+      // Apply category if set
+      if (rule.categoryId) {
         await db.update(transactions)
           .set({ categoryId: rule.categoryId })
           .where(eq(transactions.id, tx.id));
-        updatedCount++;
-        break;
       }
+
+      // Apply tag if set
+      if (rule.tagId) {
+        await db.insert(transactionTags)
+          .values({ transactionId: tx.id, tagId: rule.tagId })
+          .onConflictDoNothing();
+      }
+
+      updatedCount++;
+      break; // Stop at first matching rule
     }
   }
 

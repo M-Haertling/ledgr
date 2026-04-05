@@ -1,5 +1,5 @@
 import { db } from '@/lib/db';
-import { categorizationRules, categories } from '@/lib/db/schema';
+import { categorizationRules } from '@/lib/db/schema';
 import { createRule, deleteRule, applyRulesToUncategorized } from '@/lib/actions/rules';
 import { desc } from 'drizzle-orm';
 
@@ -7,11 +7,15 @@ export default async function AutomationPage() {
   const allRules = await db.query.categorizationRules.findMany({
     with: {
       category: true,
+      tag: true,
+      account: true,
     },
     orderBy: [desc(categorizationRules.priority), desc(categorizationRules.createdAt)],
   });
 
   const allCategories = await db.query.categories.findMany();
+  const allTags = await db.query.tags.findMany();
+  const allAccounts = await db.query.accounts.findMany();
 
   return (
     <div>
@@ -26,39 +30,61 @@ export default async function AutomationPage() {
           </button>
         </form>
       </div>
-      
+
       <div className="card">
         <h2 className="card-title">Add New Rule</h2>
+        <p className="list-item-subtitle mb-3">
+          Use <code>*</code> as a wildcard in patterns (e.g. <code>AMAZON*</code> matches anything starting with AMAZON).
+          At least one of Category or Tag must be selected.
+        </p>
         <form action={createRule}>
-          <div className="flex gap-4">
+          <div className="flex gap-4" style={{ flexWrap: 'wrap' }}>
             <div className="form-group w-full">
-              <label htmlFor="pattern" className="form-label">Pattern (Description contains)</label>
-              <input 
-                type="text" 
-                id="pattern" 
-                name="pattern" 
-                className="form-input" 
-                placeholder="e.g. STARBUCKS" 
-                required 
+              <label htmlFor="pattern" className="form-label">Pattern (Description matches)</label>
+              <input
+                type="text"
+                id="pattern"
+                name="pattern"
+                className="form-input"
+                placeholder="e.g. STARBUCKS or AMAZON*"
+                required
               />
             </div>
             <div className="form-group w-full">
-              <label htmlFor="categoryId" className="form-label">Category</label>
-              <select id="categoryId" name="categoryId" className="form-select" required>
-                <option value="">Select Category</option>
+              <label htmlFor="accountId" className="form-label">Account (Optional — leave blank for all accounts)</label>
+              <select id="accountId" name="accountId" className="form-select">
+                <option value="">All Accounts</option>
+                {allAccounts.map(acc => (
+                  <option key={acc.id} value={acc.id}>{acc.name}</option>
+                ))}
+              </select>
+            </div>
+            <div className="form-group w-full">
+              <label htmlFor="categoryId" className="form-label">Apply Category (Optional)</label>
+              <select id="categoryId" name="categoryId" className="form-select">
+                <option value="">No Category</option>
                 {allCategories.map(cat => (
                   <option key={cat.id} value={cat.id}>{cat.name}</option>
                 ))}
               </select>
             </div>
+            <div className="form-group w-full">
+              <label htmlFor="tagId" className="form-label">Apply Tag (Optional)</label>
+              <select id="tagId" name="tagId" className="form-select">
+                <option value="">No Tag</option>
+                {allTags.map(tag => (
+                  <option key={tag.id} value={tag.id}>#{tag.name}</option>
+                ))}
+              </select>
+            </div>
             <div className="form-group" style={{ width: '150px' }}>
               <label htmlFor="priority" className="form-label">Priority</label>
-              <input 
-                type="number" 
-                id="priority" 
-                name="priority" 
-                className="form-input" 
-                defaultValue="0" 
+              <input
+                type="number"
+                id="priority"
+                name="priority"
+                className="form-input"
+                defaultValue="0"
               />
             </div>
             <div className="flex items-center mt-4">
@@ -77,11 +103,23 @@ export default async function AutomationPage() {
           allRules.map((rule) => (
             <div key={rule.id} className="list-item">
               <div>
-                <div className="list-item-title">Contains "{rule.pattern}"</div>
-                <div className="flex gap-2 items-center mt-1">
-                  <span className="badge" style={{ borderColor: rule.category.color || 'var(--border)' }}>
-                    {rule.category.name}
-                  </span>
+                <div className="list-item-title">Matches "{rule.pattern}"</div>
+                <div className="flex gap-2 items-center mt-1" style={{ flexWrap: 'wrap' }}>
+                  {rule.account && (
+                    <span className="badge" style={{ borderColor: 'var(--border)' }}>
+                      {rule.account.name}
+                    </span>
+                  )}
+                  {rule.category && (
+                    <span className="badge" style={{ borderColor: rule.category.color || 'var(--border)' }}>
+                      {rule.category.name}
+                    </span>
+                  )}
+                  {rule.tag && (
+                    <span className="badge" style={{ borderColor: 'var(--border)' }}>
+                      #{rule.tag.name}
+                    </span>
+                  )}
                   <span className="list-item-subtitle">Priority: {rule.priority}</span>
                 </div>
               </div>

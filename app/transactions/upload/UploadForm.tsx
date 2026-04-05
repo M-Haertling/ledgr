@@ -2,6 +2,8 @@
 
 import { useState, useEffect } from 'react';
 
+type AmountMode = 'single' | 'split';
+
 export default function UploadForm({ accounts, templates }: { accounts: any[], templates: any[] }) {
   const [file, setFile] = useState<File | null>(null);
   const [accountId, setAccountId] = useState<string>(accounts[0]?.id.toString() || '');
@@ -10,6 +12,7 @@ export default function UploadForm({ accounts, templates }: { accounts: any[], t
   const [templateName, setTemplateName] = useState<string>('');
   const [saveTemplate, setSaveTemplate] = useState<boolean>(false);
   const [selectedTemplateId, setSelectedTemplateId] = useState<string>('');
+  const [amountMode, setAmountMode] = useState<AmountMode>('single');
 
   const accountTemplates = templates.filter(t => t.accountId.toString() === accountId);
 
@@ -17,8 +20,15 @@ export default function UploadForm({ accounts, templates }: { accounts: any[], t
     if (selectedTemplateId) {
       const template = templates.find(t => t.id.toString() === selectedTemplateId);
       if (template) {
-        setMapping(template.config as Record<string, number>);
+        const config = template.config as Record<string, number>;
+        setMapping(config);
         setTemplateName(template.name);
+        // Detect mode from saved config
+        if (config.credit !== undefined || config.debit !== undefined) {
+          setAmountMode('split');
+        } else {
+          setAmountMode('single');
+        }
       }
     }
   }, [selectedTemplateId, templates]);
@@ -27,7 +37,7 @@ export default function UploadForm({ accounts, templates }: { accounts: any[], t
     if (e.target.files) {
       const selectedFile = e.target.files[0];
       setFile(selectedFile);
-      
+
       const reader = new FileReader();
       reader.onload = (event) => {
         const text = event.target?.result as string;
@@ -38,12 +48,21 @@ export default function UploadForm({ accounts, templates }: { accounts: any[], t
     }
   };
 
-  const fields = [
-    { name: 'date', label: 'Date' },
-    { name: 'description', label: 'Description' },
-    { name: 'amount', label: 'Amount' },
-    { name: 'isCredit', label: 'Is Credit (Optional)' },
+  const singleFields = [
+    { name: 'date', label: 'Date', required: true },
+    { name: 'description', label: 'Description', required: true },
+    { name: 'amount', label: 'Amount', required: true },
+    { name: 'isCredit', label: 'Is Credit (Optional)', required: false },
   ];
+
+  const splitFields = [
+    { name: 'date', label: 'Date', required: true },
+    { name: 'description', label: 'Description', required: true },
+    { name: 'credit', label: 'Credit Amount (Optional)', required: false },
+    { name: 'debit', label: 'Debit Amount (Optional)', required: false },
+  ];
+
+  const activeFields = amountMode === 'single' ? singleFields : splitFields;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -72,9 +91,9 @@ export default function UploadForm({ accounts, templates }: { accounts: any[], t
       <form onSubmit={handleSubmit}>
         <div className="form-group">
           <label className="form-label">Account</label>
-          <select 
-            className="form-select" 
-            value={accountId} 
+          <select
+            className="form-select"
+            value={accountId}
             onChange={(e) => {
               setAccountId(e.target.value);
               setSelectedTemplateId('');
@@ -90,9 +109,9 @@ export default function UploadForm({ accounts, templates }: { accounts: any[], t
         {accountTemplates.length > 0 && (
           <div className="form-group">
             <label className="form-label">Load Saved Template (Optional)</label>
-            <select 
-              className="form-select" 
-              value={selectedTemplateId} 
+            <select
+              className="form-select"
+              value={selectedTemplateId}
               onChange={(e) => setSelectedTemplateId(e.target.value)}
             >
               <option value="">-- Select Template --</option>
@@ -105,10 +124,10 @@ export default function UploadForm({ accounts, templates }: { accounts: any[], t
 
         <div className="form-group">
           <label className="form-label">CSV File</label>
-          <input 
-            type="file" 
-            accept=".csv" 
-            className="form-input" 
+          <input
+            type="file"
+            accept=".csv"
+            className="form-input"
             onChange={handleFileChange}
             required
           />
@@ -117,16 +136,64 @@ export default function UploadForm({ accounts, templates }: { accounts: any[], t
         {csvData && (
           <div className="mt-4">
             <h3 className="mb-2">Map CSV Columns</h3>
+
+            <div className="form-group">
+              <label className="form-label">Amount Format</label>
+              <div className="flex gap-4">
+                <label style={{ cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                  <input
+                    type="radio"
+                    name="amountMode"
+                    value="single"
+                    checked={amountMode === 'single'}
+                    onChange={() => {
+                      setAmountMode('single');
+                      const { credit, debit, ...rest } = mapping;
+                      setMapping(rest);
+                    }}
+                  />
+                  Single amount column
+                </label>
+                <label style={{ cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                  <input
+                    type="radio"
+                    name="amountMode"
+                    value="split"
+                    checked={amountMode === 'split'}
+                    onChange={() => {
+                      setAmountMode('split');
+                      const { amount, isCredit, ...rest } = mapping;
+                      setMapping(rest);
+                    }}
+                  />
+                  Separate credit &amp; debit columns
+                </label>
+              </div>
+              {amountMode === 'split' && (
+                <p className="list-item-subtitle mt-1">
+                  Credits will be stored as positive, debits as negative.
+                </p>
+              )}
+            </div>
+
             <p className="list-item-subtitle mb-4">Select which CSV column corresponds to each field.</p>
-            
-            {fields.map(field => (
+
+            {activeFields.map(field => (
               <div key={field.name} className="form-group">
                 <label className="form-label">{field.label}</label>
-                <select 
+                <select
                   className="form-select"
                   value={mapping[field.name] ?? ''}
-                  onChange={(e) => setMapping({ ...mapping, [field.name]: parseInt(e.target.value) })}
-                  required={field.name !== 'isCredit'}
+                  onChange={(e) => {
+                    const val = e.target.value;
+                    if (val === '') {
+                      const { [field.name]: _, ...rest } = mapping;
+                      setMapping(rest);
+                    } else {
+                      setMapping({ ...mapping, [field.name]: parseInt(val) });
+                    }
+                  }}
+                  required={field.required}
                 >
                   <option value="">Select Column</option>
                   {csvData[0].map((col, idx) => (
@@ -139,23 +206,23 @@ export default function UploadForm({ accounts, templates }: { accounts: any[], t
             <div className="card mb-4 mt-4" style={{ backgroundColor: 'var(--bg)' }}>
               <div className="form-group" style={{ marginBottom: '0.5rem' }}>
                 <label className="flex items-center gap-2" style={{ cursor: 'pointer' }}>
-                  <input 
-                    type="checkbox" 
-                    checked={saveTemplate} 
-                    onChange={(e) => setSaveTemplate(e.target.checked)} 
+                  <input
+                    type="checkbox"
+                    checked={saveTemplate}
+                    onChange={(e) => setSaveTemplate(e.target.checked)}
                   />
                   <span style={{ fontSize: '0.875rem', fontWeight: 500 }}>Save as template</span>
                 </label>
               </div>
-              
+
               {saveTemplate && (
                 <div className="form-group" style={{ marginBottom: 0 }}>
                   <label className="form-label">Template Name</label>
-                  <input 
-                    type="text" 
-                    className="form-input" 
-                    value={templateName} 
-                    onChange={(e) => setTemplateName(e.target.value)} 
+                  <input
+                    type="text"
+                    className="form-input"
+                    value={templateName}
+                    onChange={(e) => setTemplateName(e.target.value)}
                     placeholder="e.g. Chase Statement"
                     required={saveTemplate}
                   />
