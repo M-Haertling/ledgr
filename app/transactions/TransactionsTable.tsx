@@ -8,6 +8,7 @@ type Category = { id: number; name: string; color: string | null };
 type Transaction = {
   id: number;
   date: Date;
+  createdAt: Date;
   description: string;
   amount: string;
   isCredit: boolean;
@@ -74,6 +75,9 @@ export default function TransactionsTable({
               <th className="sortable" onClick={() => setSort('date')}>
                 Date {sortIndicator('date')}
               </th>
+              <th className="sortable" onClick={() => setSort('entryDate')}>
+                Entry Date {sortIndicator('entryDate')}
+              </th>
               <th className="sortable" onClick={() => setSort('description')}>
                 Description {sortIndicator('description')}
               </th>
@@ -91,6 +95,9 @@ export default function TransactionsTable({
               <tr key={tx.id}>
                 <td style={{ whiteSpace: 'nowrap', color: 'var(--text-muted)', fontSize: '0.875rem' }}>
                   {tx.date.toLocaleDateString()}
+                </td>
+                <td style={{ whiteSpace: 'nowrap', color: 'var(--text-muted)', fontSize: '0.875rem' }}>
+                  {tx.createdAt.toLocaleDateString()}
                 </td>
                 <td style={{ maxWidth: '300px', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                   {tx.description}
