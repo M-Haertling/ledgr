@@ -14,11 +14,23 @@ export default function BackupRestorePage() {
     <div style={{ maxWidth: '700px' }}>
       <h1 className="mb-4">Backup &amp; Restore</h1>
 
+      {/* Bulk export */}
       <div className="card mb-4">
-        <h2 className="card-title">Backup</h2>
+        <h2 className="card-title">Bulk Export</h2>
         <p className="list-item-subtitle mb-4">
-          Download each table as a CSV file. Restore these files later to recover your data.
-          Download in this order when setting up a fresh instance: Accounts → Categories → Tags → Transactions → Transaction Tags → Rules.
+          Download all 6 tables as a single ZIP file with standard CSV filenames, ready to restore
+          on any instance.
+        </p>
+        <a href="/api/backup/bulk" download className="btn btn-primary btn-sm" style={{ alignSelf: 'flex-start' }}>
+          Download All (ZIP)
+        </a>
+      </div>
+
+      {/* Per-table export */}
+      <div className="card mb-4">
+        <h2 className="card-title">Export Individual Table</h2>
+        <p className="list-item-subtitle mb-4">
+          Download individual tables as CSV files.
         </p>
         <div className="list-container">
           {TABLES.map(t => (
