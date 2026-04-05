@@ -1,6 +1,7 @@
 import { db } from '@/lib/db';
 import { categorizationRules } from '@/lib/db/schema';
-import { createRule, deleteRule, applyRulesToUncategorized } from '@/lib/actions/rules';
+import { createRule, updateRule, deleteRule, applyRulesToUncategorized } from '@/lib/actions/rules';
+import EditRuleForm from './EditRuleForm';
 import { desc } from 'drizzle-orm';
 
 export default async function AutomationPage() {
@@ -102,28 +103,14 @@ export default async function AutomationPage() {
         ) : (
           allRules.map((rule) => (
             <div key={rule.id} className="list-item">
-              <div>
-                <div className="list-item-title">Matches "{rule.pattern}"</div>
-                <div className="flex gap-2 items-center mt-1" style={{ flexWrap: 'wrap' }}>
-                  {rule.account && (
-                    <span className="badge" style={{ borderColor: 'var(--border)' }}>
-                      {rule.account.name}
-                    </span>
-                  )}
-                  {rule.category && (
-                    <span className="badge" style={{ borderColor: rule.category.color || 'var(--border)' }}>
-                      {rule.category.name}
-                    </span>
-                  )}
-                  {rule.tag && (
-                    <span className="badge" style={{ borderColor: 'var(--border)' }}>
-                      #{rule.tag.name}
-                    </span>
-                  )}
-                  <span className="list-item-subtitle">Priority: {rule.priority}</span>
-                </div>
-              </div>
-              <div className="flex gap-2">
+              <EditRuleForm
+                rule={rule}
+                allCategories={allCategories}
+                allTags={allTags}
+                allAccounts={allAccounts}
+                updateAction={updateRule.bind(null, rule.id)}
+              />
+              <div className="flex gap-2" style={{ flexShrink: 0 }}>
                 <form action={deleteRule.bind(null, rule.id)}>
                   <button type="submit" className="btn btn-danger btn-sm">Delete</button>
                 </form>

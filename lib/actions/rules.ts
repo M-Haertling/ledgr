@@ -37,6 +37,28 @@ export async function createRule(formData: FormData) {
   revalidatePath('/automation');
 }
 
+export async function updateRule(id: number, formData: FormData) {
+  const pattern = formData.get('pattern') as string;
+  const categoryIdRaw = formData.get('categoryId') as string;
+  const tagIdRaw = formData.get('tagId') as string;
+  const accountIdRaw = formData.get('accountId') as string;
+  const priority = parseInt(formData.get('priority') as string) || 0;
+
+  const categoryId = categoryIdRaw ? parseInt(categoryIdRaw) : null;
+  const tagId = tagIdRaw ? parseInt(tagIdRaw) : null;
+  const accountId = accountIdRaw ? parseInt(accountIdRaw) : null;
+
+  if (!pattern || (!categoryId && !tagId)) {
+    throw new Error('Pattern and at least one of category or tag are required');
+  }
+
+  await db.update(categorizationRules)
+    .set({ pattern, categoryId, tagId, accountId, priority })
+    .where(eq(categorizationRules.id, id));
+
+  revalidatePath('/automation');
+}
+
 export async function deleteRule(id: number, formData: FormData) {
   await db.delete(categorizationRules).where(eq(categorizationRules.id, id));
   revalidatePath('/automation');
