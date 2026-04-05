@@ -90,7 +90,6 @@ export default async function ReportsPage({
   const net = incomeSum - expenseSum;
 
   // Spending by Category — net of debits minus credits per category (removes returns)
-  // Only show categories with net spending (net > 0)
   const categorySpending = await db.select({
     categoryId: transactions.categoryId,
     categoryName: categories.name,
@@ -101,7 +100,6 @@ export default async function ReportsPage({
     .leftJoin(categories, eq(transactions.categoryId, categories.id))
     .where(and(...baseFilters))
     .groupBy(transactions.categoryId, categories.name, categories.color)
-    .having(sql`sum(CASE WHEN NOT is_credit THEN amount::numeric ELSE -amount::numeric END) > 0`)
     .orderBy(sql`sum(CASE WHEN NOT is_credit THEN amount::numeric ELSE -amount::numeric END) DESC`);
 
   // Spending by Account
@@ -124,7 +122,7 @@ export default async function ReportsPage({
     expenses: sql<string>`COALESCE(sum(CASE WHEN NOT is_credit THEN amount::numeric ELSE 0 END), 0)`,
   })
     .from(transactions)
-    .where(and(gte(transactions.date, from), lte(transactions.date, to), ne(transactions.type, 'transfer')))
+    .where(and(...baseFilters))
     .groupBy(sql`date_trunc('month', date)`)
     .orderBy(sql`date_trunc('month', date) ASC`);
 
@@ -141,7 +139,7 @@ export default async function ReportsPage({
     amount: sql<string>`COALESCE(sum(CASE WHEN NOT is_credit THEN amount::numeric ELSE -amount::numeric END), 0)`,
   })
     .from(transactions)
-    .where(and(gte(transactions.date, from), lte(transactions.date, to), ne(transactions.type, 'transfer')))
+    .where(and(...baseFilters))
     .groupBy(sql`date_trunc('month', date)`, transactions.categoryId)
     .having(sql`sum(CASE WHEN NOT is_credit THEN amount::numeric ELSE -amount::numeric END) > 0`)
     .orderBy(sql`date_trunc('month', date) ASC`);
@@ -171,7 +169,7 @@ export default async function ReportsPage({
   if (categoryIds.length) basePresetParams.set('categoryIds', categoryIds.join(','));
   if (tagIds.length) basePresetParams.set('tagIds', tagIds.join(','));
 
-  const totalCategorySpending = categorySpending.reduce((s, c) => s + parseFloat(c.total), 0);
+  const totalCategorySpending = categorySpending.reduce((s, c) => s + Math.max(0, parseFloat(c.total)), 0);
 
   return (
     <div>
@@ -317,7 +315,7 @@ export default async function ReportsPage({
             ) : (
               categorySpending.map((cat, i) => {
                 const total = parseFloat(cat.total);
-                const percentage = totalCategorySpending > 0 ? (total / totalCategorySpending) * 100 : 0;
+                const percentage = totalCategorySpending > 0 ? (Math.max(0, total) / totalCategorySpending) * 100 : 0;
                 return (
                   <div key={i} className="mb-4">
                     <div className="flex justify-between items-center mb-1">
