@@ -93,6 +93,7 @@ export const categorizationRules = pgTable('categorization_rules', {
   categoryId: integer('category_id').references(() => categories.id),
   accountId: integer('account_id').references(() => accounts.id),
   priority: integer('priority').default(0).notNull(),
+  ruleType: text('rule_type'),
   createdAt: timestamp('created_at').defaultNow().notNull(),
 });
 

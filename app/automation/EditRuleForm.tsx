@@ -8,6 +8,7 @@ type Rule = {
   id: number;
   pattern: string;
   priority: number;
+  ruleType: string | null;
   categoryId: number | null;
   accountId: number | null;
   category: { id: number; name: string; color: string | null } | null;
@@ -20,22 +21,30 @@ export default function EditRuleForm({
   allCategories,
   allTags,
   allAccounts,
+  allRuleTypes,
   updateAction,
 }: {
   rule: Rule;
   allCategories: Option[];
   allTags: Option[];
   allAccounts: Option[];
+  allRuleTypes: string[];
   updateAction: (formData: FormData) => Promise<void>;
 }) {
   const [editing, setEditing] = useState(false);
   const currentTagIds = new Set(rule.ruleTags.map(rt => rt.tagId));
+  const isTagOnly = !rule.categoryId && rule.ruleTags.length > 0;
 
   if (!editing) {
     return (
       <div>
         <div className="list-item-title">Matches "{rule.pattern}"</div>
         <div className="flex gap-2 items-center mt-1" style={{ flexWrap: 'wrap' }}>
+          {rule.ruleType && (
+            <span className="badge" style={{ borderColor: 'var(--primary)', color: 'var(--primary)', fontWeight: 600 }}>
+              {rule.ruleType}
+            </span>
+          )}
           {rule.account && (
             <span className="badge" style={{ borderColor: 'var(--border)' }}>
               {rule.account.name}
@@ -51,7 +60,9 @@ export default function EditRuleForm({
               #{rt.tag.name}
             </span>
           ))}
-          <span className="list-item-subtitle">Priority: {rule.priority}</span>
+          {!isTagOnly && (
+            <span className="list-item-subtitle">Priority: {rule.priority}</span>
+          )}
           <button className="btn btn-secondary btn-sm" onClick={() => setEditing(true)}>
             Edit
           </button>
@@ -88,6 +99,20 @@ export default function EditRuleForm({
               <option key={acc.id} value={acc.id}>{acc.name}</option>
             ))}
           </select>
+        </div>
+        <div className="form-group" style={{ marginBottom: 0, minWidth: '140px', flex: 1 }}>
+          <label className="form-label">Rule Type</label>
+          <input
+            type="text"
+            name="ruleType"
+            list="edit-rule-types-list"
+            className="form-input"
+            defaultValue={rule.ruleType || ''}
+            placeholder="Optional…"
+          />
+          <datalist id="edit-rule-types-list">
+            {allRuleTypes.map(t => <option key={t} value={t} />)}
+          </datalist>
         </div>
         <div className="form-group" style={{ marginBottom: 0, minWidth: '140px', flex: 1 }}>
           <label className="form-label">Category</label>

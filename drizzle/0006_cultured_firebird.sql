@@ -1,0 +1,1 @@
+ALTER TABLE "categorization_rules" ADD COLUMN "rule_type" text;

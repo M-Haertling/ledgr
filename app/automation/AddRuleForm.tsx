@@ -8,11 +8,13 @@ export default function AddRuleForm({
   allCategories,
   allTags,
   allAccounts,
+  allRuleTypes,
   createAction,
 }: {
   allCategories: Option[];
   allTags: Option[];
   allAccounts: Option[];
+  allRuleTypes: string[];
   createAction: (formData: FormData) => Promise<void>;
 }) {
   const formRef = useRef<HTMLFormElement>(null);
@@ -36,14 +38,27 @@ export default function AddRuleForm({
             required
           />
         </div>
-        <div className="form-group w-full">
-          <label className="form-label">Account (Optional — leave blank for all accounts)</label>
+        <div className="form-group" style={{ minWidth: '200px', flex: 1 }}>
+          <label className="form-label">Account (Optional)</label>
           <select name="accountId" className="form-select">
             <option value="">All Accounts</option>
             {allAccounts.map(acc => (
               <option key={acc.id} value={acc.id}>{acc.name}</option>
             ))}
           </select>
+        </div>
+        <div className="form-group" style={{ minWidth: '200px', flex: 1 }}>
+          <label className="form-label">Rule Type (Optional)</label>
+          <input
+            type="text"
+            name="ruleType"
+            list="rule-types-list"
+            className="form-input"
+            placeholder="e.g. Subscription, Recurring…"
+          />
+          <datalist id="rule-types-list">
+            {allRuleTypes.map(t => <option key={t} value={t} />)}
+          </datalist>
         </div>
         <div className="form-group w-full">
           <label className="form-label">Apply Category (Optional)</label>
@@ -68,7 +83,7 @@ export default function AddRuleForm({
           </div>
         )}
         <div className="form-group" style={{ width: '150px' }}>
-          <label className="form-label">Priority</label>
+          <label className="form-label">Priority (category rules)</label>
           <input type="number" name="priority" className="form-input" defaultValue="0" />
         </div>
         <div className="flex items-center mt-4">

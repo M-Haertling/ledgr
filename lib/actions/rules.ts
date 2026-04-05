@@ -2,7 +2,7 @@
 
 import { db } from '@/lib/db';
 import { categorizationRules, transactions, transactionTags, ruleTags } from '@/lib/db/schema';
-import { eq, isNull, ilike } from 'drizzle-orm';
+import { eq, isNull, ilike, and, notExists } from 'drizzle-orm';
 import { revalidatePath } from 'next/cache';
 
 function patternToRegex(pattern: string): RegExp {
@@ -23,6 +23,7 @@ export async function createRule(formData: FormData) {
   const accountIdRaw = formData.get('accountId') as string;
   const priority = parseInt(formData.get('priority') as string) || 0;
   const tagIdStrings = formData.getAll('tagIds') as string[];
+  const ruleType = (formData.get('ruleType') as string) || null;
 
   const categoryId = categoryIdRaw ? parseInt(categoryIdRaw) : null;
   const accountId = accountIdRaw ? parseInt(accountIdRaw) : null;
@@ -37,6 +38,7 @@ export async function createRule(formData: FormData) {
     categoryId,
     accountId,
     priority,
+    ruleType,
   }).returning({ id: categorizationRules.id });
 
   await syncRuleTags(rule.id, tagIds);
@@ -49,6 +51,7 @@ export async function updateRule(id: number, formData: FormData) {
   const accountIdRaw = formData.get('accountId') as string;
   const priority = parseInt(formData.get('priority') as string) || 0;
   const tagIdStrings = formData.getAll('tagIds') as string[];
+  const ruleType = (formData.get('ruleType') as string) || null;
 
   const categoryId = categoryIdRaw ? parseInt(categoryIdRaw) : null;
   const accountId = accountIdRaw ? parseInt(accountIdRaw) : null;
@@ -59,7 +62,7 @@ export async function updateRule(id: number, formData: FormData) {
   }
 
   await db.update(categorizationRules)
-    .set({ pattern, categoryId, accountId, priority })
+    .set({ pattern, categoryId, accountId, priority, ruleType })
     .where(eq(categorizationRules.id, id));
 
   await syncRuleTags(id, tagIds);
@@ -75,9 +78,13 @@ export async function deleteRule(id: number, formData: FormData) {
 export async function applyRulesToUncategorized() {
   const rules = await db.query.categorizationRules.findMany({
     with: { ruleTags: { with: { tag: true } } },
-    // Higher priority first; equal priority: earlier rule (lower id) wins
     orderBy: (r, { desc, asc }) => [desc(r.priority), asc(r.id)],
   });
+
+  // Category rules: first match only
+  const categoryRules = rules.filter(r => r.categoryId);
+  // Tag rules: apply ALL matching rules
+  const tagRules = rules.filter(r => r.ruleTags.length > 0);
 
   const uncategorized = await db.query.transactions.findMany({
     where: isNull(transactions.categoryId),
@@ -85,27 +92,76 @@ export async function applyRulesToUncategorized() {
 
   let updatedCount = 0;
   for (const tx of uncategorized) {
-    for (const rule of rules) {
-      if (rule.accountId && rule.accountId !== tx.accountId) continue;
+    let matched = false;
 
+    // Apply first-match category rule
+    for (const rule of categoryRules) {
+      if (rule.accountId && rule.accountId !== tx.accountId) continue;
       const regex = patternToRegex(rule.pattern);
       if (!regex.test(tx.description)) continue;
 
-      if (rule.categoryId) {
-        await db.update(transactions)
-          .set({ categoryId: rule.categoryId })
-          .where(eq(transactions.id, tx.id));
-      }
+      await db.update(transactions)
+        .set({ categoryId: rule.categoryId })
+        .where(eq(transactions.id, tx.id));
+      matched = true;
+      break;
+    }
+
+    // Apply ALL matching tag rules
+    for (const rule of tagRules) {
+      if (rule.accountId && rule.accountId !== tx.accountId) continue;
+      const regex = patternToRegex(rule.pattern);
+      if (!regex.test(tx.description)) continue;
 
       for (const rt of rule.ruleTags) {
         await db.insert(transactionTags)
           .values({ transactionId: tx.id, tagId: rt.tagId })
           .onConflictDoNothing();
       }
-
-      updatedCount++;
-      break;
+      matched = true;
     }
+
+    if (matched) updatedCount++;
+  }
+
+  revalidatePath('/transactions');
+  revalidatePath('/automation');
+  return updatedCount;
+}
+
+export async function applyTagRulesToUntagged() {
+  const rules = await db.query.categorizationRules.findMany({
+    with: { ruleTags: { with: { tag: true } } },
+    orderBy: (r, { desc, asc }) => [desc(r.priority), asc(r.id)],
+  });
+
+  const tagRules = rules.filter(r => r.ruleTags.length > 0);
+
+  // Transactions with no tags
+  const untagged = await db.query.transactions.findMany({
+    where: notExists(
+      db.select()
+        .from(transactionTags)
+        .where(eq(transactionTags.transactionId, transactions.id))
+    ),
+  });
+
+  let updatedCount = 0;
+  for (const tx of untagged) {
+    let matched = false;
+    for (const rule of tagRules) {
+      if (rule.accountId && rule.accountId !== tx.accountId) continue;
+      const regex = patternToRegex(rule.pattern);
+      if (!regex.test(tx.description)) continue;
+
+      for (const rt of rule.ruleTags) {
+        await db.insert(transactionTags)
+          .values({ transactionId: tx.id, tagId: rt.tagId })
+          .onConflictDoNothing();
+      }
+      matched = true;
+    }
+    if (matched) updatedCount++;
   }
 
   revalidatePath('/transactions');
