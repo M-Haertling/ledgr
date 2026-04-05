@@ -120,6 +120,7 @@ export default function TransactionsTable({
                     transactionId={tx.id}
                     currentType={tx.type}
                     isCredit={tx.isCredit}
+                    transferPairId={tx.transferPairId}
                   />
                 </td>
                 <td style={{ textAlign: 'right', fontWeight: 600, whiteSpace: 'nowrap' }}>

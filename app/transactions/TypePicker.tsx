@@ -13,10 +13,12 @@ export default function TypePicker({
   transactionId,
   currentType,
   isCredit,
+  transferPairId,
 }: {
   transactionId: number;
   currentType: string;
   isCredit: boolean;
+  transferPairId: number | null;
 }) {
   const [type, setType] = useState(currentType);
   const [dialogOpen, setDialogOpen] = useState(false);
@@ -65,16 +67,36 @@ export default function TypePicker({
 
   return (
     <>
-      <select
-        className="form-select"
-        style={{ padding: '0.2rem 0.4rem', fontSize: '0.8rem', minWidth: '90px' }}
-        value={type}
-        disabled={isPending}
-        onChange={(e) => handleChange(e.target.value)}
-      >
-        <option value={naturalType}>{isCredit ? 'Credit' : 'Debit'}</option>
-        <option value="transfer">Transfer</option>
-      </select>
+      <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+        <select
+          className="form-select"
+          style={{ padding: '0.2rem 0.4rem', fontSize: '0.8rem', minWidth: '90px' }}
+          value={type}
+          disabled={isPending}
+          onChange={(e) => handleChange(e.target.value)}
+        >
+          <option value={naturalType}>{isCredit ? 'Credit' : 'Debit'}</option>
+          <option value="transfer">Transfer</option>
+        </select>
+
+        {type === 'transfer' && transferPairId && (
+          <a
+            href={`/transactions?highlight=${transferPairId}`}
+            style={{
+              fontSize: '0.75rem',
+              color: 'var(--primary)',
+              textDecoration: 'none',
+              padding: '0.25rem 0.5rem',
+              backgroundColor: 'rgba(59, 130, 246, 0.1)',
+              borderRadius: '3px',
+              whiteSpace: 'nowrap',
+            }}
+            title={`View linked transfer (ID: ${transferPairId})`}
+          >
+            View pair →
+          </a>
+        )}
+      </div>
 
       {dialogOpen && (
         <div

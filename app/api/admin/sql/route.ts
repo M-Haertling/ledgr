@@ -1,8 +1,12 @@
-import { db } from '@/lib/db';
+import { Pool } from 'pg';
 import { NextResponse } from 'next/server';
-import { sql } from 'drizzle-orm';
+
+const pool = new Pool({
+  connectionString: process.env.DATABASE_URL,
+});
 
 export async function POST(req: Request) {
+  const client = await pool.connect();
   try {
     const { query } = await req.json();
 
@@ -11,12 +15,12 @@ export async function POST(req: Request) {
     }
 
     // Execute the raw SQL query
-    const result = await db.execute(sql.raw(query));
+    const result = await client.query(query);
 
     return NextResponse.json({
       success: true,
-      rows: result,
-      rowCount: Array.isArray(result) ? result.length : 0,
+      rows: result.rows,
+      rowCount: result.rows.length,
     });
   } catch (error: any) {
     console.error('SQL execution error:', error);
@@ -27,5 +31,7 @@ export async function POST(req: Request) {
       },
       { status: 400 }
     );
+  } finally {
+    client.release();
   }
 }
