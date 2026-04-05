@@ -3,13 +3,13 @@ export const dynamic = 'force-dynamic';
 import { db } from '@/lib/db';
 import { categories } from '@/lib/db/schema';
 import { createCategory, deleteCategory, updateCategory } from '@/lib/actions/categories';
-import { desc } from 'drizzle-orm';
+import { asc } from 'drizzle-orm';
 import EditCategoryForm from './EditCategoryForm';
 import AddCategoryForm from './AddCategoryForm';
 
 export default async function CategoriesPage() {
   const allCategories = await db.query.categories.findMany({
-    orderBy: [desc(categories.createdAt)],
+    orderBy: [asc(categories.name)],
   });
 
   const usedColors = allCategories.map(c => c.color);

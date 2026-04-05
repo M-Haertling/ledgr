@@ -2,12 +2,12 @@ export const dynamic = 'force-dynamic';
 
 import { db } from '@/lib/db';
 import { transactions, categories, accounts, transactionTags } from '@/lib/db/schema';
-import { and, eq, gte, lte, sql, inArray, exists, ne } from 'drizzle-orm';
+import { and, asc, eq, gte, lte, sql, inArray, exists, ne } from 'drizzle-orm';
 import Link from 'next/link';
 import SpendingIncomeChart from './SpendingIncomeChart';
 import CategoryPieChart from './CategoryPieChart';
 import SpendingByCategoryChart from './SpendingByCategoryChart';
-import MultiSelect from '../transactions/MultiSelect';
+import ReportsFiltersClient from './ReportsFiltersClient';
 
 export default async function ReportsPage({
   searchParams,
@@ -43,6 +43,9 @@ export default async function ReportsPage({
   }
 
   // Multi-value filters
+  const accountIds = params.accountIds
+    ? (Array.isArray(params.accountIds) ? params.accountIds : (params.accountIds as string).split(',')).map(Number).filter(Boolean)
+    : [];
   const categoryIds = params.categoryIds
     ? (Array.isArray(params.categoryIds) ? params.categoryIds : (params.categoryIds as string).split(',')).map(Number).filter(Boolean)
     : [];
@@ -56,6 +59,10 @@ export default async function ReportsPage({
     lte(transactions.date, to),
     ne(transactions.type, 'transfer'),
   ];
+
+  if (accountIds.length > 0) {
+    baseFilters.push(inArray(transactions.accountId, accountIds));
+  }
 
   if (categoryIds.length > 0) {
     baseFilters.push(inArray(transactions.categoryId, categoryIds));
@@ -161,11 +168,13 @@ export default async function ReportsPage({
       color: cat.categoryColor || '#94a3b8',
     }));
 
-  const allCategories = await db.query.categories.findMany();
+  const allAccounts = await db.query.accounts.findMany();
+  const allCategories = await db.query.categories.findMany({ orderBy: [asc(categories.name)] });
   const allTags = await db.query.tags.findMany();
 
   // Build base params for preset links (preserve filters)
   const basePresetParams = new URLSearchParams();
+  if (accountIds.length) basePresetParams.set('accountIds', accountIds.join(','));
   if (categoryIds.length) basePresetParams.set('categoryIds', categoryIds.join(','));
   if (tagIds.length) basePresetParams.set('tagIds', tagIds.join(','));
 
@@ -215,6 +224,7 @@ export default async function ReportsPage({
           {preset === 'custom' && (
             <form className="flex gap-2 items-end" style={{ marginLeft: '0.5rem' }}>
               <input type="hidden" name="preset" value="custom" />
+              {accountIds.length > 0 && <input type="hidden" name="accountIds" value={accountIds.join(',')} />}
               {categoryIds.length > 0 && <input type="hidden" name="categoryIds" value={categoryIds.join(',')} />}
               {tagIds.length > 0 && <input type="hidden" name="tagIds" value={tagIds.join(',')} />}
               <div className="form-group" style={{ marginBottom: 0 }}>
@@ -230,35 +240,21 @@ export default async function ReportsPage({
           )}
         </div>
 
-        {/* Category / Tag filters — MultiSelect matching Transactions page */}
-        <div className="flex gap-2 items-center" style={{ flexWrap: 'wrap' }}>
-          <span className="form-label" style={{ marginBottom: 0 }}>Filter by:</span>
-          <MultiSelect
-            paramName="categoryIds"
-            label="Categories"
-            options={allCategories.map(c => ({ id: c.id, name: c.name, color: c.color }))}
-            selected={categoryIds.map(String)}
-            basePath="/reports"
-          />
-          <MultiSelect
-            paramName="tagIds"
-            label="Tags"
-            options={allTags.map(t => ({ id: t.id, name: `#${t.name}` }))}
-            selected={tagIds.map(String)}
-            basePath="/reports"
-          />
-          {(categoryIds.length > 0 || tagIds.length > 0) && (
-            <Link
-              href={`/reports?preset=${preset}${preset === 'custom' && fromStr ? `&from=${fromStr}` : ''}${preset === 'custom' && toStr ? `&to=${toStr}` : ''}`}
-              className="btn btn-secondary btn-sm"
-            >
-              Clear filters
-            </Link>
-          )}
-        </div>
+        <ReportsFiltersClient
+          preset={preset}
+          fromStr={fromStr || ''}
+          toStr={toStr || ''}
+          initialAccountIds={accountIds.map(String)}
+          initialCategoryIds={categoryIds.map(String)}
+          initialTagIds={tagIds.map(String)}
+          accounts={allAccounts.map(a => ({ id: a.id, name: a.name }))}
+          categories={allCategories.map(c => ({ id: c.id, name: c.name, color: c.color }))}
+          tags={allTags.map(t => ({ id: t.id, name: `#${t.name}` }))}
+        />
 
         <div className="list-item-subtitle mt-2">
           Showing: {from.toLocaleDateString()} – {to.toLocaleDateString()}
+          {accountIds.length > 0 && ` · ${accountIds.length} account${accountIds.length > 1 ? 's' : ''}`}
           {categoryIds.length > 0 && ` · ${categoryIds.length} categor${categoryIds.length > 1 ? 'ies' : 'y'}`}
           {tagIds.length > 0 && ` · ${tagIds.length} tag${tagIds.length > 1 ? 's' : ''}`}
           {' · Transfers excluded'}

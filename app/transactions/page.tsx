@@ -1,13 +1,13 @@
 export const dynamic = 'force-dynamic';
 
 import { db } from '@/lib/db';
-import { transactions, transactionTags } from '@/lib/db/schema';
+import { transactions, transactionTags, categories } from '@/lib/db/schema';
 import {
   desc, asc, eq, ilike, and, or, exists, isNull, inArray, gte, lte, sql, count
 } from 'drizzle-orm';
 import Link from 'next/link';
 import TransactionsTable from './TransactionsTable';
-import MultiSelect from './MultiSelect';
+import FiltersClient from './FiltersClient';
 import AddTransactionDialog from './AddTransactionDialog';
 import { deduplicateTransactions } from '@/lib/actions/transactions';
 
@@ -117,21 +117,8 @@ export default async function TransactionsPage({
   });
 
   const allAccounts = await db.query.accounts.findMany();
-  const allCategories = await db.query.categories.findMany();
+  const allCategories = await db.query.categories.findMany({ orderBy: [asc(categories.name)] });
   const allTags = await db.query.tags.findMany();
-
-  // Params for filter controls (used in form actions / links)
-  const filterParams = new URLSearchParams();
-  if (accountIds.length) filterParams.set('accountIds', accountIds.join(','));
-  if (categoryIds.length) filterParams.set('categoryIds', categoryIds.join(','));
-  if (tagIds.length) filterParams.set('tagIds', tagIds.join(','));
-  if (search) filterParams.set('search', search);
-  if (uncategorized) filterParams.set('uncategorized', 'true');
-  if (typeFilter) filterParams.set('type', typeFilter);
-  if (from) filterParams.set('from', (params.from as string));
-  if (to) filterParams.set('to', (params.to as string));
-  if (sortCol !== 'date') filterParams.set('sortCol', sortCol);
-  if (sortDir !== 'desc') filterParams.set('sortDir', sortDir);
 
   return (
     <div>
@@ -151,74 +138,21 @@ export default async function TransactionsPage({
         </div>
       </div>
 
-      <div className="card mb-4">
-        <form className="flex gap-4 items-end flex-wrap">
-          <div className="form-group" style={{ flex: 2, minWidth: '180px' }}>
-            <label className="form-label">Search</label>
-            <input
-              type="text"
-              name="search"
-              className="form-input"
-              placeholder="Search description & notes (use * as wildcard)"
-              defaultValue={search}
-              title="Search description and notes. Use * as wildcard (e.g., 'AMAZ*' matches 'AMAZON')"
-            />
-          </div>
-          <div className="form-group" style={{ minWidth: '120px' }}>
-            <label className="form-label">From</label>
-            <input type="date" name="from" className="form-input" defaultValue={params.from as string || ''} />
-          </div>
-          <div className="form-group" style={{ minWidth: '120px' }}>
-            <label className="form-label">To</label>
-            <input type="date" name="to" className="form-input" defaultValue={params.to as string || ''} />
-          </div>
-          <div className="form-group">
-            <label className="form-label">Type</label>
-            <select name="type" className="form-select" defaultValue={typeFilter || ''}>
-              <option value="">All</option>
-              <option value="credit">Credits</option>
-              <option value="debit">Debits</option>
-              <option value="transfer">Transfers</option>
-            </select>
-          </div>
-          <div className="form-group">
-            <label className="form-label" style={{ display: 'block', marginBottom: '0.5rem' }}>Uncategorized</label>
-            <label style={{ cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-              <input type="checkbox" name="uncategorized" value="true" defaultChecked={uncategorized} />
-              Only
-            </label>
-          </div>
-          {/* Hidden fields to preserve sort */}
-          {sortCol !== 'date' && <input type="hidden" name="sortCol" value={sortCol} />}
-          {sortDir !== 'desc' && <input type="hidden" name="sortDir" value={sortDir} />}
-          <div className="flex gap-2 mb-4">
-            <button type="submit" className="btn btn-secondary">Filter</button>
-            <Link href="/transactions" className="btn btn-secondary">Clear</Link>
-          </div>
-        </form>
-
-        {/* Multi-select filters row */}
-        <div className="flex gap-2 mt-2" style={{ flexWrap: 'wrap' }}>
-          <MultiSelect
-            paramName="accountIds"
-            label="Accounts"
-            options={allAccounts.map(a => ({ id: a.id, name: a.name }))}
-            selected={accountIds.map(String)}
-          />
-          <MultiSelect
-            paramName="categoryIds"
-            label="Categories"
-            options={allCategories.map(c => ({ id: c.id, name: c.name, color: c.color }))}
-            selected={categoryIds.map(String)}
-          />
-          <MultiSelect
-            paramName="tagIds"
-            label="Tags"
-            options={allTags.map(t => ({ id: t.id, name: `#${t.name}` }))}
-            selected={tagIds.map(String)}
-          />
-        </div>
-      </div>
+      <FiltersClient
+        initialSearch={search || ''}
+        initialFrom={(params.from as string) || ''}
+        initialTo={(params.to as string) || ''}
+        initialType={typeFilter || ''}
+        initialUncategorized={uncategorized}
+        initialAccountIds={accountIds.map(String)}
+        initialCategoryIds={categoryIds.map(String)}
+        initialTagIds={tagIds.map(String)}
+        sortCol={sortCol}
+        sortDir={sortDir}
+        accounts={allAccounts.map(a => ({ id: a.id, name: a.name }))}
+        categories={allCategories.map(c => ({ id: c.id, name: c.name, color: c.color }))}
+        tags={allTags.map(t => ({ id: t.id, name: `#${t.name}` }))}
+      />
 
       <TransactionsTable
         transactions={allTransactions as any}

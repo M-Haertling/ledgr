@@ -11,23 +11,28 @@ export default function MultiSelect({
   options,
   selected,
   basePath = '/transactions',
+  value,
+  onChange,
 }: {
   paramName: string;
   label: string;
   options: Option[];
   selected: string[];
   basePath?: string;
+  value?: string[];
+  onChange?: (ids: string[]) => void;
 }) {
+  const controlled = typeof onChange !== 'undefined';
   const [open, setOpen] = useState(false);
-  const [checked, setChecked] = useState<Set<string>>(new Set(selected));
+  const [checked, setChecked] = useState<Set<string>>(new Set(value ?? selected));
   const router = useRouter();
   const searchParams = useSearchParams();
   const ref = useRef<HTMLDivElement>(null);
 
-  // Sync checked state when selected prop changes
+  // Sync checked state when selected/value prop changes
   useEffect(() => {
-    setChecked(new Set(selected));
-  }, [selected.join(',')]);
+    setChecked(new Set(value ?? selected));
+  }, [(value ?? selected).join(',')]);
 
   useEffect(() => {
     const handleClick = (e: MouseEvent) => {
@@ -47,6 +52,9 @@ export default function MultiSelect({
       next.add(id);
     }
     setChecked(next);
+    if (controlled) {
+      onChange!(Array.from(next));
+    }
   };
 
   const apply = () => {
@@ -70,7 +78,7 @@ export default function MultiSelect({
     setOpen(false);
   };
 
-  const activeCount = selected.length;
+  const activeCount = controlled ? checked.size : selected.length;
 
   return (
     <div className="multi-select" ref={ref}>
@@ -101,10 +109,12 @@ export default function MultiSelect({
               </label>
             ))
           )}
-          <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.5rem', paddingTop: '0.5rem', borderTop: '1px solid var(--border)' }}>
-            <button type="button" className="btn btn-primary btn-sm" style={{ flex: 1 }} onClick={apply}>Apply</button>
-            <button type="button" className="btn btn-secondary btn-sm" style={{ flex: 1 }} onClick={clear}>Clear</button>
-          </div>
+          {!controlled && (
+            <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.5rem', paddingTop: '0.5rem', borderTop: '1px solid var(--border)' }}>
+              <button type="button" className="btn btn-primary btn-sm" style={{ flex: 1 }} onClick={apply}>Apply</button>
+              <button type="button" className="btn btn-secondary btn-sm" style={{ flex: 1 }} onClick={clear}>Clear</button>
+            </div>
+          )}
         </div>
       )}
     </div>
