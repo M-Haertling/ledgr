@@ -42,6 +42,9 @@ export default function RootLayout({
               <Link href="/reports" className="nav-link">
                 Reports
               </Link>
+              <Link href="/admin" className="nav-link">
+                Admin
+              </Link>
             </div>
           </div>
         </nav>

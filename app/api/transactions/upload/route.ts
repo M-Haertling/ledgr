@@ -106,6 +106,7 @@ export async function POST(req: Request) {
         description,
         amount: amount.toString(),
         isCredit,
+        type: isCredit ? 'credit' : 'debit',
         categoryId,
       }).onConflictDoNothing().returning({ id: transactions.id });
 

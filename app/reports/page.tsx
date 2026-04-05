@@ -4,6 +4,7 @@ import { and, eq, gte, lte, sql, inArray, exists } from 'drizzle-orm';
 import Link from 'next/link';
 import SpendingIncomeChart from './SpendingIncomeChart';
 import CategoryPieChart from './CategoryPieChart';
+import SpendingByCategoryChart from './SpendingByCategoryChart';
 
 export default async function ReportsPage({
   searchParams,
@@ -34,10 +35,10 @@ export default async function ReportsPage({
 
   // Multi-value filters
   const categoryIds = params.categoryIds
-    ? (params.categoryIds as string).split(',').map(Number).filter(Boolean)
+    ? (Array.isArray(params.categoryIds) ? params.categoryIds : (params.categoryIds as string).split(',')).map(Number).filter(Boolean)
     : [];
   const tagIds = params.tagIds
-    ? (params.tagIds as string).split(',').map(Number).filter(Boolean)
+    ? (Array.isArray(params.tagIds) ? params.tagIds : (params.tagIds as string).split(',')).map(Number).filter(Boolean)
     : [];
 
   const baseFilters = [
@@ -119,6 +120,28 @@ export default async function ReportsPage({
     income: parseFloat(row.income),
     expenses: parseFloat(row.expenses),
   }));
+
+  // Monthly spending by category
+  const monthlyCategoryData = await db.select({
+    month: sql<string>`TO_CHAR(date_trunc('month', date), 'Mon YYYY')`,
+    categoryId: transactions.categoryId,
+    amount: sql<string>`COALESCE(sum(amount), 0)`,
+  })
+    .from(transactions)
+    .where(and(gte(transactions.date, from), lte(transactions.date, to), eq(transactions.isCredit, false)))
+    .groupBy(sql`date_trunc('month', date)`, transactions.categoryId)
+    .orderBy(sql`date_trunc('month', date) ASC`);
+
+  // Transform to chart format: [{ month: 'Jan 2024', categoryId: 123, amount: 100 }, ...]
+  // Then group by month for stacked bar
+  const categorySpendingByMonth: Record<string, any> = {};
+  monthlyCategoryData.forEach(row => {
+    if (!categorySpendingByMonth[row.month]) {
+      categorySpendingByMonth[row.month] = { month: row.month };
+    }
+    categorySpendingByMonth[row.month][row.categoryId?.toString() || 'null'] = parseFloat(row.amount);
+  });
+  const stackedChartData = Object.values(categorySpendingByMonth);
 
   // Pie chart data
   const pieData = categorySpending
@@ -253,6 +276,12 @@ export default async function ReportsPage({
       <div className="card mb-4">
         <h2 className="card-title">Spending vs Income by Month</h2>
         <SpendingIncomeChart data={chartData} />
+      </div>
+
+      {/* Spending by Category Stacked Bar Chart */}
+      <div className="card mb-4">
+        <h2 className="card-title">Spending by Category Over Time</h2>
+        <SpendingByCategoryChart data={stackedChartData} categories={allCategories} />
       </div>
 
       <div className="flex gap-4 mb-4">
