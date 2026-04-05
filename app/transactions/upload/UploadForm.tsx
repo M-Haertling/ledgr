@@ -210,6 +210,11 @@ export default function UploadForm({ accounts, templates }: { accounts: any[], t
                     <option key={idx} value={idx}>{col || `Column ${idx + 1}`}</option>
                   ))}
                 </select>
+                {mapping[field.name] !== undefined && csvData[1] && (
+                  <p className="list-item-subtitle mt-1">
+                    Sample: <strong>{csvData[1][mapping[field.name]] || '(empty)'}</strong>
+                  </p>
+                )}
               </div>
             ))}
 
