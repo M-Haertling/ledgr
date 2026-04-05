@@ -1,3 +1,5 @@
+export const dynamic = 'force-dynamic';
+
 import { db } from '@/lib/db';
 import { accounts } from '@/lib/db/schema';
 import { createAccount, deleteAccount, updateAccount } from '@/lib/actions/accounts';

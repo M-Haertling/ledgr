@@ -1,3 +1,5 @@
+export const dynamic = 'force-dynamic';
+
 import { db } from '@/lib/db';
 import { categories } from '@/lib/db/schema';
 import { createCategory, deleteCategory, updateCategory } from '@/lib/actions/categories';

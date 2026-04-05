@@ -1,3 +1,5 @@
+export const dynamic = 'force-dynamic';
+
 import { db } from '@/lib/db';
 import { accounts, mappings } from '@/lib/db/schema';
 import UploadForm from './UploadForm';

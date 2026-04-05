@@ -1,3 +1,5 @@
+export const dynamic = 'force-dynamic';
+
 import { db } from '@/lib/db';
 import { categorizationRules } from '@/lib/db/schema';
 import { createRule, updateRule, deleteRule, applyRulesToUncategorized, applyTagRulesToUntagged } from '@/lib/actions/rules';

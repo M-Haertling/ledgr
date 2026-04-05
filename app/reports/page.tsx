@@ -1,3 +1,5 @@
+export const dynamic = 'force-dynamic';
+
 import { db } from '@/lib/db';
 import { transactions, categories, accounts, transactionTags } from '@/lib/db/schema';
 import { and, eq, gte, lte, sql, inArray, exists, ne } from 'drizzle-orm';
@@ -261,19 +263,19 @@ export default async function ReportsPage({
         <div className="card w-full" style={{ textAlign: 'center' }}>
           <div className="list-item-subtitle">Expenses</div>
           <div style={{ fontSize: '1.5rem', fontWeight: 'bold', color: '#ef4444' }}>
-            -${expenseSum.toFixed(2)}
+            -${expenseSum.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
           </div>
         </div>
         <div className="card w-full" style={{ textAlign: 'center' }}>
           <div className="list-item-subtitle">Income</div>
           <div style={{ fontSize: '1.5rem', fontWeight: 'bold', color: '#10b981' }}>
-            +${incomeSum.toFixed(2)}
+            +${incomeSum.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
           </div>
         </div>
         <div className="card w-full" style={{ textAlign: 'center' }}>
           <div className="list-item-subtitle">Net</div>
           <div style={{ fontSize: '1.5rem', fontWeight: 'bold', color: net >= 0 ? '#10b981' : '#ef4444' }}>
-            {net >= 0 ? '+' : '-'}${Math.abs(net).toFixed(2)}
+            {net >= 0 ? '+' : '-'}${Math.abs(net).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
           </div>
         </div>
       </div>
@@ -319,7 +321,7 @@ export default async function ReportsPage({
                         }} />
                         <span style={{ fontWeight: 500 }}>{cat.categoryName || 'Uncategorized'}</span>
                       </div>
-                      <span style={{ fontWeight: 600 }}>${total.toFixed(2)}</span>
+                      <span style={{ fontWeight: 600 }}>${total.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
                     </div>
                     <div style={{
                       width: '100%',
@@ -356,7 +358,7 @@ export default async function ReportsPage({
                 <div key={i} className="mb-4">
                   <div className="flex justify-between items-center mb-1">
                     <span style={{ fontWeight: 500 }}>{acc.accountName}</span>
-                    <span style={{ fontWeight: 600 }}>${total.toFixed(2)}</span>
+                    <span style={{ fontWeight: 600 }}>${total.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
                   </div>
                   <div style={{
                     width: '100%',

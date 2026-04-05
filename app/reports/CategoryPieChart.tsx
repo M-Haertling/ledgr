@@ -34,7 +34,7 @@ export default function CategoryPieChart({ data }: { data: DataPoint[] }) {
               <Cell key={`cell-${index}`} fill={entry.color} />
             ))}
           </Pie>
-          <Tooltip formatter={(value) => `$${Number(value).toFixed(2)}`} />
+          <Tooltip formatter={(value) => `$${Number(value).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`} />
         </PieChart>
       </ResponsiveContainer>
     </div>

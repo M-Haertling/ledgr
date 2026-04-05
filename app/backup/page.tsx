@@ -1,3 +1,5 @@
+export const dynamic = 'force-dynamic';
+
 import BackupRestoreClient from './BackupRestoreClient';
 
 const TABLES = [

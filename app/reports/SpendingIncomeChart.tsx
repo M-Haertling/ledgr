@@ -25,7 +25,7 @@ export default function SpendingIncomeChart({ data }: { data: DataPoint[] }) {
           <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
           <XAxis dataKey="month" tick={{ fontSize: 12 }} />
           <YAxis tickFormatter={(v) => `$${v.toLocaleString()}`} tick={{ fontSize: 12 }} />
-          <Tooltip formatter={(value) => `$${Number(value).toFixed(2)}`} />
+          <Tooltip formatter={(value) => `$${Number(value).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`} />
           <Legend />
           <Bar dataKey="income" name="Income" fill="#10b981" radius={[3, 3, 0, 0]} />
           <Bar dataKey="expenses" name="Expenses" fill="#ef4444" radius={[3, 3, 0, 0]} />

@@ -1,3 +1,5 @@
+export const dynamic = 'force-dynamic';
+
 import { db } from '@/lib/db';
 import { tags } from '@/lib/db/schema';
 import { createTag, deleteTag, updateTag } from '@/lib/actions/tags';

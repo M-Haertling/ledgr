@@ -27,7 +27,7 @@ export default function SpendingByCategoryChart({
             borderRadius: '6px',
           }}
           labelStyle={{ color: 'var(--text)' }}
-          formatter={(value) => `$${Number(value).toFixed(2)}`}
+          formatter={(value) => `$${Number(value).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
         />
         <Legend />
         {categories.map((cat) => (
