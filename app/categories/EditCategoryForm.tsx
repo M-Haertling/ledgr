@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import ColorPicker from './ColorPicker';
 
 type Category = { id: number; name: string; color: string | null };
 
@@ -12,6 +13,7 @@ export default function EditCategoryForm({
   updateAction: (formData: FormData) => Promise<void>;
 }) {
   const [editing, setEditing] = useState(false);
+  const [color, setColor] = useState(category.color || '#6366f1');
 
   if (!editing) {
     return (
@@ -38,6 +40,7 @@ export default function EditCategoryForm({
         setEditing(false);
       }}
       className="inline-edit-form"
+      style={{ flexWrap: 'wrap', gap: '0.75rem' }}
     >
       <input
         type="text"
@@ -47,12 +50,7 @@ export default function EditCategoryForm({
         required
         autoFocus
       />
-      <input
-        type="color"
-        name="color"
-        defaultValue={category.color || '#6366f1'}
-        style={{ width: '40px', height: '34px', padding: '2px', border: '1px solid var(--border)', borderRadius: '0.375rem', cursor: 'pointer' }}
-      />
+      <ColorPicker name="color" value={color} onChange={setColor} />
       <button type="submit" className="btn btn-primary btn-sm">Save</button>
       <button type="button" className="btn btn-secondary btn-sm" onClick={() => setEditing(false)}>
         Cancel

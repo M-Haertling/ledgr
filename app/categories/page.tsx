@@ -3,11 +3,14 @@ import { categories } from '@/lib/db/schema';
 import { createCategory, deleteCategory, updateCategory } from '@/lib/actions/categories';
 import { desc } from 'drizzle-orm';
 import EditCategoryForm from './EditCategoryForm';
+import AddCategoryForm from './AddCategoryForm';
 
 export default async function CategoriesPage() {
   const allCategories = await db.query.categories.findMany({
     orderBy: [desc(categories.createdAt)],
   });
+
+  const usedColors = allCategories.map(c => c.color);
 
   return (
     <div>
@@ -15,34 +18,7 @@ export default async function CategoriesPage() {
 
       <div className="card">
         <h2 className="card-title">Add New Category</h2>
-        <form action={createCategory}>
-          <div className="flex gap-4">
-            <div className="form-group w-full">
-              <label htmlFor="name" className="form-label">Category Name</label>
-              <input
-                type="text"
-                id="name"
-                name="name"
-                className="form-input"
-                placeholder="e.g. Groceries"
-                required
-              />
-            </div>
-            <div className="form-group">
-              <label htmlFor="color" className="form-label">Color</label>
-              <input
-                type="color"
-                id="color"
-                name="color"
-                defaultValue="#6366f1"
-                style={{ width: '40px', height: '38px', padding: '2px', border: '1px solid var(--border)', borderRadius: '0.375rem', cursor: 'pointer' }}
-              />
-            </div>
-            <div className="flex items-center mt-4">
-              <button type="submit" className="btn btn-primary">Add Category</button>
-            </div>
-          </div>
-        </form>
+        <AddCategoryForm createAction={createCategory} usedColors={usedColors} />
       </div>
 
       <div className="list-container mt-4">
