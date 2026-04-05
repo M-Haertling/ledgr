@@ -1,4 +1,4 @@
-import { pgTable, serial, text, decimal, boolean, timestamp, integer, jsonb } from 'drizzle-orm/pg-core';
+import { pgTable, serial, text, decimal, boolean, timestamp, integer, jsonb, unique } from 'drizzle-orm/pg-core';
 import { relations } from 'drizzle-orm';
 
 export const accounts = pgTable('accounts', {
@@ -33,7 +33,9 @@ export const transactions = pgTable('transactions', {
   isCredit: boolean('is_credit').notNull(),
   categoryId: integer('category_id').references(() => categories.id),
   createdAt: timestamp('created_at').defaultNow().notNull(),
-});
+}, (table) => [
+  unique('transactions_dedup').on(table.accountId, table.date, table.description, table.amount),
+]);
 
 export const transactionsRelations = relations(transactions, ({ one, many }) => ({
   account: one(accounts, {

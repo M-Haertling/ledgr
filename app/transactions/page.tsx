@@ -6,6 +6,7 @@ import {
 import Link from 'next/link';
 import TransactionsTable from './TransactionsTable';
 import MultiSelect from './MultiSelect';
+import { deduplicateTransactions } from '@/lib/actions/transactions';
 
 const PAGE_SIZE = 50;
 
@@ -69,6 +70,7 @@ export default async function TransactionsPage({
   // Sort order
   const sortMap: Record<string, any> = {
     date: transactions.date,
+    entryDate: transactions.createdAt,
     description: transactions.description,
     amount: sql`CAST(${transactions.amount} AS NUMERIC)`,
   };
@@ -118,9 +120,17 @@ export default async function TransactionsPage({
     <div>
       <div className="flex justify-between items-center mb-4">
         <h1>Transactions <span style={{ color: 'var(--text-muted)', fontSize: '1rem', fontWeight: 400 }}>({Number(total).toLocaleString()})</span></h1>
-        <Link href="/transactions/upload" className="btn btn-primary">
-          Upload CSV
-        </Link>
+        <div className="flex gap-2">
+          <form action={async () => {
+            'use server';
+            await deduplicateTransactions();
+          }}>
+            <button type="submit" className="btn btn-secondary">Deduplicate</button>
+          </form>
+          <Link href="/transactions/upload" className="btn btn-primary">
+            Upload CSV
+          </Link>
+        </div>
       </div>
 
       <div className="card mb-4">

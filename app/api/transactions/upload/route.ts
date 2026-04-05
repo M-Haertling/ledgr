@@ -1,6 +1,5 @@
 import { db } from '@/lib/db';
 import { transactions, mappings, categorizationRules, transactionTags } from '@/lib/db/schema';
-import { eq, and } from 'drizzle-orm';
 import { NextResponse } from 'next/server';
 
 function patternToRegex(pattern: string): RegExp {
@@ -34,8 +33,8 @@ export async function POST(req: Request) {
     });
 
     const rows = csvData.slice(1); // Skip header
+    let importedCount = 0;
 
-    // Process rows
     for (const row of rows) {
       const dateStr = row[mapping.date];
       const description = row[mapping.description];
@@ -79,21 +78,8 @@ export async function POST(req: Request) {
         }
       }
 
-      if (isNaN(amount)) continue;
-      // Ensure amount is always positive, isCredit flag tracks direction
+      if (isNaN(amount) || amount === 0) continue;
       amount = Math.abs(amount);
-
-      // Check for duplicates
-      const existing = await db.query.transactions.findFirst({
-        where: and(
-          eq(transactions.accountId, parseInt(accountId)),
-          eq(transactions.date, date),
-          eq(transactions.description, description),
-          eq(transactions.amount, amount.toString())
-        ),
-      });
-
-      if (existing) continue;
 
       // Auto-categorize and auto-tag
       let categoryId = null;
@@ -107,6 +93,8 @@ export async function POST(req: Request) {
         break;
       }
 
+      // Duplicate check is handled by the unique constraint on (account_id, date, description, amount).
+      // ON CONFLICT DO NOTHING silently skips duplicates.
       const inserted = await db.insert(transactions).values({
         accountId: parseInt(accountId),
         date,
@@ -114,16 +102,19 @@ export async function POST(req: Request) {
         amount: amount.toString(),
         isCredit,
         categoryId,
-      }).returning({ id: transactions.id });
+      }).onConflictDoNothing().returning({ id: transactions.id });
 
-      if (matchedTagId && inserted[0]) {
-        await db.insert(transactionTags)
-          .values({ transactionId: inserted[0].id, tagId: matchedTagId })
-          .onConflictDoNothing();
+      if (inserted[0]) {
+        importedCount++;
+        if (matchedTagId) {
+          await db.insert(transactionTags)
+            .values({ transactionId: inserted[0].id, tagId: matchedTagId })
+            .onConflictDoNothing();
+        }
       }
     }
 
-    return NextResponse.json({ success: true });
+    return NextResponse.json({ success: true, imported: importedCount });
   } catch (error) {
     console.error('Upload error:', error);
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
