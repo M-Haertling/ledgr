@@ -132,7 +132,7 @@ export const mappings = pgTable('mappings', {
   config: jsonb('config').notNull(),
   createdAt: timestamp('created_at').defaultNow().notNull(),
 }, (table) => [
-  { unique_template: [table.accountId, table.name] }
+  unique('mappings_account_name').on(table.accountId, table.name),
 ]);
 
 export const mappingsRelations = relations(mappings, ({ one }) => ({
