@@ -30,6 +30,9 @@ export default async function ReportsPage({
   } else if (preset === 'prevmonth') {
     from = new Date(now.getFullYear(), now.getMonth() - 1, 1);
     to = new Date(now.getFullYear(), now.getMonth(), 0, 23, 59, 59, 999);
+  } else if (preset === '1year') {
+    from = new Date(now.getFullYear() - 1, now.getMonth(), now.getDate());
+    to = now;
   } else if (preset === 'custom' && fromStr) {
     from = new Date(fromStr);
     to = toStr ? new Date(toStr) : now;
@@ -196,6 +199,12 @@ export default async function ReportsPage({
               className={`btn btn-sm ${preset === 'ytd' ? 'active' : ''}`}
             >
               Year to Date
+            </Link>
+            <Link
+              href={`/reports?${new URLSearchParams({ ...Object.fromEntries(basePresetParams), preset: '1year' })}`}
+              className={`btn btn-sm ${preset === '1year' ? 'active' : ''}`}
+            >
+              1 Year
             </Link>
             <Link
               href={`/reports?${new URLSearchParams({ ...Object.fromEntries(basePresetParams), preset: 'custom' })}`}
