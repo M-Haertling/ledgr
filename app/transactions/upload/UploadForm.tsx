@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 
 type AmountMode = 'single' | 'split';
+type UploadResult = { imported: number; skipped: number; failed: number };
 
 export default function UploadForm({ accounts, templates }: { accounts: any[], templates: any[] }) {
   const [file, setFile] = useState<File | null>(null);
@@ -13,6 +14,8 @@ export default function UploadForm({ accounts, templates }: { accounts: any[], t
   const [saveTemplate, setSaveTemplate] = useState<boolean>(false);
   const [selectedTemplateId, setSelectedTemplateId] = useState<string>('');
   const [amountMode, setAmountMode] = useState<AmountMode>('single');
+  const [uploading, setUploading] = useState(false);
+  const [result, setResult] = useState<UploadResult | null>(null);
 
   const accountTemplates = templates.filter(t => t.accountId.toString() === accountId);
 
@@ -68,21 +71,28 @@ export default function UploadForm({ accounts, templates }: { accounts: any[], t
     e.preventDefault();
     if (!file || !accountId || !csvData) return;
 
-    const response = await fetch('/api/transactions/upload', {
-      method: 'POST',
-      body: JSON.stringify({
-        accountId,
-        csvData,
-        mapping,
-        templateName,
-        saveTemplate,
-      }),
-    });
+    setUploading(true);
+    setResult(null);
+    try {
+      const response = await fetch('/api/transactions/upload', {
+        method: 'POST',
+        body: JSON.stringify({
+          accountId,
+          csvData,
+          mapping,
+          templateName,
+          saveTemplate,
+        }),
+      });
 
-    if (response.ok) {
-      window.location.href = '/transactions';
-    } else {
-      alert('Upload failed');
+      if (response.ok) {
+        const data = await response.json();
+        setResult({ imported: data.imported, skipped: data.skipped, failed: data.failed });
+      } else {
+        alert('Upload failed');
+      }
+    } finally {
+      setUploading(false);
     }
   };
 
@@ -254,9 +264,40 @@ export default function UploadForm({ accounts, templates }: { accounts: any[], t
               </div>
             </div>
 
-            <button type="submit" className="btn btn-primary mt-4 w-full">
-              Finish Upload
-            </button>
+            {result ? (
+              <div className="card mt-4" style={{ backgroundColor: 'var(--bg)' }}>
+                <div className="flex gap-4" style={{ flexWrap: 'wrap', justifyContent: 'center', marginBottom: '1rem' }}>
+                  <div style={{ textAlign: 'center' }}>
+                    <div style={{ fontSize: '1.5rem', fontWeight: 'bold', color: '#10b981' }}>{result.imported}</div>
+                    <div className="list-item-subtitle">Imported</div>
+                  </div>
+                  <div style={{ textAlign: 'center' }}>
+                    <div style={{ fontSize: '1.5rem', fontWeight: 'bold', color: 'var(--text-muted)' }}>{result.skipped}</div>
+                    <div className="list-item-subtitle">Skipped (duplicates)</div>
+                  </div>
+                  <div style={{ textAlign: 'center' }}>
+                    <div style={{ fontSize: '1.5rem', fontWeight: 'bold', color: result.failed > 0 ? '#ef4444' : 'var(--text-muted)' }}>{result.failed}</div>
+                    <div className="list-item-subtitle">Failed (invalid rows)</div>
+                  </div>
+                </div>
+                <div className="flex gap-2">
+                  <a href="/transactions" className="btn btn-primary w-full" style={{ textAlign: 'center' }}>
+                    View Transactions
+                  </a>
+                  <button
+                    type="button"
+                    className="btn btn-secondary w-full"
+                    onClick={() => setResult(null)}
+                  >
+                    Upload Another
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <button type="submit" className="btn btn-primary mt-4 w-full" disabled={uploading}>
+                {uploading ? 'Uploading…' : 'Finish Upload'}
+              </button>
+            )}
           </div>
         )}
       </form>

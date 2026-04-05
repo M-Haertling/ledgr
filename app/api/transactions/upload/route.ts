@@ -33,16 +33,21 @@ export async function POST(req: Request) {
     });
 
     const rows = csvData.slice(1); // Skip header
-    let importedCount = 0;
+    let imported = 0;
+    let skipped = 0;
+    let failed = 0;
 
     for (const row of rows) {
+      // Skip blank rows
+      if (row.every((cell: string) => !cell.trim())) continue;
+
       const dateStr = row[mapping.date];
       const description = row[mapping.description];
 
-      if (!dateStr || !description) continue;
+      if (!dateStr || !description) { failed++; continue; }
 
       const date = new Date(dateStr);
-      if (isNaN(date.getTime())) continue;
+      if (isNaN(date.getTime())) { failed++; continue; }
 
       let amount: number;
       let isCredit: boolean;
@@ -63,7 +68,7 @@ export async function POST(req: Request) {
       } else {
         // Single amount column
         const amountStr = row[mapping.amount];
-        if (!amountStr) continue;
+        if (!amountStr) { failed++; continue; }
         amount = parseFloat(amountStr.replace(/[^0-9.-]+/g, ''));
         isCredit = amount > 0;
 
@@ -78,7 +83,7 @@ export async function POST(req: Request) {
         }
       }
 
-      if (isNaN(amount) || amount === 0) continue;
+      if (isNaN(amount) || amount === 0) { failed++; continue; }
       amount = Math.abs(amount);
 
       // Auto-categorize and auto-tag
@@ -93,9 +98,8 @@ export async function POST(req: Request) {
         break;
       }
 
-      // Duplicate check is handled by the unique constraint on (account_id, date, description, amount).
-      // ON CONFLICT DO NOTHING silently skips duplicates.
-      const inserted = await db.insert(transactions).values({
+      // Duplicate check enforced by unique constraint — ON CONFLICT DO NOTHING skips duplicates.
+      const insertResult = await db.insert(transactions).values({
         accountId: parseInt(accountId),
         date,
         description,
@@ -104,17 +108,19 @@ export async function POST(req: Request) {
         categoryId,
       }).onConflictDoNothing().returning({ id: transactions.id });
 
-      if (inserted[0]) {
-        importedCount++;
+      if (insertResult[0]) {
+        imported++;
         if (matchedTagId) {
           await db.insert(transactionTags)
-            .values({ transactionId: inserted[0].id, tagId: matchedTagId })
+            .values({ transactionId: insertResult[0].id, tagId: matchedTagId })
             .onConflictDoNothing();
         }
+      } else {
+        skipped++;
       }
     }
 
-    return NextResponse.json({ success: true, imported: importedCount });
+    return NextResponse.json({ success: true, imported, skipped, failed });
   } catch (error) {
     console.error('Upload error:', error);
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
