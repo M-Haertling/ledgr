@@ -1,5 +1,6 @@
 import { pgTable, serial, text, decimal, boolean, timestamp, integer, jsonb, unique } from 'drizzle-orm/pg-core';
 import { relations } from 'drizzle-orm';
+import type { AnyPgColumn } from 'drizzle-orm/pg-core';
 
 export const accounts = pgTable('accounts', {
   id: serial('id').primaryKey(),
@@ -31,6 +32,8 @@ export const transactions = pgTable('transactions', {
   description: text('description').notNull(),
   amount: decimal('amount', { precision: 12, scale: 2 }).notNull(),
   isCredit: boolean('is_credit').notNull(),
+  type: text('type').notNull().default('credit'),
+  transferPairId: integer('transfer_pair_id').references((): AnyPgColumn => transactions.id),
   categoryId: integer('category_id').references(() => categories.id),
   createdAt: timestamp('created_at').defaultNow().notNull(),
 }, (table) => [
@@ -47,6 +50,11 @@ export const transactionsRelations = relations(transactions, ({ one, many }) => 
     references: [categories.id],
   }),
   transactionTags: many(transactionTags),
+  transferPair: one(transactions, {
+    fields: [transactions.transferPairId],
+    references: [transactions.id],
+    relationName: 'transfer_pair',
+  }),
 }));
 
 export const tags = pgTable('tags', {

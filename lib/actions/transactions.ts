@@ -2,12 +2,92 @@
 
 import { db } from '@/lib/db';
 import { transactions, transactionTags } from '@/lib/db/schema';
-import { eq, inArray, sql, notInArray } from 'drizzle-orm';
+import { eq, inArray, sql, notInArray, and, isNull, or } from 'drizzle-orm';
 import { revalidatePath } from 'next/cache';
 
 export async function updateTransactionCategory(transactionId: number, categoryId: number | null) {
   await db.update(transactions)
     .set({ categoryId })
+    .where(eq(transactions.id, transactionId));
+  revalidatePath('/transactions');
+}
+
+export type TransferCandidate = {
+  id: number;
+  date: Date;
+  description: string;
+  amount: string;
+  isCredit: boolean;
+  account: { id: number; name: string };
+};
+
+export async function findTransferCandidates(transactionId: number): Promise<TransferCandidate[]> {
+  const [tx] = await db
+    .select()
+    .from(transactions)
+    .where(eq(transactions.id, transactionId));
+  if (!tx) return [];
+
+  const candidates = await db.query.transactions.findMany({
+    with: { account: true },
+    where: and(
+      eq(transactions.amount, tx.amount),
+      eq(transactions.isCredit, !tx.isCredit),
+      or(
+        isNull(transactions.transferPairId),
+        eq(transactions.transferPairId, transactionId)
+      ),
+    ),
+  });
+
+  return candidates
+    .filter(c => c.id !== transactionId)
+    .map(c => ({
+      id: c.id,
+      date: c.date,
+      description: c.description,
+      amount: c.amount,
+      isCredit: c.isCredit,
+      account: { id: c.account.id, name: c.account.name },
+    }));
+}
+
+export async function linkTransferPair(txId1: number, txId2: number): Promise<void> {
+  await db.update(transactions)
+    .set({ type: 'transfer', transferPairId: txId2 })
+    .where(eq(transactions.id, txId1));
+  await db.update(transactions)
+    .set({ type: 'transfer', transferPairId: txId1 })
+    .where(eq(transactions.id, txId2));
+  revalidatePath('/transactions');
+}
+
+export async function setTransactionAsTransfer(transactionId: number): Promise<void> {
+  await db.update(transactions)
+    .set({ type: 'transfer' })
+    .where(eq(transactions.id, transactionId));
+  revalidatePath('/transactions');
+}
+
+export async function revertTransactionFromTransfer(transactionId: number): Promise<void> {
+  const [tx] = await db.select().from(transactions).where(eq(transactions.id, transactionId));
+  if (!tx) return;
+
+  // If linked, also revert the pair
+  if (tx.transferPairId) {
+    const pairNaturalType = await db
+      .select({ isCredit: transactions.isCredit })
+      .from(transactions)
+      .where(eq(transactions.id, tx.transferPairId));
+    if (pairNaturalType.length > 0) {
+      await db.update(transactions)
+        .set({ type: pairNaturalType[0].isCredit ? 'credit' : 'debit', transferPairId: null })
+        .where(eq(transactions.id, tx.transferPairId));
+    }
+  }
+
+  await db.update(transactions)
+    .set({ type: tx.isCredit ? 'credit' : 'debit', transferPairId: null })
     .where(eq(transactions.id, transactionId));
   revalidatePath('/transactions');
 }

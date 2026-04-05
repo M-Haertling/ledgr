@@ -3,6 +3,7 @@
 import { useRouter, useSearchParams } from 'next/navigation';
 import CategoryPicker from './CategoryPicker';
 import TagPicker from './TagPicker';
+import TypePicker from './TypePicker';
 
 type Category = { id: number; name: string; color: string | null };
 type Transaction = {
@@ -12,6 +13,8 @@ type Transaction = {
   description: string;
   amount: string;
   isCredit: boolean;
+  type: string;
+  transferPairId: number | null;
   accountId: number;
   categoryId: number | null;
   account: { id: number; name: string };
@@ -113,13 +116,11 @@ export default function TransactionsTable({
                   />
                 </td>
                 <td>
-                  <span style={{
-                    fontSize: '0.75rem',
-                    fontWeight: 600,
-                    color: tx.isCredit ? '#10b981' : '#ef4444',
-                  }}>
-                    {tx.isCredit ? 'Credit' : 'Debit'}
-                  </span>
+                  <TypePicker
+                    transactionId={tx.id}
+                    currentType={tx.type}
+                    isCredit={tx.isCredit}
+                  />
                 </td>
                 <td style={{ textAlign: 'right', fontWeight: 600, whiteSpace: 'nowrap' }}>
                   <span style={{ color: tx.isCredit ? '#10b981' : 'inherit' }}>

@@ -15,6 +15,13 @@
       "when": 1775353769728,
       "tag": "0001_salty_madame_web",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1775440169728,
+      "tag": "0002_add_transfer_type",
+      "breakpoints": true
     }
   ]
 }

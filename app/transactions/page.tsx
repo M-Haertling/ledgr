@@ -42,8 +42,9 @@ export default async function TransactionsPage({
   if (categoryIds.length > 0) filters.push(inArray(transactions.categoryId, categoryIds));
   if (uncategorized) filters.push(isNull(transactions.categoryId));
   if (search) filters.push(ilike(transactions.description, `%${search}%`));
-  if (typeFilter === 'credit') filters.push(eq(transactions.isCredit, true));
-  if (typeFilter === 'debit') filters.push(eq(transactions.isCredit, false));
+  if (typeFilter === 'credit') filters.push(eq(transactions.type, 'credit'));
+  if (typeFilter === 'debit') filters.push(eq(transactions.type, 'debit'));
+  if (typeFilter === 'transfer') filters.push(eq(transactions.type, 'transfer'));
   if (from && !isNaN(from.getTime())) filters.push(gte(transactions.date, from));
   if (to && !isNaN(to.getTime())) {
     const toEnd = new Date(to);
@@ -159,6 +160,7 @@ export default async function TransactionsPage({
               <option value="">All</option>
               <option value="credit">Credits</option>
               <option value="debit">Debits</option>
+              <option value="transfer">Transfers</option>
             </select>
           </div>
           <div className="form-group">
