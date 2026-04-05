@@ -12,6 +12,35 @@ export async function updateTransactionCategory(transactionId: number, categoryI
   revalidatePath('/transactions');
 }
 
+export async function updateTransactionNotes(transactionId: number, notes: string | null) {
+  await db.update(transactions)
+    .set({ notes })
+    .where(eq(transactions.id, transactionId));
+  revalidatePath('/transactions');
+}
+
+export async function addTransaction(data: {
+  accountId: number;
+  date: string;
+  description: string;
+  amount: number;
+  isCredit: boolean;
+  categoryId?: number | null;
+  notes?: string | null;
+}) {
+  await db.insert(transactions).values({
+    accountId: data.accountId,
+    date: new Date(data.date),
+    description: data.description,
+    amount: Math.abs(data.amount).toString(),
+    isCredit: data.isCredit,
+    type: data.isCredit ? 'credit' : 'debit',
+    categoryId: data.categoryId ?? null,
+    notes: data.notes ?? null,
+  });
+  revalidatePath('/transactions');
+}
+
 export type TransferCandidate = {
   id: number;
   date: Date;

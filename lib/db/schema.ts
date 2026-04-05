@@ -35,6 +35,7 @@ export const transactions = pgTable('transactions', {
   type: text('type').notNull().default('credit'),
   transferPairId: integer('transfer_pair_id').references((): AnyPgColumn => transactions.id),
   categoryId: integer('category_id').references(() => categories.id),
+  notes: text('notes'),
   createdAt: timestamp('created_at').defaultNow().notNull(),
 }, (table) => [
   unique('transactions_dedup').on(table.accountId, table.date, table.description, table.amount),

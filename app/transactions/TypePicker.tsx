@@ -23,11 +23,19 @@ export default function TypePicker({
   currentType,
   isCredit,
   transferPairId,
+  date,
+  description,
+  amount,
+  accountName,
 }: {
   transactionId: number;
   currentType: string;
   isCredit: boolean;
   transferPairId: number | null;
+  date: Date;
+  description: string;
+  amount: string;
+  accountName: string;
 }) {
   const [type, setType] = useState(currentType);
   const [dialogOpen, setDialogOpen] = useState(false);
@@ -160,13 +168,23 @@ export default function TypePicker({
                 </div>
                 <div style={{ marginBottom: '0.75rem' }}>
                   <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Date</div>
-                  <div style={{ fontWeight: 500 }}>{new Date(Date.now()).toLocaleDateString()}</div>
+                  <div style={{ fontWeight: 500 }}>{new Date(date).toLocaleDateString()}</div>
                 </div>
                 <div style={{ marginBottom: '0.75rem' }}>
-                  <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Type</div>
-                  <div style={{ fontWeight: 500 }}>Transfer</div>
+                  <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Description</div>
+                  <div style={{ fontWeight: 500, wordBreak: 'break-word' }}>{description}</div>
                 </div>
                 <div style={{ marginBottom: '0.75rem' }}>
+                  <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Amount</div>
+                  <div style={{ fontWeight: 600, color: isCredit ? '#10b981' : '#ef4444' }}>
+                    {isCredit ? '+' : '-'}${Math.abs(Number(amount)).toFixed(2)}
+                  </div>
+                </div>
+                <div style={{ marginBottom: '0.75rem' }}>
+                  <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Account</div>
+                  <div style={{ fontWeight: 500 }}>{accountName}</div>
+                </div>
+                <div>
                   <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>ID</div>
                   <div style={{ fontSize: '0.875rem', fontFamily: 'monospace', color: 'var(--text-muted)' }}>#{transactionId}</div>
                 </div>

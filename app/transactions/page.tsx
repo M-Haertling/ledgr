@@ -1,11 +1,12 @@
 import { db } from '@/lib/db';
 import { transactions, transactionTags } from '@/lib/db/schema';
 import {
-  desc, asc, eq, ilike, and, exists, isNull, inArray, gte, lte, sql, count
+  desc, asc, eq, ilike, and, or, exists, isNull, inArray, gte, lte, sql, count
 } from 'drizzle-orm';
 import Link from 'next/link';
 import TransactionsTable from './TransactionsTable';
 import MultiSelect from './MultiSelect';
+import AddTransactionDialog from './AddTransactionDialog';
 import { deduplicateTransactions } from '@/lib/actions/transactions';
 
 const PAGE_SIZE = 50;
@@ -36,12 +37,25 @@ export default async function TransactionsPage({
   // Pagination
   const page = params.page ? parseInt(params.page as string) : 0;
 
+  // Helper to convert wildcard pattern to regex
+  const patternToLike = (pattern: string): string => {
+    return '%' + pattern.replace(/\*/g, '%') + '%';
+  };
+
   // Build filters
   const filters = [];
   if (accountIds.length > 0) filters.push(inArray(transactions.accountId, accountIds));
   if (categoryIds.length > 0) filters.push(inArray(transactions.categoryId, categoryIds));
   if (uncategorized) filters.push(isNull(transactions.categoryId));
-  if (search) filters.push(ilike(transactions.description, `%${search}%`));
+  if (search) {
+    const searchPattern = patternToLike(search);
+    filters.push(
+      or(
+        ilike(transactions.description, searchPattern),
+        ilike(transactions.notes, searchPattern)
+      )
+    );
+  }
   if (typeFilter === 'credit') filters.push(eq(transactions.type, 'credit'));
   if (typeFilter === 'debit') filters.push(eq(transactions.type, 'debit'));
   if (typeFilter === 'transfer') filters.push(eq(transactions.type, 'transfer'));
@@ -128,6 +142,7 @@ export default async function TransactionsPage({
           }}>
             <button type="submit" className="btn btn-secondary">Deduplicate</button>
           </form>
+          <AddTransactionDialog accounts={allAccounts} categories={allCategories} />
           <Link href="/transactions/upload" className="btn btn-primary">
             Upload CSV
           </Link>
@@ -142,8 +157,9 @@ export default async function TransactionsPage({
               type="text"
               name="search"
               className="form-input"
-              placeholder="Search description..."
+              placeholder="Search description & notes (use * as wildcard)"
               defaultValue={search}
+              title="Search description and notes. Use * as wildcard (e.g., 'AMAZ*' matches 'AMAZON')"
             />
           </div>
           <div className="form-group" style={{ minWidth: '120px' }}>

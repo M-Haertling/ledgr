@@ -4,6 +4,7 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import CategoryPicker from './CategoryPicker';
 import TagPicker from './TagPicker';
 import TypePicker from './TypePicker';
+import NotePicker from './NotePicker';
 
 type Category = { id: number; name: string; color: string | null };
 type Transaction = {
@@ -17,6 +18,7 @@ type Transaction = {
   transferPairId: number | null;
   accountId: number;
   categoryId: number | null;
+  notes: string | null;
   account: { id: number; name: string };
   category: { id: number; name: string; color: string | null } | null;
   transactionTags: { tagId: number; tag: { id: number; name: string } }[];
@@ -90,6 +92,7 @@ export default function TransactionsTable({
               <th className="sortable" onClick={() => setSort('amount')} style={{ textAlign: 'right' }}>
                 Amount {sortIndicator('amount')}
               </th>
+              <th style={{ textAlign: 'center' }}>Notes</th>
               <th>Tags</th>
             </tr>
           </thead>
@@ -121,12 +124,22 @@ export default function TransactionsTable({
                     currentType={tx.type}
                     isCredit={tx.isCredit}
                     transferPairId={tx.transferPairId}
+                    date={tx.date}
+                    description={tx.description}
+                    amount={tx.amount}
+                    accountName={tx.account.name}
                   />
                 </td>
                 <td style={{ textAlign: 'right', fontWeight: 600, whiteSpace: 'nowrap' }}>
                   <span style={{ color: tx.isCredit ? '#10b981' : 'inherit' }}>
                     {tx.isCredit ? '+' : '-'}${Math.abs(Number(tx.amount)).toFixed(2)}
                   </span>
+                </td>
+                <td style={{ textAlign: 'center' }}>
+                  <NotePicker
+                    transactionId={tx.id}
+                    currentNotes={tx.notes}
+                  />
                 </td>
                 <td>
                   <TagPicker
