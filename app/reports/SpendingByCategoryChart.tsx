@@ -20,6 +20,7 @@ export default function SpendingByCategoryChart({
         <XAxis dataKey="month" tick={{ fill: 'var(--text-muted)', fontSize: 12 }} />
         <YAxis tick={{ fill: 'var(--text-muted)', fontSize: 12 }} />
         <Tooltip
+          wrapperStyle={{ zIndex: 100 }}
           contentStyle={{
             backgroundColor: 'var(--card-bg)',
             border: '1px solid var(--border)',

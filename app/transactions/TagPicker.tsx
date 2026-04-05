@@ -72,12 +72,12 @@ export default function TagPicker({
         onClick={() => setDialogOpen(true)}
         style={{
           fontSize: '1rem',
-          color: hasTags ? 'var(--primary)' : 'var(--text-muted)',
           border: 'none',
           background: 'none',
           padding: '0 0.25rem',
           cursor: 'pointer',
           lineHeight: 1,
+          filter: hasTags ? 'none' : 'grayscale(1) opacity(0.4)',
         }}
         title={hasTags ? `Tags: ${tags.map(ct => ct.tag.name).join(', ')}` : 'Add tags'}
       >
