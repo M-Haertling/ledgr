@@ -47,6 +47,16 @@ export async function detachTag(transactionId: number, tagId: number) {
   revalidatePath('/transactions');
 }
 
+export async function createTagDirect(name: string): Promise<{ id: number; name: string }> {
+  if (!name) throw new Error('Name is required');
+
+  const [tag] = await db.insert(tags).values({ name }).returning({ id: tags.id, name: tags.name });
+
+  revalidatePath('/tags');
+  revalidatePath('/transactions');
+  return tag;
+}
+
 export async function updateTag(id: number, formData: FormData) {
   const name = formData.get('name') as string;
 

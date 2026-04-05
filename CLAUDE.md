@@ -27,14 +27,24 @@ See `features.md`.
         - `TransactionsTable.tsx`: Client component — sortable table, pagination.
         - `CategoryPicker.tsx`: Inline category select per transaction row.
         - `TagPicker.tsx`: Inline tag attachment/detachment dropdown (fixed-position to escape table overflow).
+        - `NotePicker.tsx`: Inline notes editor per transaction row.
+        - `TypePicker.tsx`: Inline transfer/type picker per transaction row.
+        - `AddTransactionDialog.tsx`: Dialog for manually adding a transaction.
         - `MultiSelect.tsx`: Reusable multi-select dropdown that updates URL params.
         - `/upload`: CSV upload and column mapping interface.
             - `UploadForm.tsx`: Client component — file parsing, column mapping, credit/debit mode toggle, template save/load, upload result summary.
     - `/reports`: Financial reports with Recharts charts, preset date ranges, and filters.
         - `SpendingIncomeChart.tsx`: Monthly income vs expenses bar chart.
         - `CategoryPieChart.tsx`: Spending by category pie chart.
+    - `/admin`: Admin panel with a raw SQL editor for direct database queries.
+        - `SqlEditor.tsx`: Client component — SQL input, execute, and result table display.
+    - `/backup`: Backup and restore interface for all database tables as CSV.
+        - `BackupRestoreClient.tsx`: Client component — per-table download and CSV restore upload.
     - `/api`: Backend API routes.
         - `/transactions/upload`: Server-side CSV processing. Returns imported/skipped/failed counts.
+- `/scripts`: Node.js utility scripts run outside the app.
+    - `import.mjs`: CSV import script for bulk-loading transactions directly via pg.
+    - `migrate.mjs`: Drizzle migration runner for applying schema migrations.
 - `/lib`: Shared utilities and backend logic.
     - `/db`: Database connection and schema definitions.
         - `index.ts`: Drizzle client initialization.
@@ -43,8 +53,9 @@ See `features.md`.
         - `accounts.ts`: Account CRUD (create, update, delete).
         - `categories.ts`: Category CRUD. Delete clears transaction mappings and orphaned rules.
         - `tags.ts`: Tag CRUD including rename. Delete cleans up transaction_tags.
-        - `transactions.ts`: `updateTransactionCategory`, `deduplicateTransactions`.
+        - `transactions.ts`: `updateTransactionCategory`, `updateTransactionNotes`, `addTransaction`, `deduplicateTransactions`, `findTransferCandidates`.
         - `rules.ts`: Rule management and `applyRulesToUncategorized` (wildcard, tag, account-scoped).
+        - `mappings.ts`: CSV upload template CRUD (save, load, delete named column-mapping templates).
 - `/drizzle`: SQL migration files and metadata.
 - `/public`: Static assets like icons and SVGs.
 - `docker-compose.yml`: Defines the PostgreSQL container and environment.
@@ -79,3 +90,10 @@ See `features.md`.
     - [x] Date presets: Current Month, Year to Date, Custom
     - [x] Category and tag filters on reports
     - [x] Refine CSS styling
+- [x] Phase 5: Advanced Features
+    - [x] Backup & Restore — per-table CSV export/import
+    - [x] Admin panel with raw SQL editor
+    - [x] Inline notes editing per transaction
+    - [x] Transfer detection and inline type picker
+    - [x] Manual transaction entry dialog
+    - [x] CSV upload column-mapping templates (save/load/delete)

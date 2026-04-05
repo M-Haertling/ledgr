@@ -151,7 +151,8 @@ export default function TypePicker({
           <div
             className="card"
             style={{
-              width: '600px',
+              width: 'max-content',
+              minWidth: '500px',
               maxWidth: '90vw',
               maxHeight: '80vh',
               overflow: 'auto',

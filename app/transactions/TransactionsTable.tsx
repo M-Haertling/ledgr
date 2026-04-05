@@ -93,7 +93,7 @@ export default function TransactionsTable({
                 Amount {sortIndicator('amount')}
               </th>
               <th style={{ textAlign: 'center' }}>Notes</th>
-              <th>Tags</th>
+              <th style={{ textAlign: 'center' }}>Tags</th>
             </tr>
           </thead>
           <tbody>
@@ -141,7 +141,7 @@ export default function TransactionsTable({
                     currentNotes={tx.notes}
                   />
                 </td>
-                <td>
+                <td style={{ textAlign: 'center' }}>
                   <TagPicker
                     transactionId={tx.id}
                     allTags={allTags}

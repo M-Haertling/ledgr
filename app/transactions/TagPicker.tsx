@@ -1,7 +1,7 @@
 'use client';
 
-import { useState, useRef, useEffect } from 'react';
-import { attachTag, detachTag } from '@/lib/actions/tags';
+import { useState } from 'react';
+import { attachTag, detachTag, createTagDirect } from '@/lib/actions/tags';
 
 export default function TagPicker({
   transactionId,
@@ -12,106 +12,218 @@ export default function TagPicker({
   allTags: any[];
   currentTags: any[]
 }) {
-  const [isOpen, setIsOpen] = useState(false);
-  const [dropdownPos, setDropdownPos] = useState({ top: 0, left: 0 });
-  const buttonRef = useRef<HTMLButtonElement>(null);
-  const dropdownRef = useRef<HTMLDivElement>(null);
+  const [dialogOpen, setDialogOpen] = useState(false);
+  const [tags, setTags] = useState<any[]>(currentTags);
+  const [knownTags, setKnownTags] = useState<any[]>(allTags);
+  const [search, setSearch] = useState('');
+  const [pending, setPending] = useState(false);
 
-  const availableTags = allTags.filter(
-    tag => !currentTags.some(ct => ct.tagId === tag.id)
+  const hasTags = tags.length > 0;
+
+  const availableTags = knownTags.filter(
+    tag =>
+      !tags.some(ct => ct.tagId === tag.id) &&
+      tag.name.toLowerCase().includes(search.toLowerCase())
   );
 
-  const openDropdown = () => {
-    if (buttonRef.current) {
-      const rect = buttonRef.current.getBoundingClientRect();
-      setDropdownPos({ top: rect.bottom + window.scrollY + 4, left: rect.left + window.scrollX });
+  const exactMatch = knownTags.some(
+    tag => tag.name.toLowerCase() === search.trim().toLowerCase()
+  );
+
+  const handleAttach = async (tag: any) => {
+    setPending(true);
+    try {
+      await attachTag(transactionId, tag.id);
+      setTags(prev => [...prev, { tagId: tag.id, tag }]);
+      setSearch('');
+    } finally {
+      setPending(false);
     }
-    setIsOpen(true);
   };
 
-  useEffect(() => {
-    if (!isOpen) return;
-    const handleClick = (e: MouseEvent) => {
-      if (
-        dropdownRef.current && !dropdownRef.current.contains(e.target as Node) &&
-        buttonRef.current && !buttonRef.current.contains(e.target as Node)
-      ) {
-        setIsOpen(false);
-      }
-    };
-    document.addEventListener('mousedown', handleClick);
-    return () => document.removeEventListener('mousedown', handleClick);
-  }, [isOpen]);
+  const handleDetach = async (tagId: number) => {
+    setPending(true);
+    try {
+      await detachTag(transactionId, tagId);
+      setTags(prev => prev.filter(ct => ct.tagId !== tagId));
+    } finally {
+      setPending(false);
+    }
+  };
+
+  const handleCreate = async () => {
+    const name = search.trim();
+    if (!name) return;
+    setPending(true);
+    try {
+      const tag = await createTagDirect(name);
+      await attachTag(transactionId, tag.id);
+      setKnownTags(prev => [...prev, tag]);
+      setTags(prev => [...prev, { tagId: tag.id, tag }]);
+      setSearch('');
+    } finally {
+      setPending(false);
+    }
+  };
 
   return (
-    <div className="flex gap-1 items-center flex-wrap">
-      {currentTags.map(ct => (
-        <span key={ct.tagId} className="badge flex items-center gap-1" style={{ backgroundColor: 'var(--primary)', color: 'white', borderColor: 'var(--primary)' }}>
-          #{ct.tag.name}
-          <button
-            onClick={() => detachTag(transactionId, ct.tagId)}
-            style={{ border: 'none', background: 'none', color: 'white', cursor: 'pointer', padding: '0 2px', fontSize: '10px' }}
-          >
-            ✕
-          </button>
-        </span>
-      ))}
-
+    <>
       <button
-        ref={buttonRef}
-        onClick={openDropdown}
-        className="btn btn-secondary btn-sm"
-        style={{ padding: '0.125rem 0.5rem', fontSize: '0.75rem' }}
+        onClick={() => setDialogOpen(true)}
+        style={{
+          fontSize: '1rem',
+          color: hasTags ? 'var(--primary)' : 'var(--text-muted)',
+          border: 'none',
+          background: 'none',
+          padding: '0 0.25rem',
+          cursor: 'pointer',
+          lineHeight: 1,
+        }}
+        title={hasTags ? `Tags: ${tags.map(ct => ct.tag.name).join(', ')}` : 'Add tags'}
       >
-        + Tag
+        🏷️
       </button>
 
-      {isOpen && (
+      {dialogOpen && (
         <div
-          ref={dropdownRef}
           style={{
             position: 'fixed',
-            top: dropdownPos.top,
-            left: dropdownPos.left,
-            zIndex: 9999,
-            background: 'var(--card-bg)',
-            border: '1px solid var(--border)',
-            borderRadius: '0.375rem',
-            padding: '0.5rem',
-            minWidth: '150px',
-            boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)',
+            inset: 0,
+            background: 'rgba(0,0,0,0.5)',
+            zIndex: 1000,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
           }}
+          onClick={(e) => { if (e.target === e.currentTarget) setDialogOpen(false); }}
         >
-          {availableTags.length === 0 ? (
-            <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>No more tags</p>
-          ) : (
-            <div className="flex flex-col gap-1">
-              {availableTags.map(tag => (
-                <button
-                  key={tag.id}
-                  onClick={() => {
-                    attachTag(transactionId, tag.id);
-                    setIsOpen(false);
-                  }}
-                  className="btn btn-secondary btn-sm"
-                  style={{ justifyContent: 'flex-start', width: '100%' }}
-                >
-                  #{tag.name}
-                </button>
-              ))}
+          <div
+            className="card"
+            style={{ width: '400px', maxWidth: '90vw', padding: '1.5rem' }}
+          >
+            <h3 style={{ marginTop: 0, marginBottom: '1rem' }}>Transaction Tags</h3>
+
+            {/* Applied tags */}
+            <div style={{ marginBottom: '1rem' }}>
+              <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginBottom: '0.5rem' }}>Applied</p>
+              {tags.length === 0 ? (
+                <p style={{ fontSize: '0.875rem', color: 'var(--text-muted)' }}>No tags applied.</p>
+              ) : (
+                <div className="flex gap-1 flex-wrap">
+                  {tags.map(ct => (
+                    <span
+                      key={ct.tagId}
+                      className="badge flex items-center gap-1"
+                      style={{ backgroundColor: 'var(--primary)', color: 'white', borderColor: 'var(--primary)' }}
+                    >
+                      #{ct.tag.name}
+                      <button
+                        onClick={() => handleDetach(ct.tagId)}
+                        disabled={pending}
+                        style={{ border: 'none', background: 'none', color: 'white', cursor: 'pointer', padding: '0 2px', fontSize: '10px' }}
+                      >
+                        ✕
+                      </button>
+                    </span>
+                  ))}
+                </div>
+              )}
             </div>
-          )}
-          <div style={{ borderTop: '1px solid var(--border)', marginTop: '0.5rem', paddingTop: '0.5rem' }}>
-            <button
-              onClick={() => setIsOpen(false)}
-              className="btn btn-sm w-full"
-              style={{ fontSize: '0.65rem' }}
-            >
-              Close
-            </button>
+
+            {/* Search + add/create */}
+            <div style={{ marginBottom: '1rem' }}>
+              <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginBottom: '0.5rem' }}>Add tag</p>
+              <input
+                type="text"
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    if (availableTags.length === 1) handleAttach(availableTags[0]);
+                    else if (availableTags.length === 0 && search.trim() && !exactMatch) handleCreate();
+                  }
+                }}
+                placeholder="Search or create tag..."
+                disabled={pending}
+                style={{
+                  width: '100%',
+                  padding: '0.375rem 0.5rem',
+                  borderRadius: '4px',
+                  border: '1px solid var(--border)',
+                  fontSize: '0.875rem',
+                  background: 'var(--input-bg)',
+                  color: 'inherit',
+                  marginBottom: '0.5rem',
+                  boxSizing: 'border-box',
+                }}
+              />
+              {(availableTags.length > 0 || (search.trim() && !exactMatch)) && (
+                <div
+                  style={{
+                    border: '1px solid var(--border)',
+                    borderRadius: '4px',
+                    overflow: 'hidden',
+                    maxHeight: '180px',
+                    overflowY: 'auto',
+                  }}
+                >
+                  {availableTags.map(tag => (
+                    <button
+                      key={tag.id}
+                      onClick={() => handleAttach(tag)}
+                      disabled={pending}
+                      style={{
+                        display: 'block',
+                        width: '100%',
+                        textAlign: 'left',
+                        padding: '0.375rem 0.625rem',
+                        border: 'none',
+                        borderBottom: '1px solid var(--border)',
+                        background: 'none',
+                        cursor: 'pointer',
+                        fontSize: '0.875rem',
+                        color: 'inherit',
+                      }}
+                      onMouseEnter={(e) => (e.currentTarget.style.background = 'var(--hover-bg, rgba(0,0,0,0.05))')}
+                      onMouseLeave={(e) => (e.currentTarget.style.background = 'none')}
+                    >
+                      #{tag.name}
+                    </button>
+                  ))}
+                  {search.trim() && !exactMatch && (
+                    <button
+                      onClick={handleCreate}
+                      disabled={pending}
+                      style={{
+                        display: 'block',
+                        width: '100%',
+                        textAlign: 'left',
+                        padding: '0.375rem 0.625rem',
+                        border: 'none',
+                        background: 'none',
+                        cursor: 'pointer',
+                        fontSize: '0.875rem',
+                        color: 'var(--primary)',
+                        fontStyle: 'italic',
+                      }}
+                      onMouseEnter={(e) => (e.currentTarget.style.background = 'var(--hover-bg, rgba(0,0,0,0.05))')}
+                      onMouseLeave={(e) => (e.currentTarget.style.background = 'none')}
+                    >
+                      + Create &ldquo;{search.trim()}&rdquo;
+                    </button>
+                  )}
+                </div>
+              )}
+            </div>
+
+            <div className="flex gap-2" style={{ justifyContent: 'flex-end' }}>
+              <button className="btn btn-secondary" onClick={() => setDialogOpen(false)}>
+                Close
+              </button>
+            </div>
           </div>
         </div>
       )}
-    </div>
+    </>
   );
 }
