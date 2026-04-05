@@ -10,11 +10,13 @@ export default function MultiSelect({
   label,
   options,
   selected,
+  basePath = '/transactions',
 }: {
   paramName: string;
   label: string;
   options: Option[];
   selected: string[];
+  basePath?: string;
 }) {
   const [open, setOpen] = useState(false);
   const [checked, setChecked] = useState<Set<string>>(new Set(selected));
@@ -55,7 +57,7 @@ export default function MultiSelect({
     } else {
       params.set(paramName, Array.from(checked).join(','));
     }
-    router.push(`/transactions?${params.toString()}`);
+    router.push(`${basePath}?${params.toString()}`);
     setOpen(false);
   };
 
@@ -64,7 +66,7 @@ export default function MultiSelect({
     const params = new URLSearchParams(searchParams.toString());
     params.delete(paramName);
     params.delete('page');
-    router.push(`/transactions?${params.toString()}`);
+    router.push(`${basePath}?${params.toString()}`);
     setOpen(false);
   };
 

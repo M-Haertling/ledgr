@@ -1,10 +1,11 @@
 import { db } from '@/lib/db';
 import { transactions, categories, accounts, transactionTags } from '@/lib/db/schema';
-import { and, eq, gte, lte, sql, inArray, exists } from 'drizzle-orm';
+import { and, eq, gte, lte, sql, inArray, exists, ne } from 'drizzle-orm';
 import Link from 'next/link';
 import SpendingIncomeChart from './SpendingIncomeChart';
 import CategoryPieChart from './CategoryPieChart';
 import SpendingByCategoryChart from './SpendingByCategoryChart';
+import MultiSelect from '../transactions/MultiSelect';
 
 export default async function ReportsPage({
   searchParams,
@@ -24,6 +25,9 @@ export default async function ReportsPage({
   if (preset === 'ytd') {
     from = new Date(now.getFullYear(), 0, 1);
     to = now;
+  } else if (preset === 'prevmonth') {
+    from = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+    to = new Date(now.getFullYear(), now.getMonth(), 0, 23, 59, 59, 999);
   } else if (preset === 'custom' && fromStr) {
     from = new Date(fromStr);
     to = toStr ? new Date(toStr) : now;
@@ -41,9 +45,11 @@ export default async function ReportsPage({
     ? (Array.isArray(params.tagIds) ? params.tagIds : (params.tagIds as string).split(',')).map(Number).filter(Boolean)
     : [];
 
+  // Base filters — always exclude transfers
   const baseFilters = [
     gte(transactions.date, from),
     lte(transactions.date, to),
+    ne(transactions.type, 'transfer'),
   ];
 
   if (categoryIds.length > 0) {
@@ -65,7 +71,7 @@ export default async function ReportsPage({
     );
   }
 
-  // Summary totals
+  // Summary totals (no transfers)
   const [expRow] = await db.select({ sum: sql<string>`COALESCE(sum(amount), 0)` })
     .from(transactions)
     .where(and(...baseFilters, eq(transactions.isCredit, false)));
@@ -78,18 +84,20 @@ export default async function ReportsPage({
   const incomeSum = parseFloat(incRow?.sum || '0');
   const net = incomeSum - expenseSum;
 
-  // Spending by Category
+  // Spending by Category — net of debits minus credits per category (removes returns)
+  // Only show categories with net spending (net > 0)
   const categorySpending = await db.select({
     categoryId: transactions.categoryId,
     categoryName: categories.name,
     categoryColor: categories.color,
-    total: sql<string>`COALESCE(sum(amount), 0)`,
+    total: sql<string>`COALESCE(sum(CASE WHEN NOT is_credit THEN amount::numeric ELSE -amount::numeric END), 0)`,
   })
     .from(transactions)
     .leftJoin(categories, eq(transactions.categoryId, categories.id))
-    .where(and(...baseFilters, eq(transactions.isCredit, false)))
+    .where(and(...baseFilters))
     .groupBy(transactions.categoryId, categories.name, categories.color)
-    .orderBy(sql`sum(amount) DESC`);
+    .having(sql`sum(CASE WHEN NOT is_credit THEN amount::numeric ELSE -amount::numeric END) > 0`)
+    .orderBy(sql`sum(CASE WHEN NOT is_credit THEN amount::numeric ELSE -amount::numeric END) DESC`);
 
   // Spending by Account
   const accountSpending = await db.select({
@@ -103,7 +111,7 @@ export default async function ReportsPage({
     .groupBy(transactions.accountId, accounts.name)
     .orderBy(sql`sum(amount) DESC`);
 
-  // Monthly breakdown for bar chart
+  // Monthly breakdown for bar chart (no transfers)
   const monthlyData = await db.select({
     month: sql<string>`TO_CHAR(date_trunc('month', date), 'Mon YYYY')`,
     monthSort: sql<string>`date_trunc('month', date)`,
@@ -111,7 +119,7 @@ export default async function ReportsPage({
     expenses: sql<string>`COALESCE(sum(CASE WHEN NOT is_credit THEN amount::numeric ELSE 0 END), 0)`,
   })
     .from(transactions)
-    .where(and(gte(transactions.date, from), lte(transactions.date, to)))
+    .where(and(gte(transactions.date, from), lte(transactions.date, to), ne(transactions.type, 'transfer')))
     .groupBy(sql`date_trunc('month', date)`)
     .orderBy(sql`date_trunc('month', date) ASC`);
 
@@ -121,19 +129,18 @@ export default async function ReportsPage({
     expenses: parseFloat(row.expenses),
   }));
 
-  // Monthly spending by category
+  // Monthly spending by category (net, no transfers)
   const monthlyCategoryData = await db.select({
     month: sql<string>`TO_CHAR(date_trunc('month', date), 'Mon YYYY')`,
     categoryId: transactions.categoryId,
-    amount: sql<string>`COALESCE(sum(amount), 0)`,
+    amount: sql<string>`COALESCE(sum(CASE WHEN NOT is_credit THEN amount::numeric ELSE -amount::numeric END), 0)`,
   })
     .from(transactions)
-    .where(and(gte(transactions.date, from), lte(transactions.date, to), eq(transactions.isCredit, false)))
+    .where(and(gte(transactions.date, from), lte(transactions.date, to), ne(transactions.type, 'transfer')))
     .groupBy(sql`date_trunc('month', date)`, transactions.categoryId)
+    .having(sql`sum(CASE WHEN NOT is_credit THEN amount::numeric ELSE -amount::numeric END) > 0`)
     .orderBy(sql`date_trunc('month', date) ASC`);
 
-  // Transform to chart format: [{ month: 'Jan 2024', categoryId: 123, amount: 100 }, ...]
-  // Then group by month for stacked bar
   const categorySpendingByMonth: Record<string, any> = {};
   monthlyCategoryData.forEach(row => {
     if (!categorySpendingByMonth[row.month]) {
@@ -143,7 +150,6 @@ export default async function ReportsPage({
   });
   const stackedChartData = Object.values(categorySpendingByMonth);
 
-  // Pie chart data
   const pieData = categorySpending
     .filter(cat => parseFloat(cat.total) > 0)
     .map(cat => ({
@@ -152,14 +158,15 @@ export default async function ReportsPage({
       color: cat.categoryColor || '#94a3b8',
     }));
 
-  // For filter dropdowns
   const allCategories = await db.query.categories.findMany();
   const allTags = await db.query.tags.findMany();
 
-  // Build base params for preset links
+  // Build base params for preset links (preserve filters)
   const basePresetParams = new URLSearchParams();
   if (categoryIds.length) basePresetParams.set('categoryIds', categoryIds.join(','));
   if (tagIds.length) basePresetParams.set('tagIds', tagIds.join(','));
+
+  const totalCategorySpending = categorySpending.reduce((s, c) => s + parseFloat(c.total), 0);
 
   return (
     <div>
@@ -175,6 +182,12 @@ export default async function ReportsPage({
               className={`btn btn-sm ${preset === 'month' ? 'active' : ''}`}
             >
               Current Month
+            </Link>
+            <Link
+              href={`/reports?${new URLSearchParams({ ...Object.fromEntries(basePresetParams), preset: 'prevmonth' })}`}
+              className={`btn btn-sm ${preset === 'prevmonth' ? 'active' : ''}`}
+            >
+              Previous Month
             </Link>
             <Link
               href={`/reports?${new URLSearchParams({ ...Object.fromEntries(basePresetParams), preset: 'ytd' })}`}
@@ -208,45 +221,38 @@ export default async function ReportsPage({
           )}
         </div>
 
-        {/* Category / Tag filters */}
-        <div className="flex gap-3 items-center" style={{ flexWrap: 'wrap' }}>
+        {/* Category / Tag filters — MultiSelect matching Transactions page */}
+        <div className="flex gap-2 items-center" style={{ flexWrap: 'wrap' }}>
           <span className="form-label" style={{ marginBottom: 0 }}>Filter by:</span>
-          <form className="flex gap-2 items-end">
-            <input type="hidden" name="preset" value={preset} />
-            {preset === 'custom' && fromStr && <input type="hidden" name="from" value={fromStr} />}
-            {preset === 'custom' && toStr && <input type="hidden" name="to" value={toStr} />}
-            <div className="form-group" style={{ marginBottom: 0 }}>
-              <label className="form-label">Category</label>
-              <select name="categoryIds" className="form-select" multiple size={1} defaultValue={categoryIds.map(String)}>
-                <option value="">All Categories</option>
-                {allCategories.map(cat => (
-                  <option key={cat.id} value={String(cat.id)}>{cat.name}</option>
-                ))}
-              </select>
-            </div>
-            <div className="form-group" style={{ marginBottom: 0 }}>
-              <label className="form-label">Tag</label>
-              <select name="tagIds" className="form-select" defaultValue={tagIds[0] ? String(tagIds[0]) : ''}>
-                <option value="">All Tags</option>
-                {allTags.map(tag => (
-                  <option key={tag.id} value={String(tag.id)}>#{tag.name}</option>
-                ))}
-              </select>
-            </div>
-            <button type="submit" className="btn btn-secondary btn-sm mb-4">Apply</button>
+          <MultiSelect
+            paramName="categoryIds"
+            label="Categories"
+            options={allCategories.map(c => ({ id: c.id, name: c.name, color: c.color }))}
+            selected={categoryIds.map(String)}
+            basePath="/reports"
+          />
+          <MultiSelect
+            paramName="tagIds"
+            label="Tags"
+            options={allTags.map(t => ({ id: t.id, name: `#${t.name}` }))}
+            selected={tagIds.map(String)}
+            basePath="/reports"
+          />
+          {(categoryIds.length > 0 || tagIds.length > 0) && (
             <Link
               href={`/reports?preset=${preset}${preset === 'custom' && fromStr ? `&from=${fromStr}` : ''}${preset === 'custom' && toStr ? `&to=${toStr}` : ''}`}
-              className="btn btn-secondary btn-sm mb-4"
+              className="btn btn-secondary btn-sm"
             >
-              Clear
+              Clear filters
             </Link>
-          </form>
+          )}
         </div>
 
         <div className="list-item-subtitle mt-2">
           Showing: {from.toLocaleDateString()} – {to.toLocaleDateString()}
           {categoryIds.length > 0 && ` · ${categoryIds.length} categor${categoryIds.length > 1 ? 'ies' : 'y'}`}
           {tagIds.length > 0 && ` · ${tagIds.length} tag${tagIds.length > 1 ? 's' : ''}`}
+          {' · Transfers excluded'}
         </div>
       </div>
 
@@ -300,7 +306,7 @@ export default async function ReportsPage({
             ) : (
               categorySpending.map((cat, i) => {
                 const total = parseFloat(cat.total);
-                const percentage = expenseSum > 0 ? (total / expenseSum) * 100 : 0;
+                const percentage = totalCategorySpending > 0 ? (total / totalCategorySpending) * 100 : 0;
                 return (
                   <div key={i} className="mb-4">
                     <div className="flex justify-between items-center mb-1">
