@@ -69,12 +69,13 @@ export default async function ProjectsPage() {
             </div>
             <div className="form-group" style={{ flex: '2 1 300px' }}>
               <label htmlFor="description" className="form-label">Description</label>
-              <input
-                type="text"
+              <textarea
                 id="description"
                 name="description"
                 className="form-input"
                 placeholder="Optional description"
+                rows={3}
+                style={{ resize: 'vertical' }}
               />
             </div>
             <div className="form-group" style={{ flex: '0 1 160px' }}>

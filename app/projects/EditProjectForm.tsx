@@ -58,11 +58,12 @@ export default function EditProjectForm({ project }: { project: Project }) {
         </div>
         <div className="form-group" style={{ flex: '2 1 300px', marginBottom: 0 }}>
           <label className="form-label">Description</label>
-          <input
-            type="text"
+          <textarea
             name="description"
             defaultValue={project.description ?? ''}
             className="form-input"
+            rows={3}
+            style={{ resize: 'vertical' }}
           />
         </div>
         <div className="form-group" style={{ flex: '0 1 160px', marginBottom: 0 }}>

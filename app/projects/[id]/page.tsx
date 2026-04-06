@@ -91,7 +91,7 @@ export default async function ProjectDetailPage({ params }: { params: Promise<{ 
           )}
         </div>
         {project.description && (
-          <p className="text-muted" style={{ marginBottom: '0.75rem' }}>{project.description}</p>
+          <p className="text-muted" style={{ marginBottom: '0.75rem', whiteSpace: 'pre-wrap' }}>{project.description}</p>
         )}
         <div className="flex gap-4" style={{ fontSize: '0.875rem', color: 'var(--text-muted)', marginBottom: '0.75rem', flexWrap: 'wrap' }}>
           <span>{updates.length} update{updates.length !== 1 ? 's' : ''}</span>
