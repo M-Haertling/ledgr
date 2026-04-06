@@ -50,6 +50,13 @@
       "when": 1775389514197,
       "tag": "0006_cultured_firebird",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1743897600000,
+      "tag": "0007_add_projects",
+      "breakpoints": true
     }
   ]
 }
