@@ -1,4 +1,5 @@
 import { db } from '@/lib/db';
+import { eq } from 'drizzle-orm';
 import {
   accounts, categories, tags, transactions, transactionTags, categorizationRules, ruleTags,
   mappings, projects, projectUpdates, projectUpdateTransactions,
@@ -79,7 +80,10 @@ export async function POST(req: Request) {
       }
       break;
 
-    case 'transactions':
+    case 'transactions': {
+      // Insert all transactions without transfer_pair_id first to avoid self-referential FK
+      // violations when the paired transaction hasn't been inserted yet.
+      const pairUpdates: { id: number; transferPairId: number }[] = [];
       for (const r of rows) {
         const result = await db.insert(transactions).values({
           id: parseInt(r.id),
@@ -89,14 +93,28 @@ export async function POST(req: Request) {
           amount: r.amount,
           isCredit: r.is_credit === 'true',
           type: r.type || 'debit',
-          transferPairId: r.transfer_pair_id ? parseInt(r.transfer_pair_id) : null,
+          transferPairId: null,
           categoryId: r.category_id ? parseInt(r.category_id) : null,
           notes: r.notes || null,
           createdAt: r.created_at ? new Date(r.created_at) : new Date(),
         }).onConflictDoNothing().returning({ id: transactions.id });
-        if (result.length > 0) inserted++; else skipped++;
+        if (result.length > 0) {
+          inserted++;
+          if (r.transfer_pair_id) {
+            pairUpdates.push({ id: parseInt(r.id), transferPairId: parseInt(r.transfer_pair_id) });
+          }
+        } else {
+          skipped++;
+        }
+      }
+      // Second pass: restore transfer_pair_id links now that all transactions exist.
+      for (const { id, transferPairId } of pairUpdates) {
+        await db.update(transactions)
+          .set({ transferPairId })
+          .where(eq(transactions.id, id));
       }
       break;
+    }
 
     case 'transaction_tags':
       for (const r of rows) {
