@@ -58,6 +58,12 @@ export default async function ProjectDetailPage({ params }: { params: Promise<{ 
     return true;
   });
 
+  // Derive start/end dates from status-change updates (earliest per status)
+  const startedDates = updates.filter(u => u.newStatus === 'Started').map(u => new Date(u.date));
+  const finishedDates = updates.filter(u => u.newStatus === 'Finished').map(u => new Date(u.date));
+  const startDate = startedDates.length > 0 ? new Date(Math.min(...startedDates.map(d => d.getTime()))) : null;
+  const endDate = finishedDates.length > 0 ? new Date(Math.min(...finishedDates.map(d => d.getTime()))) : null;
+
   return (
     <div>
       <div className="flex gap-2 mb-4" style={{ alignItems: 'center' }}>
@@ -80,47 +86,29 @@ export default async function ProjectDetailPage({ params }: { params: Promise<{ 
           >
             {project.status}
           </span>
+          {project.type && (
+            <span className="badge">{project.type}</span>
+          )}
         </div>
         {project.description && (
           <p className="text-muted" style={{ marginBottom: '0.75rem' }}>{project.description}</p>
         )}
-        <div className="flex gap-4" style={{ fontSize: '0.875rem', color: 'var(--text-muted)', marginBottom: '0.75rem' }}>
+        <div className="flex gap-4" style={{ fontSize: '0.875rem', color: 'var(--text-muted)', marginBottom: '0.75rem', flexWrap: 'wrap' }}>
           <span>{updates.length} update{updates.length !== 1 ? 's' : ''}</span>
           <span style={{ fontWeight: 600, color: 'var(--text)' }}>Total Cost: ${totalCost.toFixed(2)}</span>
+          {startDate && (
+            <span>Started: <span style={{ color: 'var(--text)' }}>{startDate.toLocaleDateString()}</span></span>
+          )}
+          {endDate && (
+            <span>Finished: <span style={{ color: 'var(--text)' }}>{endDate.toLocaleDateString()}</span></span>
+          )}
         </div>
         <EditProjectForm project={project} />
       </div>
 
-      {/* Add Update */}
-      <div className="card mb-4">
-        <h2 className="card-title">Add Update</h2>
-        <AddUpdateForm projectId={projectId} />
-      </div>
-
-      {/* Updates Feed */}
-      <h2 style={{ fontSize: '1.1rem', fontWeight: 600, marginBottom: '0.75rem' }}>
-        Updates {updates.length > 0 && <span className="text-muted" style={{ fontSize: '0.875rem', fontWeight: 400 }}>({updates.length})</span>}
-      </h2>
-
-      {updates.length === 0 ? (
-        <div className="card">
-          <p className="text-muted">No updates yet. Add one above.</p>
-        </div>
-      ) : (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', marginBottom: '2rem' }}>
-          {updates.map((update) => (
-            <UpdateCard
-              key={update.id}
-              update={update}
-              projectId={projectId}
-            />
-          ))}
-        </div>
-      )}
-
       {/* All Linked Transactions */}
       {uniqueTransactions.length > 0 && (
-        <div className="card">
+        <div className="card mb-4">
           <h2 className="card-title">All Linked Transactions ({uniqueTransactions.length})</h2>
           <table className="table">
             <thead>
@@ -156,6 +144,34 @@ export default async function ProjectDetailPage({ params }: { params: Promise<{ 
           </table>
         </div>
       )}
+
+      {/* Add Update */}
+      <div className="card mb-4">
+        <h2 className="card-title">Add Update</h2>
+        <AddUpdateForm projectId={projectId} />
+      </div>
+
+      {/* Updates Feed */}
+      <h2 style={{ fontSize: '1.1rem', fontWeight: 600, marginBottom: '0.75rem' }}>
+        Updates {updates.length > 0 && <span className="text-muted" style={{ fontSize: '0.875rem', fontWeight: 400 }}>({updates.length})</span>}
+      </h2>
+
+      {updates.length === 0 ? (
+        <div className="card">
+          <p className="text-muted">No updates yet. Add one above.</p>
+        </div>
+      ) : (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', marginBottom: '2rem' }}>
+          {updates.map((update) => (
+            <UpdateCard
+              key={update.id}
+              update={update}
+              projectId={projectId}
+            />
+          ))}
+        </div>
+      )}
+
     </div>
   );
 }

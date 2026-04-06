@@ -9,10 +9,11 @@ export async function createProject(formData: FormData) {
   const name = formData.get('name') as string;
   const description = formData.get('description') as string | null;
   const status = (formData.get('status') as string) || 'TODO';
+  const type = (formData.get('type') as string) || null;
 
   if (!name) throw new Error('Name is required');
 
-  await db.insert(projects).values({ name, description: description || null, status });
+  await db.insert(projects).values({ name, description: description || null, status, type: type || null });
   revalidatePath('/projects');
 }
 
@@ -20,10 +21,11 @@ export async function updateProject(id: number, formData: FormData) {
   const name = formData.get('name') as string;
   const description = formData.get('description') as string | null;
   const status = formData.get('status') as string;
+  const type = (formData.get('type') as string) || null;
 
   if (!name) throw new Error('Name is required');
 
-  await db.update(projects).set({ name, description: description || null, status }).where(eq(projects.id, id));
+  await db.update(projects).set({ name, description: description || null, status, type: type || null }).where(eq(projects.id, id));
   revalidatePath('/projects');
   revalidatePath(`/projects/${id}`);
 }

@@ -149,6 +149,7 @@ export const projects = pgTable('projects', {
   name: text('name').notNull(),
   description: text('description'),
   status: text('status').notNull().default('TODO'),
+  type: text('type'),
   createdAt: timestamp('created_at').defaultNow().notNull(),
 });
 

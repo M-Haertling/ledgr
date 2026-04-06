@@ -1,24 +1,10 @@
 export const dynamic = 'force-dynamic';
 
 import { db } from '@/lib/db';
-import { projects, projectUpdates, projectUpdateTransactions, transactions } from '@/lib/db/schema';
-import { createProject, deleteProject } from '@/lib/actions/projects';
-import { desc, eq, sum, sql } from 'drizzle-orm';
-import Link from 'next/link';
-
-const STATUS_LABELS: Record<string, string> = {
-  TODO: 'TODO',
-  Planning: 'Planning',
-  Started: 'Started',
-  Finished: 'Finished',
-};
-
-const STATUS_COLORS: Record<string, string> = {
-  TODO: '#94a3b8',
-  Planning: '#3b82f6',
-  Started: '#f59e0b',
-  Finished: '#22c55e',
-};
+import { projects } from '@/lib/db/schema';
+import { createProject } from '@/lib/actions/projects';
+import { desc } from 'drizzle-orm';
+import ProjectsTable from './ProjectsTable';
 
 export default async function ProjectsPage() {
   const allProjects = await db.query.projects.findMany({
@@ -27,31 +13,46 @@ export default async function ProjectsPage() {
       updates: {
         with: {
           updateTransactions: {
-            with: {
-              transaction: true,
-            },
+            with: { transaction: true },
           },
         },
       },
     },
   });
 
-  const projectsWithStats = allProjects.map((project) => {
+  const projectRows = allProjects.map((project) => {
     let totalCost = 0;
-    let updateCount = project.updates.length;
     for (const update of project.updates) {
       for (const ut of update.updateTransactions) {
         totalCost += parseFloat(ut.transaction.amount);
       }
     }
-    return { ...project, totalCost, updateCount };
+
+    const startedDates = project.updates
+      .filter(u => u.newStatus === 'Started')
+      .map(u => new Date(u.date).getTime());
+    const finishedDates = project.updates
+      .filter(u => u.newStatus === 'Finished')
+      .map(u => new Date(u.date).getTime());
+
+    return {
+      id: project.id,
+      name: project.name,
+      description: project.description,
+      status: project.status,
+      type: project.type,
+      updateCount: project.updates.length,
+      totalCost,
+      startDate: startedDates.length > 0 ? new Date(Math.min(...startedDates)).toISOString() : null,
+      endDate: finishedDates.length > 0 ? new Date(Math.min(...finishedDates)).toISOString() : null,
+    };
   });
 
   return (
     <div>
       <h1 className="mb-4">Projects</h1>
 
-      <div className="card">
+      <div className="card mb-4">
         <h2 className="card-title">New Project</h2>
         <form action={createProject}>
           <div className="flex gap-4" style={{ flexWrap: 'wrap' }}>
@@ -85,6 +86,26 @@ export default async function ProjectsPage() {
                 <option value="Finished">Finished</option>
               </select>
             </div>
+            <div className="form-group" style={{ flex: '0 1 180px' }}>
+              <label htmlFor="type" className="form-label">Type</label>
+              <input
+                type="text"
+                id="type"
+                name="type"
+                className="form-input"
+                placeholder="e.g. Renovation"
+                list="new-type-suggestions"
+              />
+              <datalist id="new-type-suggestions">
+                <option value="Renovation" />
+                <option value="Repair" />
+                <option value="Upgrade" />
+                <option value="Landscaping" />
+                <option value="Maintenance" />
+                <option value="New Construction" />
+                <option value="Other" />
+              </datalist>
+            </div>
             <div className="flex items-center mt-4">
               <button type="submit" className="btn btn-primary">Add Project</button>
             </div>
@@ -92,47 +113,8 @@ export default async function ProjectsPage() {
         </form>
       </div>
 
-      <div className="list-container mt-4">
-        {projectsWithStats.length === 0 ? (
-          <div className="list-item">
-            <p className="text-muted">No projects yet. Add one above.</p>
-          </div>
-        ) : (
-          projectsWithStats.map((project) => (
-            <div key={project.id} className="list-item">
-              <div style={{ flex: 1, minWidth: 0 }}>
-                <div className="flex gap-2" style={{ alignItems: 'center', flexWrap: 'wrap' }}>
-                  <Link href={`/projects/${project.id}`} className="list-item-title" style={{ textDecoration: 'none', color: 'inherit' }}>
-                    {project.name}
-                  </Link>
-                  <span
-                    className="badge"
-                    style={{ backgroundColor: STATUS_COLORS[project.status] + '22', color: STATUS_COLORS[project.status], borderColor: STATUS_COLORS[project.status] + '44' }}
-                  >
-                    {STATUS_LABELS[project.status] ?? project.status}
-                  </span>
-                </div>
-                {project.description && (
-                  <p className="list-item-subtitle" style={{ marginTop: '0.25rem', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                    {project.description}
-                  </p>
-                )}
-                <div className="flex gap-4 mt-2" style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>
-                  <span>{project.updateCount} update{project.updateCount !== 1 ? 's' : ''}</span>
-                  <span>Total: ${project.totalCost.toFixed(2)}</span>
-                </div>
-              </div>
-              <div className="flex gap-2">
-                <Link href={`/projects/${project.id}`} className="btn btn-sm" style={{ border: '1px solid var(--border)' }}>
-                  View
-                </Link>
-                <form action={deleteProject.bind(null, project.id)}>
-                  <button type="submit" className="btn btn-danger btn-sm">Delete</button>
-                </form>
-              </div>
-            </div>
-          ))
-        )}
+      <div className="card">
+        <ProjectsTable projects={projectRows} />
       </div>
     </div>
   );

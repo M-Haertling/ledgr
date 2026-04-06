@@ -8,9 +8,11 @@ type Project = {
   name: string;
   description: string | null;
   status: string;
+  type: string | null;
 };
 
 const STATUS_OPTIONS = ['TODO', 'Planning', 'Started', 'Finished'];
+const TYPE_SUGGESTIONS = ['Renovation', 'Repair', 'Upgrade', 'Landscaping', 'Maintenance', 'New Construction', 'Other'];
 
 export default function EditProjectForm({ project }: { project: Project }) {
   const [editing, setEditing] = useState(false);
@@ -70,6 +72,20 @@ export default function EditProjectForm({ project }: { project: Project }) {
               <option key={s} value={s}>{s}</option>
             ))}
           </select>
+        </div>
+        <div className="form-group" style={{ flex: '0 1 180px', marginBottom: 0 }}>
+          <label className="form-label">Type</label>
+          <input
+            type="text"
+            name="type"
+            defaultValue={project.type ?? ''}
+            className="form-input"
+            placeholder="e.g. Renovation"
+            list="edit-type-suggestions"
+          />
+          <datalist id="edit-type-suggestions">
+            {TYPE_SUGGESTIONS.map(t => <option key={t} value={t} />)}
+          </datalist>
         </div>
       </div>
       <div className="flex gap-2">
