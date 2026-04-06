@@ -86,6 +86,52 @@ export async function GET(req: Request) {
       filename = 'rules.csv';
       break;
     }
+    case 'mappings': {
+      const rows = await db.query.mappings.findMany();
+      csv = toCsv(rows.map(r => ({
+        id: r.id,
+        account_id: r.accountId,
+        name: r.name,
+        config: JSON.stringify(r.config),
+        created_at: r.createdAt.toISOString(),
+      })));
+      filename = 'mappings.csv';
+      break;
+    }
+    case 'projects': {
+      const rows = await db.query.projects.findMany();
+      csv = toCsv(rows.map(r => ({
+        id: r.id,
+        name: r.name,
+        description: r.description,
+        status: r.status,
+        created_at: r.createdAt.toISOString(),
+      })));
+      filename = 'projects.csv';
+      break;
+    }
+    case 'project_updates': {
+      const rows = await db.query.projectUpdates.findMany();
+      csv = toCsv(rows.map(r => ({
+        id: r.id,
+        project_id: r.projectId,
+        content: r.content,
+        new_status: r.newStatus,
+        date: r.date.toISOString(),
+        created_at: r.createdAt.toISOString(),
+      })));
+      filename = 'project_updates.csv';
+      break;
+    }
+    case 'project_update_transactions': {
+      const rows = await db.query.projectUpdateTransactions.findMany();
+      csv = toCsv(rows.map(r => ({
+        update_id: r.updateId,
+        transaction_id: r.transactionId,
+      })));
+      filename = 'project_update_transactions.csv';
+      break;
+    }
     default:
       return NextResponse.json({ error: 'Unknown table' }, { status: 400 });
   }

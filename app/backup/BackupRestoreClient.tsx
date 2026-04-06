@@ -6,38 +6,41 @@ type TableDef = { key: string; label: string; description: string };
 
 const TABLE_ORDER = [
   'accounts', 'categories', 'tags', 'transactions', 'transaction_tags', 'rules',
+  'mappings', 'projects', 'project_updates', 'project_update_transactions',
 ];
 
 export default function BackupRestoreClient({ tables }: { tables: TableDef[] }) {
-  const [results, setResults] = useState<Record<string, { inserted: number; skipped: number } | { error: string }>>({});
-  const [loading, setLoading] = useState<Record<string, boolean>>({});
+  const [exportTable, setExportTable] = useState(tables[0]?.key ?? '');
+  const [restoreTable, setRestoreTable] = useState(tables[0]?.key ?? '');
+  const [restoreResult, setRestoreResult] = useState<{ inserted: number; skipped: number } | { error: string } | null>(null);
+  const [restoreLoading, setRestoreLoading] = useState(false);
+
   const [bulkLoading, setBulkLoading] = useState(false);
   const [bulkResults, setBulkResults] = useState<{ key: string; label: string; inserted: number; skipped: number }[] | null>(null);
   const [bulkError, setBulkError] = useState<string | null>(null);
 
-  const handleRestore = async (tableKey: string, file: File) => {
-    setLoading(prev => ({ ...prev, [tableKey]: true }));
-    setResults(prev => { const n = { ...prev }; delete n[tableKey]; return n; });
+  const handleRestore = async (file: File) => {
+    setRestoreLoading(true);
+    setRestoreResult(null);
 
     const formData = new FormData();
     formData.append('file', file);
 
     try {
-      const res = await fetch(`/api/restore?table=${tableKey}`, {
+      const res = await fetch(`/api/restore?table=${restoreTable}`, {
         method: 'POST',
         body: formData,
       });
       const data = await res.json();
-      setResults(prev => ({ ...prev, [tableKey]: data }));
+      setRestoreResult(data);
     } catch {
-      setResults(prev => ({ ...prev, [tableKey]: { error: 'Upload failed' } }));
+      setRestoreResult({ error: 'Upload failed' });
     } finally {
-      setLoading(prev => ({ ...prev, [tableKey]: false }));
+      setRestoreLoading(false);
     }
   };
 
   const handleBulkRestore = async (files: FileList) => {
-    // Map filenames to table keys
     const fileMap: Record<string, File> = {};
     for (let i = 0; i < files.length; i++) {
       const file = files[i];
@@ -47,7 +50,7 @@ export default function BackupRestoreClient({ tables }: { tables: TableDef[] }) 
 
     const found = TABLE_ORDER.filter(k => fileMap[k]);
     if (found.length === 0) {
-      setBulkError('No matching CSV files found. Expected filenames: accounts.csv, categories.csv, tags.csv, transactions.csv, transaction_tags.csv, rules.csv');
+      setBulkError(`No matching CSV files found. Expected filenames like: ${TABLE_ORDER.map(k => k + '.csv').join(', ')}`);
       return;
     }
 
@@ -86,6 +89,32 @@ export default function BackupRestoreClient({ tables }: { tables: TableDef[] }) 
 
   return (
     <>
+      {/* Individual export */}
+      <div className="card mb-4">
+        <h2 className="card-title">Export Individual Table</h2>
+        <p className="list-item-subtitle mb-4">
+          Download a single table as a CSV file.
+        </p>
+        <div className="flex gap-2 items-center" style={{ flexWrap: 'wrap' }}>
+          <select
+            value={exportTable}
+            onChange={e => setExportTable(e.target.value)}
+            className="form-select"
+          >
+            {tables.map(t => (
+              <option key={t.key} value={t.key}>{t.label}</option>
+            ))}
+          </select>
+          <a
+            href={`/api/backup?table=${exportTable}`}
+            download
+            className="btn btn-secondary btn-sm"
+          >
+            Download CSV
+          </a>
+        </div>
+      </div>
+
       {/* Bulk restore */}
       <div className="card mb-4">
         <h2 className="card-title">Bulk Import</h2>
@@ -125,48 +154,46 @@ export default function BackupRestoreClient({ tables }: { tables: TableDef[] }) 
         )}
       </div>
 
-      {/* Per-table restore */}
+      {/* Individual restore */}
       <div className="card">
         <h2 className="card-title">Restore Individual Table</h2>
         <p className="list-item-subtitle mb-4">
           Upload a single CSV file to restore one table. Existing records (same ID) are skipped.
-          Restore in order: Accounts → Categories → Tags → Transactions → Transaction Tags → Rules.
+          Restore in order: Accounts → Categories → Tags → Transactions → Transaction Tags → Rules → Mappings → Projects → Project Updates → Project Update Transactions.
         </p>
-        <div className="list-container">
-          {tables.map(t => {
-            const result = results[t.key];
-            const isLoading = loading[t.key];
-            return (
-              <div key={t.key} className="list-item" style={{ flexWrap: 'wrap', gap: '0.5rem' }}>
-                <div style={{ flex: 1, minWidth: '200px' }}>
-                  <div className="list-item-title">{t.label}</div>
-                  {result && !('error' in result) && (
-                    <div className="list-item-subtitle" style={{ color: '#10b981' }}>
-                      {result.inserted} imported, {result.skipped} skipped
-                    </div>
-                  )}
-                  {result && 'error' in result && (
-                    <div className="list-item-subtitle" style={{ color: '#ef4444' }}>{result.error}</div>
-                  )}
-                </div>
-                <label className={`btn btn-secondary btn-sm ${isLoading ? 'disabled' : ''}`} style={{ cursor: isLoading ? 'not-allowed' : 'pointer' }}>
-                  {isLoading ? 'Restoring…' : 'Upload CSV'}
-                  <input
-                    type="file"
-                    accept=".csv"
-                    style={{ display: 'none' }}
-                    disabled={isLoading}
-                    onChange={e => {
-                      const file = e.target.files?.[0];
-                      if (file) handleRestore(t.key, file);
-                      e.target.value = '';
-                    }}
-                  />
-                </label>
-              </div>
-            );
-          })}
+        <div className="flex gap-2 items-center mb-3" style={{ flexWrap: 'wrap' }}>
+          <select
+            value={restoreTable}
+            onChange={e => { setRestoreTable(e.target.value); setRestoreResult(null); }}
+            className="form-select"
+          >
+            {tables.map(t => (
+              <option key={t.key} value={t.key}>{t.label}</option>
+            ))}
+          </select>
+          <label className={`btn btn-secondary btn-sm ${restoreLoading ? 'disabled' : ''}`} style={{ cursor: restoreLoading ? 'not-allowed' : 'pointer' }}>
+            {restoreLoading ? 'Restoring…' : 'Upload CSV'}
+            <input
+              type="file"
+              accept=".csv"
+              style={{ display: 'none' }}
+              disabled={restoreLoading}
+              onChange={e => {
+                const file = e.target.files?.[0];
+                if (file) handleRestore(file);
+                e.target.value = '';
+              }}
+            />
+          </label>
         </div>
+        {restoreResult && !('error' in restoreResult) && (
+          <p style={{ fontSize: '0.875rem', color: '#10b981' }}>
+            {restoreResult.inserted} imported, {restoreResult.skipped} skipped
+          </p>
+        )}
+        {restoreResult && 'error' in restoreResult && (
+          <p style={{ fontSize: '0.875rem', color: '#ef4444' }}>{restoreResult.error}</p>
+        )}
       </div>
     </>
   );

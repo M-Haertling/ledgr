@@ -1,6 +1,7 @@
 import { db } from '@/lib/db';
 import {
-  accounts, categories, tags, transactions, transactionTags, categorizationRules, ruleTags
+  accounts, categories, tags, transactions, transactionTags, categorizationRules, ruleTags,
+  mappings, projects, projectUpdates, projectUpdateTransactions,
 } from '@/lib/db/schema';
 import { NextResponse } from 'next/server';
 
@@ -129,6 +130,56 @@ export async function POST(req: Request) {
         } else {
           skipped++;
         }
+      }
+      break;
+
+    case 'mappings':
+      for (const r of rows) {
+        await db.insert(mappings).values({
+          id: parseInt(r.id),
+          accountId: parseInt(r.account_id),
+          name: r.name,
+          config: JSON.parse(r.config),
+          createdAt: r.created_at ? new Date(r.created_at) : new Date(),
+        }).onConflictDoNothing();
+        inserted++;
+      }
+      break;
+
+    case 'projects':
+      for (const r of rows) {
+        await db.insert(projects).values({
+          id: parseInt(r.id),
+          name: r.name,
+          description: r.description || null,
+          status: r.status || 'TODO',
+          createdAt: r.created_at ? new Date(r.created_at) : new Date(),
+        }).onConflictDoNothing();
+        inserted++;
+      }
+      break;
+
+    case 'project_updates':
+      for (const r of rows) {
+        await db.insert(projectUpdates).values({
+          id: parseInt(r.id),
+          projectId: parseInt(r.project_id),
+          content: r.content,
+          newStatus: r.new_status || null,
+          date: new Date(r.date),
+          createdAt: r.created_at ? new Date(r.created_at) : new Date(),
+        }).onConflictDoNothing();
+        inserted++;
+      }
+      break;
+
+    case 'project_update_transactions':
+      for (const r of rows) {
+        await db.insert(projectUpdateTransactions).values({
+          updateId: parseInt(r.update_id),
+          transactionId: parseInt(r.transaction_id),
+        }).onConflictDoNothing();
+        inserted++;
       }
       break;
 
