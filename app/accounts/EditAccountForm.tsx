@@ -5,7 +5,7 @@ import ConfirmDeleteButton from '@/app/components/ConfirmDeleteButton';
 
 type Account = { id: number; name: string; type: string };
 
-const ROW_COLUMNS = 'minmax(0, 1fr) auto auto auto';
+const ROW_COLUMNS = 'minmax(0, 1fr) auto 160px auto';
 
 export default function EditAccountForm({
   account,
@@ -71,11 +71,26 @@ export default function EditAccountForm({
       <button className="btn btn-secondary btn-sm" onClick={() => setEditing(true)}>
         Rename
       </button>
-      <span className="text-muted" style={{ fontSize: '0.875rem', whiteSpace: 'nowrap' }}>
-        {lastTransactionDate
-          ? `Last transaction: ${lastTransactionDate.toLocaleDateString()}`
-          : 'No transactions'}
-      </span>
+      <div style={{
+        fontSize: '0.8rem',
+        textAlign: 'center',
+        padding: '0.3rem 0.625rem',
+        borderRadius: '6px',
+        background: 'var(--bg-secondary)',
+        color: 'var(--text-muted)',
+        whiteSpace: 'nowrap',
+      }}>
+        {lastTransactionDate ? (
+          <>
+            <div style={{ fontWeight: 500, color: 'var(--text-primary)', marginBottom: '0.1rem' }}>
+              {lastTransactionDate.toLocaleDateString()}
+            </div>
+            <div>last transaction</div>
+          </>
+        ) : (
+          'No transactions'
+        )}
+      </div>
       <ConfirmDeleteButton action={deleteAction} />
     </div>
   );

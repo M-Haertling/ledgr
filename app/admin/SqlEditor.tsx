@@ -9,6 +9,22 @@ type ExecutionResult = {
   error?: string;
 };
 
+const QUICK_TABLES = [
+  'transactions',
+  'accounts',
+  'categories',
+  'tags',
+  'transaction_tags',
+  'category_tags',
+  'categorization_rules',
+  'rule_tags',
+  'mappings',
+  'projects',
+  'project_updates',
+  'project_update_transactions',
+  '__drizzle_migrations',
+];
+
 export default function SqlEditor() {
   const [query, setQuery] = useState('SELECT * FROM transactions LIMIT 10;');
   const [result, setResult] = useState<ExecutionResult | null>(null);
@@ -44,6 +60,21 @@ export default function SqlEditor() {
   return (
     <div>
       <div className="card mb-4">
+        <div className="mb-3">
+          <label className="form-label" style={{ marginBottom: '0.5rem' }}>Quick Select</label>
+          <div className="flex gap-2" style={{ flexWrap: 'wrap' }}>
+            {QUICK_TABLES.map((table) => (
+              <button
+                key={table}
+                onClick={() => setQuery(`SELECT * FROM ${table} LIMIT 50;`)}
+                className="btn"
+                style={{ fontSize: '0.8rem', padding: '0.25rem 0.625rem' }}
+              >
+                {table}
+              </button>
+            ))}
+          </div>
+        </div>
         <div className="flex gap-2 mb-4 items-center">
           <label className="form-label" style={{ marginBottom: 0 }}>SQL Query</label>
           <span style={{ fontSize: '0.875rem', color: 'var(--text-muted)' }}>
