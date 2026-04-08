@@ -2,7 +2,7 @@ export const dynamic = 'force-dynamic';
 
 import { db } from '@/lib/db';
 import { transactions, categories, accounts, transactionTags } from '@/lib/db/schema';
-import { and, asc, eq, gte, lte, sql, inArray, exists, ne } from 'drizzle-orm';
+import { and, or, asc, eq, gte, lte, sql, inArray, exists, ne } from 'drizzle-orm';
 import Link from 'next/link';
 import SpendingIncomeChart from './SpendingIncomeChart';
 import CategoryPieChart from './CategoryPieChart';
@@ -64,21 +64,22 @@ export default async function ReportsPage({
     baseFilters.push(inArray(transactions.accountId, accountIds));
   }
 
-  if (categoryIds.length > 0) {
+  if (categoryIds.length > 0 && tagIds.length > 0) {
+    const tagExists = exists(
+      db.select().from(transactionTags).where(
+        and(eq(transactionTags.transactionId, transactions.id), inArray(transactionTags.tagId, tagIds))
+      )
+    );
+    const combined = or(inArray(transactions.categoryId, categoryIds), tagExists);
+    if (combined) baseFilters.push(combined);
+  } else if (categoryIds.length > 0) {
     baseFilters.push(inArray(transactions.categoryId, categoryIds));
-  }
-
-  if (tagIds.length > 0) {
+  } else if (tagIds.length > 0) {
     baseFilters.push(
       exists(
-        db.select()
-          .from(transactionTags)
-          .where(
-            and(
-              eq(transactionTags.transactionId, transactions.id),
-              inArray(transactionTags.tagId, tagIds)
-            )
-          )
+        db.select().from(transactionTags).where(
+          and(eq(transactionTags.transactionId, transactions.id), inArray(transactionTags.tagId, tagIds))
+        )
       )
     );
   }

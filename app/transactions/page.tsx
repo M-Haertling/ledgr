@@ -47,7 +47,6 @@ export default async function TransactionsPage({
   // Build filters
   const filters = [];
   if (accountIds.length > 0) filters.push(inArray(transactions.accountId, accountIds));
-  if (categoryIds.length > 0) filters.push(inArray(transactions.categoryId, categoryIds));
   if (uncategorized) filters.push(isNull(transactions.categoryId));
   if (search) {
     const searchPattern = patternToLike(search);
@@ -67,17 +66,22 @@ export default async function TransactionsPage({
     toEnd.setHours(23, 59, 59, 999);
     filters.push(lte(transactions.date, toEnd));
   }
-  if (tagIds.length > 0) {
+  if (categoryIds.length > 0 && tagIds.length > 0) {
+    const tagExists = exists(
+      db.select().from(transactionTags).where(
+        and(eq(transactionTags.transactionId, transactions.id), inArray(transactionTags.tagId, tagIds))
+      )
+    );
+    const combined = or(inArray(transactions.categoryId, categoryIds), tagExists);
+    if (combined) filters.push(combined);
+  } else if (categoryIds.length > 0) {
+    filters.push(inArray(transactions.categoryId, categoryIds));
+  } else if (tagIds.length > 0) {
     filters.push(
       exists(
-        db.select()
-          .from(transactionTags)
-          .where(
-            and(
-              eq(transactionTags.transactionId, transactions.id),
-              inArray(transactionTags.tagId, tagIds)
-            )
-          )
+        db.select().from(transactionTags).where(
+          and(eq(transactionTags.transactionId, transactions.id), inArray(transactionTags.tagId, tagIds))
+        )
       )
     );
   }
