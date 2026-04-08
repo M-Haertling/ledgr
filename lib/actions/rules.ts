@@ -1,7 +1,7 @@
 'use server';
 
 import { db } from '@/lib/db';
-import { categorizationRules, transactions, transactionTags, ruleTags } from '@/lib/db/schema';
+import { categorizationRules, transactions, transactionTags, ruleTags, categoryTags } from '@/lib/db/schema';
 import { eq, isNull, ilike, and } from 'drizzle-orm';
 import { revalidatePath } from 'next/cache';
 
@@ -82,6 +82,12 @@ export async function applySingleRule(id: number) {
   });
   if (!rule) return;
 
+  // Fetch tags auto-inherited from the rule's category (if any)
+  const catTags = rule.categoryId
+    ? await db.query.categoryTags.findMany({ where: eq(categoryTags.categoryId, rule.categoryId) })
+    : [];
+  const categoryTagIds = catTags.map(ct => ct.tagId);
+
   const allTransactions = await db.query.transactions.findMany();
   const regex = patternToRegex(rule.pattern);
 
@@ -95,9 +101,13 @@ export async function applySingleRule(id: number) {
         .where(eq(transactions.id, tx.id));
     }
 
-    for (const rt of rule.ruleTags) {
+    const tagIdsToApply = [...new Set([
+      ...rule.ruleTags.map(rt => rt.tagId),
+      ...categoryTagIds,
+    ])];
+    for (const tagId of tagIdsToApply) {
       await db.insert(transactionTags)
-        .values({ transactionId: tx.id, tagId: rt.tagId })
+        .values({ transactionId: tx.id, tagId })
         .onConflictDoNothing();
     }
   }
