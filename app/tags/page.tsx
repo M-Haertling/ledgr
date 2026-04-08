@@ -1,15 +1,26 @@
 export const dynamic = 'force-dynamic';
 
 import { db } from '@/lib/db';
-import { tags } from '@/lib/db/schema';
+import { tags, categories, categoryTags } from '@/lib/db/schema';
 import { createTag, deleteTag, updateTag } from '@/lib/actions/tags';
 import { desc } from 'drizzle-orm';
 import EditTagForm from './EditTagForm';
+import CategoryTagManager from './CategoryTagManager';
 
 export default async function TagsPage() {
-  const allTags = await db.query.tags.findMany({
-    orderBy: [desc(tags.createdAt)],
-  });
+  const [allTags, allCategories, allCategoryTags] = await Promise.all([
+    db.query.tags.findMany({ orderBy: [desc(tags.createdAt)] }),
+    db.select().from(categories).orderBy(categories.name),
+    db.select().from(categoryTags),
+  ]);
+
+  // Build a map of tagId -> categoryIds
+  const tagCategoryMap = new Map<number, number[]>();
+  for (const ct of allCategoryTags) {
+    const existing = tagCategoryMap.get(ct.tagId) ?? [];
+    existing.push(ct.categoryId);
+    tagCategoryMap.set(ct.tagId, existing);
+  }
 
   return (
     <div>
@@ -44,12 +55,20 @@ export default async function TagsPage() {
           </div>
         ) : (
           allTags.map((tag) => (
-            <div key={tag.id} className="list-item">
-              <EditTagForm tag={tag} updateAction={updateTag.bind(null, tag.id)} />
-              <div className="flex gap-2">
+            <div key={tag.id} className="list-item" style={{ flexDirection: 'column', alignItems: 'flex-start', gap: '0.5rem' }}>
+              <div className="flex w-full" style={{ justifyContent: 'space-between', alignItems: 'center' }}>
+                <EditTagForm tag={tag} updateAction={updateTag.bind(null, tag.id)} />
                 <form action={deleteTag.bind(null, tag.id)}>
                   <button type="submit" className="btn btn-danger btn-sm">Delete</button>
                 </form>
+              </div>
+              <div className="flex items-center gap-2" style={{ paddingLeft: '0.25rem' }}>
+                <span className="text-muted text-sm" style={{ whiteSpace: 'nowrap' }}>Auto-tag categories:</span>
+                <CategoryTagManager
+                  tagId={tag.id}
+                  allCategories={allCategories}
+                  linkedCategoryIds={tagCategoryMap.get(tag.id) ?? []}
+                />
               </div>
             </div>
           ))

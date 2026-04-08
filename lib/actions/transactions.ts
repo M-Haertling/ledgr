@@ -1,7 +1,7 @@
 'use server';
 
 import { db } from '@/lib/db';
-import { transactions, transactionTags } from '@/lib/db/schema';
+import { transactions, transactionTags, categoryTags } from '@/lib/db/schema';
 import { eq, inArray, sql, notInArray, and, isNull, or } from 'drizzle-orm';
 import { revalidatePath } from 'next/cache';
 
@@ -9,6 +9,21 @@ export async function updateTransactionCategory(transactionId: number, categoryI
   await db.update(transactions)
     .set({ categoryId })
     .where(eq(transactions.id, transactionId));
+
+  // Auto-apply tags linked to the new category
+  if (categoryId !== null) {
+    const linkedTags = await db
+      .select({ tagId: categoryTags.tagId })
+      .from(categoryTags)
+      .where(eq(categoryTags.categoryId, categoryId));
+
+    if (linkedTags.length > 0) {
+      await db.insert(transactionTags)
+        .values(linkedTags.map(({ tagId }) => ({ transactionId, tagId })))
+        .onConflictDoNothing();
+    }
+  }
+
   revalidatePath('/transactions');
 }
 

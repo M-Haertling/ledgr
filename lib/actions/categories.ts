@@ -1,7 +1,7 @@
 'use server';
 
 import { db } from '@/lib/db';
-import { categories, transactions, categorizationRules } from '@/lib/db/schema';
+import { categories, transactions, categorizationRules, categoryTags } from '@/lib/db/schema';
 import { eq } from 'drizzle-orm';
 import { revalidatePath } from 'next/cache';
 
@@ -41,6 +41,8 @@ export async function deleteCategory(id: number, formData: FormData) {
   await db.update(transactions).set({ categoryId: null }).where(eq(transactions.categoryId, id));
   // Remove any rules that reference this category
   await db.delete(categorizationRules).where(eq(categorizationRules.categoryId, id));
+  // Remove category-tag associations (also covered by ON DELETE CASCADE)
+  await db.delete(categoryTags).where(eq(categoryTags.categoryId, id));
   await db.delete(categories).where(eq(categories.id, id));
   revalidatePath('/categories');
   revalidatePath('/transactions');

@@ -2,7 +2,7 @@ export const dynamic = 'force-dynamic';
 
 import { db } from '@/lib/db';
 import { categorizationRules } from '@/lib/db/schema';
-import { createRule, updateRule, deleteRule, applyRulesToUncategorized, applyTagRulesToUntagged } from '@/lib/actions/rules';
+import { createRule, updateRule, deleteRule, applyRulesToUncategorized, applyRulesToAll } from '@/lib/actions/rules';
 import { desc, asc, ilike, and, eq, isNull } from 'drizzle-orm';
 import EditRuleForm from './EditRuleForm';
 import AddRuleForm from './AddRuleForm';
@@ -72,10 +72,10 @@ export default async function AutomationPage({
         <div className="flex gap-2">
           <form action={async () => {
             'use server';
-            await applyTagRulesToUntagged();
+            await applyRulesToAll();
           }}>
             <button type="submit" className="btn btn-secondary">
-              Apply to Untagged
+              Apply to All
             </button>
           </form>
           <form action={async () => {

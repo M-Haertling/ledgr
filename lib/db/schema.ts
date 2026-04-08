@@ -23,6 +23,7 @@ export const categories = pgTable('categories', {
 
 export const categoriesRelations = relations(categories, ({ many }) => ({
   transactions: many(transactions),
+  categoryTags: many(categoryTags),
 }));
 
 export const transactions = pgTable('transactions', {
@@ -67,6 +68,7 @@ export const tags = pgTable('tags', {
 export const tagsRelations = relations(tags, ({ many }) => ({
   transactionTags: many(transactionTags),
   ruleTags: many(ruleTags),
+  categoryTags: many(categoryTags),
 }));
 
 export const transactionTags = pgTable('transaction_tags', {
@@ -83,6 +85,24 @@ export const transactionTagsRelations = relations(transactionTags, ({ one }) => 
   }),
   tag: one(tags, {
     fields: [transactionTags.tagId],
+    references: [tags.id],
+  }),
+}));
+
+export const categoryTags = pgTable('category_tags', {
+  categoryId: integer('category_id').references(() => categories.id, { onDelete: 'cascade' }).notNull(),
+  tagId: integer('tag_id').references(() => tags.id, { onDelete: 'cascade' }).notNull(),
+}, (table) => [
+  { pk: [table.categoryId, table.tagId] }
+]);
+
+export const categoryTagsRelations = relations(categoryTags, ({ one }) => ({
+  category: one(categories, {
+    fields: [categoryTags.categoryId],
+    references: [categories.id],
+  }),
+  tag: one(tags, {
+    fields: [categoryTags.tagId],
     references: [tags.id],
   }),
 }));

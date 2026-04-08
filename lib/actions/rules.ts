@@ -2,7 +2,7 @@
 
 import { db } from '@/lib/db';
 import { categorizationRules, transactions, transactionTags, ruleTags } from '@/lib/db/schema';
-import { eq, isNull, ilike, and, notExists } from 'drizzle-orm';
+import { eq, isNull, ilike, and } from 'drizzle-orm';
 import { revalidatePath } from 'next/cache';
 
 function patternToRegex(pattern: string): RegExp {
@@ -129,38 +129,51 @@ export async function applyRulesToUncategorized() {
   return updatedCount;
 }
 
-export async function applyTagRulesToUntagged() {
+export async function applyRulesToAll() {
   const rules = await db.query.categorizationRules.findMany({
     with: { ruleTags: { with: { tag: true } } },
     orderBy: (r, { desc, asc }) => [desc(r.priority), asc(r.id)],
   });
 
+  const categoryRules = rules.filter(r => r.categoryId);
   const tagRules = rules.filter(r => r.ruleTags.length > 0);
 
-  // Transactions with no tags
-  const untagged = await db.query.transactions.findMany({
-    where: notExists(
-      db.select()
-        .from(transactionTags)
-        .where(eq(transactionTags.transactionId, transactions.id))
-    ),
-  });
+  const allTransactions = await db.query.transactions.findMany();
 
   let updatedCount = 0;
-  for (const tx of untagged) {
+  for (const tx of allTransactions) {
     let matched = false;
-    for (const rule of tagRules) {
+
+    // Apply first-match category rule (overwrite existing)
+    for (const rule of categoryRules) {
       if (rule.accountId && rule.accountId !== tx.accountId) continue;
       const regex = patternToRegex(rule.pattern);
       if (!regex.test(tx.description)) continue;
 
-      for (const rt of rule.ruleTags) {
+      await db.update(transactions)
+        .set({ categoryId: rule.categoryId })
+        .where(eq(transactions.id, tx.id));
+      matched = true;
+      break;
+    }
+
+    // Apply ALL matching tag rules (overwrite: clear then re-add)
+    const matchingTagRules = tagRules.filter(rule => {
+      if (rule.accountId && rule.accountId !== tx.accountId) return false;
+      return patternToRegex(rule.pattern).test(tx.description);
+    });
+
+    if (matchingTagRules.length > 0) {
+      await db.delete(transactionTags).where(eq(transactionTags.transactionId, tx.id));
+      const tagIdsToAdd = [...new Set(matchingTagRules.flatMap(r => r.ruleTags.map(rt => rt.tagId)))];
+      if (tagIdsToAdd.length > 0) {
         await db.insert(transactionTags)
-          .values({ transactionId: tx.id, tagId: rt.tagId })
+          .values(tagIdsToAdd.map(tagId => ({ transactionId: tx.id, tagId })))
           .onConflictDoNothing();
       }
       matched = true;
     }
+
     if (matched) updatedCount++;
   }
 

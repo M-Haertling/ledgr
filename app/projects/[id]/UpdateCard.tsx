@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useTransition } from 'react';
-import { updateProjectUpdate, deleteProjectUpdate } from '@/lib/actions/projects';
+import { updateProjectUpdate, deleteProjectUpdate, unlinkTransaction } from '@/lib/actions/projects';
 import TransactionPicker from './TransactionPicker';
 
 const STATUS_OPTIONS = ['', 'TODO', 'Planning', 'Started', 'Finished'];
@@ -155,6 +155,9 @@ export default function UpdateCard({ update, projectId }: { update: Update; proj
                 <span style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{transaction.description}</span>
                 <span style={{ color: 'var(--text-muted)' }}>{transaction.account.name}</span>
                 <span style={{ fontWeight: 600 }}>${parseFloat(transaction.amount).toFixed(2)}</span>
+                <form action={unlinkTransaction.bind(null, update.id, transaction.id)}>
+                  <button type="submit" className="btn btn-danger btn-sm" style={{ padding: '0.1rem 0.4rem', fontSize: '0.75rem' }} title="Remove">✕</button>
+                </form>
               </div>
             ))}
           </div>

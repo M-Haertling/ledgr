@@ -1,7 +1,7 @@
 'use server';
 
 import { db } from '@/lib/db';
-import { tags, transactionTags } from '@/lib/db/schema';
+import { tags, transactions, transactionTags, categoryTags } from '@/lib/db/schema';
 import { eq, and } from 'drizzle-orm';
 import { revalidatePath } from 'next/cache';
 
@@ -20,11 +20,12 @@ export async function createTag(formData: FormData) {
 }
 
 export async function deleteTag(id: number, formData: FormData) {
-  // First delete relationships
+  // category_tags and transaction_tags both have ON DELETE CASCADE via FK,
+  // but delete explicitly to be safe with any non-cascading setups
   await db.delete(transactionTags).where(eq(transactionTags.tagId, id));
-  // Then delete tag
+  await db.delete(categoryTags).where(eq(categoryTags.tagId, id));
   await db.delete(tags).where(eq(tags.id, id));
-  
+
   revalidatePath('/tags');
   revalidatePath('/transactions');
 }
@@ -65,5 +66,32 @@ export async function updateTag(id: number, formData: FormData) {
   }
 
   await db.update(tags).set({ name }).where(eq(tags.id, id));
+  revalidatePath('/tags');
+}
+
+export async function attachTagToCategory(tagId: number, categoryId: number) {
+  await db.insert(categoryTags).values({ tagId, categoryId }).onConflictDoNothing();
+
+  // Backfill all existing transactions already assigned to this category
+  const existing = await db
+    .select({ id: transactions.id })
+    .from(transactions)
+    .where(eq(transactions.categoryId, categoryId));
+
+  if (existing.length > 0) {
+    await db.insert(transactionTags)
+      .values(existing.map(({ id }) => ({ transactionId: id, tagId })))
+      .onConflictDoNothing();
+  }
+
+  revalidatePath('/tags');
+  revalidatePath('/transactions');
+}
+
+export async function detachTagFromCategory(tagId: number, categoryId: number) {
+  await db.delete(categoryTags).where(and(
+    eq(categoryTags.tagId, tagId),
+    eq(categoryTags.categoryId, categoryId)
+  ));
   revalidatePath('/tags');
 }
