@@ -6,6 +6,7 @@ import { createCategory, deleteCategory, updateCategory } from '@/lib/actions/ca
 import { asc } from 'drizzle-orm';
 import EditCategoryForm from './EditCategoryForm';
 import AddCategoryForm from './AddCategoryForm';
+import ConfirmDeleteButton from '@/app/components/ConfirmDeleteButton';
 
 export default async function CategoriesPage() {
   const allCategories = await db.query.categories.findMany({
@@ -36,9 +37,7 @@ export default async function CategoriesPage() {
                 updateAction={updateCategory.bind(null, category.id)}
               />
               <div className="flex gap-2">
-                <form action={deleteCategory.bind(null, category.id)}>
-                  <button type="submit" className="btn btn-danger btn-sm">Delete</button>
-                </form>
+                <ConfirmDeleteButton action={deleteCategory.bind(null, category.id)} />
               </div>
             </div>
           ))

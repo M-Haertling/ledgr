@@ -3,6 +3,7 @@
 import { useState, useMemo, useRef, useEffect } from 'react';
 import Link from 'next/link';
 import { deleteProject } from '@/lib/actions/projects';
+import ConfirmDeleteButton from '@/app/components/ConfirmDeleteButton';
 
 const STATUS_COLORS: Record<string, string> = {
   TODO: '#94a3b8',
@@ -275,9 +276,7 @@ export default function ProjectsTable({ projects }: { projects: ProjectRow[] }) 
                         <Link href={`/projects/${p.id}`} className="btn btn-sm" style={{ border: '1px solid var(--border)' }}>
                           View
                         </Link>
-                        <form action={deleteProject.bind(null, p.id)}>
-                          <button type="submit" className="btn btn-danger btn-sm">Delete</button>
-                        </form>
+                        <ConfirmDeleteButton action={deleteProject.bind(null, p.id)} />
                       </div>
                     </td>
                   </tr>

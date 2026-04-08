@@ -6,6 +6,7 @@ import { createTag, deleteTag, updateTag } from '@/lib/actions/tags';
 import { desc } from 'drizzle-orm';
 import EditTagForm from './EditTagForm';
 import CategoryTagManager from './CategoryTagManager';
+import ConfirmDeleteButton from '@/app/components/ConfirmDeleteButton';
 
 export default async function TagsPage() {
   const [allTags, allCategories, allCategoryTags] = await Promise.all([
@@ -58,9 +59,7 @@ export default async function TagsPage() {
             <div key={tag.id} className="list-item" style={{ flexDirection: 'column', alignItems: 'flex-start', gap: '0.5rem' }}>
               <div className="flex w-full" style={{ justifyContent: 'space-between', alignItems: 'center' }}>
                 <EditTagForm tag={tag} updateAction={updateTag.bind(null, tag.id)} />
-                <form action={deleteTag.bind(null, tag.id)}>
-                  <button type="submit" className="btn btn-danger btn-sm">Delete</button>
-                </form>
+                <ConfirmDeleteButton action={deleteTag.bind(null, tag.id)} />
               </div>
               <div className="flex items-center gap-2" style={{ paddingLeft: '0.25rem' }}>
                 <span className="text-muted text-sm" style={{ whiteSpace: 'nowrap' }}>Auto-tag categories:</span>

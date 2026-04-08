@@ -2,7 +2,8 @@ export const dynamic = 'force-dynamic';
 
 import { db } from '@/lib/db';
 import { categorizationRules } from '@/lib/db/schema';
-import { createRule, updateRule, deleteRule, applyRulesToUncategorized, applyRulesToAll } from '@/lib/actions/rules';
+import { createRule, updateRule, deleteRule, applyRulesToUncategorized, applyRulesToAll, applySingleRule } from '@/lib/actions/rules';
+import ConfirmDeleteButton from '@/app/components/ConfirmDeleteButton';
 import { desc, asc, ilike, and, eq, isNull } from 'drizzle-orm';
 import EditRuleForm from './EditRuleForm';
 import AddRuleForm from './AddRuleForm';
@@ -165,9 +166,11 @@ export default async function AutomationPage({
                     updateAction={updateRule.bind(null, rule.id)}
                   />
                   <div className="flex gap-2" style={{ flexShrink: 0 }}>
-                    <form action={deleteRule.bind(null, rule.id)}>
-                      <button type="submit" className="btn btn-danger btn-sm">Delete</button>
+                    <form action={applySingleRule.bind(null, rule.id)}>
+                      <button type="submit" className="btn btn-secondary btn-sm">Run</button>
                     </form>
+                    <div style={{ width: '1.5rem' }} />
+                    <ConfirmDeleteButton action={deleteRule.bind(null, rule.id)} />
                   </div>
                 </div>
               ))}

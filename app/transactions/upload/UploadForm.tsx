@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { deleteTemplate } from '@/lib/actions/mappings';
+import ConfirmDeleteButton from '@/app/components/ConfirmDeleteButton';
 
 type AmountMode = 'single' | 'split';
 type UploadResult = { imported: number; skipped: number; failed: number };
@@ -68,13 +69,11 @@ export default function UploadForm({ accounts, templates: initialTemplates }: { 
     }
   }, [selectedTemplateId, templates]);
 
-  const handleDeleteTemplate = async (templateId: number, templateName: string) => {
-    if (confirm(`Delete template "${templateName}"?`)) {
-      await deleteTemplate(templateId);
-      setTemplates(templates.filter(t => t.id !== templateId));
-      setSelectedTemplateId('');
-      clearFormState();
-    }
+  const handleDeleteTemplate = async (templateId: number) => {
+    await deleteTemplate(templateId);
+    setTemplates(templates.filter(t => t.id !== templateId));
+    setSelectedTemplateId('');
+    clearFormState();
   };
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -176,17 +175,14 @@ export default function UploadForm({ accounts, templates: initialTemplates }: { 
                 ))}
               </select>
               {selectedTemplateId && (
-                <button
-                  type="button"
-                  className="btn btn-secondary"
+                <ConfirmDeleteButton
+                  className="btn btn-danger"
+                  style={{ marginTop: '0.25rem' }}
                   onClick={() => {
                     const template = accountTemplates.find(t => t.id.toString() === selectedTemplateId);
-                    if (template) handleDeleteTemplate(template.id, template.name);
+                    if (template) handleDeleteTemplate(template.id);
                   }}
-                  style={{ marginTop: '0.25rem' }}
-                >
-                  Delete
-                </button>
+                />
               )}
             </div>
           </div>
@@ -309,7 +305,7 @@ export default function UploadForm({ accounts, templates: initialTemplates }: { 
             </div>
 
             <div className="mt-4">
-              <h4 className="mb-2">Preview (First 3 rows)</h4>
+              <h4 className="mb-2">Input Preview</h4>
               <div className="table-container">
                 <table className="table">
                   <thead>
@@ -325,6 +321,52 @@ export default function UploadForm({ accounts, templates: initialTemplates }: { 
                         {row.map((cell, j) => (
                           <td key={j}>{cell}</td>
                         ))}
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+            <div className="mt-4">
+              <h4 className="mb-2">Output Preview</h4>
+              <div className="table-container">
+                <table className="table">
+                  <thead>
+                    <tr>
+                      <th>Date</th>
+                      <th>Description</th>
+                      {amountMode === 'single' ? (
+                        <>
+                          <th>Amount</th>
+                          <th>Is Credit</th>
+                        </>
+                      ) : (
+                        <>
+                          <th>Credit</th>
+                          <th>Debit</th>
+                        </>
+                      )}
+                      <th>Category</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {csvData.slice(1, 4).map((row, i) => (
+                      <tr key={i}>
+                        <td>{mapping.date !== undefined ? row[mapping.date] : <span className="list-item-subtitle">(unmapped)</span>}</td>
+                        <td>{mapping.description !== undefined ? row[mapping.description] : <span className="list-item-subtitle">(unmapped)</span>}</td>
+                        {amountMode === 'single' ? (
+                          <>
+                            <td>{mapping.amount !== undefined ? row[mapping.amount] : <span className="list-item-subtitle">(unmapped)</span>}</td>
+                            <td>{mapping.isCredit !== undefined ? row[mapping.isCredit] : <span className="list-item-subtitle">(unmapped)</span>}</td>
+                          </>
+                        ) : (
+                          <>
+                            <td>{mapping.credit !== undefined ? row[mapping.credit] : <span className="list-item-subtitle">(unmapped)</span>}</td>
+                            <td>{mapping.debit !== undefined ? row[mapping.debit] : <span className="list-item-subtitle">(unmapped)</span>}</td>
+                          </>
+                        )}
+                        <td>{mapping.category !== undefined ? row[mapping.category] : <span className="list-item-subtitle">(unmapped)</span>}</td>
                       </tr>
                     ))}
                   </tbody>

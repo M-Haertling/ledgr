@@ -75,6 +75,37 @@ export async function deleteRule(id: number, formData: FormData) {
   revalidatePath('/automation');
 }
 
+export async function applySingleRule(id: number) {
+  const rule = await db.query.categorizationRules.findFirst({
+    where: eq(categorizationRules.id, id),
+    with: { ruleTags: { with: { tag: true } } },
+  });
+  if (!rule) return;
+
+  const allTransactions = await db.query.transactions.findMany();
+  const regex = patternToRegex(rule.pattern);
+
+  for (const tx of allTransactions) {
+    if (rule.accountId && rule.accountId !== tx.accountId) continue;
+    if (!regex.test(tx.description)) continue;
+
+    if (rule.categoryId) {
+      await db.update(transactions)
+        .set({ categoryId: rule.categoryId })
+        .where(eq(transactions.id, tx.id));
+    }
+
+    for (const rt of rule.ruleTags) {
+      await db.insert(transactionTags)
+        .values({ transactionId: tx.id, tagId: rt.tagId })
+        .onConflictDoNothing();
+    }
+  }
+
+  revalidatePath('/transactions');
+  revalidatePath('/automation');
+}
+
 export async function applyRulesToUncategorized() {
   const rules = await db.query.categorizationRules.findMany({
     with: { ruleTags: { with: { tag: true } } },

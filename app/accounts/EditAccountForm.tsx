@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import ConfirmDeleteButton from '@/app/components/ConfirmDeleteButton';
 
 type Account = { id: number; name: string; type: string };
 
@@ -75,9 +76,7 @@ export default function EditAccountForm({
           ? `Last transaction: ${lastTransactionDate.toLocaleDateString()}`
           : 'No transactions'}
       </span>
-      <form action={deleteAction}>
-        <button type="submit" className="btn btn-danger btn-sm">Delete</button>
-      </form>
+      <ConfirmDeleteButton action={deleteAction} />
     </div>
   );
 }
