@@ -6,13 +6,11 @@ type Option = { id: number; name: string; color?: string | null };
 
 export default function AddRuleForm({
   allCategories,
-  allTags,
   allAccounts,
   allRuleTypes,
   createAction,
 }: {
   allCategories: Option[];
-  allTags: Option[];
   allAccounts: Option[];
   allRuleTypes: string[];
   createAction: (formData: FormData) => Promise<void>;
@@ -69,19 +67,6 @@ export default function AddRuleForm({
             ))}
           </select>
         </div>
-        {allTags.length > 0 && (
-          <div className="form-group w-full">
-            <label className="form-label">Apply Tags (Optional — select multiple)</label>
-            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem', marginTop: '0.25rem' }}>
-              {allTags.map(tag => (
-                <label key={tag.id} style={{ display: 'flex', alignItems: 'center', gap: '0.375rem', cursor: 'pointer', fontSize: '0.875rem' }}>
-                  <input type="checkbox" name="tagIds" value={tag.id} />
-                  #{tag.name}
-                </label>
-              ))}
-            </div>
-          </div>
-        )}
         <div className="form-group" style={{ width: '150px' }}>
           <label className="form-label">Priority (category rules)</label>
           <input type="number" name="priority" className="form-input" defaultValue="0" />

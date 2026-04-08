@@ -29,14 +29,12 @@ export default async function AutomationPage({
     with: {
       category: true,
       account: true,
-      ruleTags: { with: { tag: true } },
     },
     where: whereConditions.length > 0 ? and(...whereConditions) : undefined,
     orderBy: [desc(categorizationRules.priority), asc(categorizationRules.id)],
   });
 
   const allCategories = await db.query.categories.findMany();
-  const allTags = await db.query.tags.findMany();
   const allAccounts = await db.query.accounts.findMany();
 
   // Collect distinct rule types for filter and autocomplete
@@ -93,12 +91,10 @@ export default async function AutomationPage({
       <div className="card mb-4">
         <h2 className="card-title">Add New Rule</h2>
         <p className="list-item-subtitle mb-3">
-          Use <code>*</code> as a wildcard (e.g. <code>AMAZON*</code>). At least one of Category or Tag must be selected.
-          Tag rules apply to <em>all</em> matches; category rules apply to the <em>first</em> match by priority.
+          Use <code>*</code> as a wildcard (e.g. <code>AMAZON*</code>). Category rules apply to the <em>first</em> match by priority.
         </p>
         <AddRuleForm
           allCategories={allCategories}
-          allTags={allTags}
           allAccounts={allAccounts}
           allRuleTypes={allRuleTypes}
           createAction={createRule}
@@ -160,7 +156,6 @@ export default async function AutomationPage({
                   <EditRuleForm
                     rule={rule}
                     allCategories={allCategories}
-                    allTags={allTags}
                     allAccounts={allAccounts}
                     allRuleTypes={allRuleTypes}
                     updateAction={updateRule.bind(null, rule.id)}

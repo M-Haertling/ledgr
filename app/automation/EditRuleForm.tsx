@@ -3,7 +3,6 @@
 import { useState } from 'react';
 
 type Option = { id: number; name: string; color?: string | null };
-type RuleTag = { tagId: number; tag: { id: number; name: string } };
 type Rule = {
   id: number;
   pattern: string;
@@ -13,27 +12,22 @@ type Rule = {
   accountId: number | null;
   category: { id: number; name: string; color: string | null } | null;
   account: { id: number; name: string } | null;
-  ruleTags: RuleTag[];
 };
 
 export default function EditRuleForm({
   rule,
   allCategories,
-  allTags,
   allAccounts,
   allRuleTypes,
   updateAction,
 }: {
   rule: Rule;
   allCategories: Option[];
-  allTags: Option[];
   allAccounts: Option[];
   allRuleTypes: string[];
   updateAction: (formData: FormData) => Promise<void>;
 }) {
   const [editing, setEditing] = useState(false);
-  const currentTagIds = new Set(rule.ruleTags.map(rt => rt.tagId));
-  const isTagOnly = !rule.categoryId && rule.ruleTags.length > 0;
 
   if (!editing) {
     return (
@@ -55,14 +49,7 @@ export default function EditRuleForm({
               {rule.category.name}
             </span>
           )}
-          {rule.ruleTags.map(rt => (
-            <span key={rt.tagId} className="badge" style={{ borderColor: 'var(--border)' }}>
-              #{rt.tag.name}
-            </span>
-          ))}
-          {!isTagOnly && (
-            <span className="list-item-subtitle">Priority: {rule.priority}</span>
-          )}
+          <span className="list-item-subtitle">Priority: {rule.priority}</span>
           <button className="btn btn-secondary btn-sm" onClick={() => setEditing(true)}>
             Edit
           </button>
@@ -123,24 +110,6 @@ export default function EditRuleForm({
             ))}
           </select>
         </div>
-        {allTags.length > 0 && (
-          <div className="form-group" style={{ marginBottom: 0, minWidth: '200px', flex: 2 }}>
-            <label className="form-label">Tags</label>
-            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem', marginTop: '0.25rem' }}>
-              {allTags.map(tag => (
-                <label key={tag.id} style={{ display: 'flex', alignItems: 'center', gap: '0.375rem', cursor: 'pointer', fontSize: '0.875rem' }}>
-                  <input
-                    type="checkbox"
-                    name="tagIds"
-                    value={tag.id}
-                    defaultChecked={currentTagIds.has(tag.id)}
-                  />
-                  #{tag.name}
-                </label>
-              ))}
-            </div>
-          </div>
-        )}
         <div className="form-group" style={{ marginBottom: 0, width: '90px' }}>
           <label className="form-label">Priority</label>
           <input
