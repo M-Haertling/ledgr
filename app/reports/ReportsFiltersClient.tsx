@@ -11,6 +11,7 @@ type ReportsFiltersClientProps = {
   initialAccountIds: string[];
   initialCategoryIds: string[];
   initialTagIds: string[];
+  initialIncludeUncategorized: boolean;
   accounts: { id: number; name: string }[];
   categories: { id: number; name: string; color: string | null }[];
   tags: { id: number; name: string }[];
@@ -23,6 +24,7 @@ export default function ReportsFiltersClient({
   initialAccountIds,
   initialCategoryIds,
   initialTagIds,
+  initialIncludeUncategorized,
   accounts,
   categories,
   tags,
@@ -30,6 +32,7 @@ export default function ReportsFiltersClient({
   const [accountIds, setAccountIds] = useState<string[]>(initialAccountIds);
   const [categoryIds, setCategoryIds] = useState<string[]>(initialCategoryIds);
   const [tagIds, setTagIds] = useState<string[]>(initialTagIds);
+  const [includeUncategorized, setIncludeUncategorized] = useState<boolean>(initialIncludeUncategorized);
 
   const router = useRouter();
 
@@ -45,6 +48,10 @@ export default function ReportsFiltersClient({
     setTagIds(initialTagIds);
   }, [initialTagIds.join(',')]);
 
+  useEffect(() => {
+    setIncludeUncategorized(initialIncludeUncategorized);
+  }, [initialIncludeUncategorized]);
+
   const handleApply = () => {
     const params = new URLSearchParams();
     params.set('preset', preset);
@@ -53,6 +60,7 @@ export default function ReportsFiltersClient({
     if (accountIds.length) params.set('accountIds', accountIds.join(','));
     if (categoryIds.length) params.set('categoryIds', categoryIds.join(','));
     if (tagIds.length) params.set('tagIds', tagIds.join(','));
+    if (!includeUncategorized) params.set('includeUncategorized', 'false');
     router.push(`/reports?${params.toString()}`);
   };
 
@@ -60,6 +68,7 @@ export default function ReportsFiltersClient({
     setAccountIds([]);
     setCategoryIds([]);
     setTagIds([]);
+    setIncludeUncategorized(true);
     const params = new URLSearchParams();
     params.set('preset', preset);
     if (preset === 'custom' && fromStr) params.set('from', fromStr);
@@ -67,7 +76,7 @@ export default function ReportsFiltersClient({
     router.push(`/reports?${params.toString()}`);
   };
 
-  const hasFilters = accountIds.length > 0 || categoryIds.length > 0 || tagIds.length > 0;
+  const hasFilters = accountIds.length > 0 || categoryIds.length > 0 || tagIds.length > 0 || !includeUncategorized;
 
   return (
     <div className="flex gap-2 items-center" style={{ flexWrap: 'wrap' }}>
@@ -99,6 +108,14 @@ export default function ReportsFiltersClient({
         onChange={setTagIds}
         basePath="/reports"
       />
+      <label style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', cursor: 'pointer', fontSize: '0.875rem' }}>
+        <input
+          type="checkbox"
+          checked={includeUncategorized}
+          onChange={e => setIncludeUncategorized(e.target.checked)}
+        />
+        Include uncategorized
+      </label>
       <button type="button" className="btn btn-primary btn-sm" onClick={handleApply}>
         Apply Filters
       </button>

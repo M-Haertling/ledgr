@@ -2,7 +2,7 @@ export const dynamic = 'force-dynamic';
 
 import { db } from '@/lib/db';
 import { transactions, categories, accounts, transactionTags } from '@/lib/db/schema';
-import { and, or, asc, eq, gte, lte, sql, inArray, exists, ne } from 'drizzle-orm';
+import { and, or, asc, eq, gte, lte, sql, inArray, exists, ne, isNotNull } from 'drizzle-orm';
 import Link from 'next/link';
 import SpendingIncomeChart from './SpendingIncomeChart';
 import CategoryPieChart from './CategoryPieChart';
@@ -42,6 +42,9 @@ export default async function ReportsPage({
     to = now;
   }
 
+  // Toggle: include uncategorized (default true — only false when explicitly set)
+  const includeUncategorized = params.includeUncategorized !== 'false';
+
   // Multi-value filters
   const accountIds = params.accountIds
     ? (Array.isArray(params.accountIds) ? params.accountIds : (params.accountIds as string).split(',')).map(Number).filter(Boolean)
@@ -59,6 +62,10 @@ export default async function ReportsPage({
     lte(transactions.date, to),
     ne(transactions.type, 'transfer'),
   ];
+
+  if (!includeUncategorized) {
+    baseFilters.push(isNotNull(transactions.categoryId));
+  }
 
   if (accountIds.length > 0) {
     baseFilters.push(inArray(transactions.accountId, accountIds));
@@ -178,6 +185,7 @@ export default async function ReportsPage({
   if (accountIds.length) basePresetParams.set('accountIds', accountIds.join(','));
   if (categoryIds.length) basePresetParams.set('categoryIds', categoryIds.join(','));
   if (tagIds.length) basePresetParams.set('tagIds', tagIds.join(','));
+  if (!includeUncategorized) basePresetParams.set('includeUncategorized', 'false');
 
   const totalCategorySpending = categorySpending.reduce((s, c) => s + Math.max(0, parseFloat(c.total)), 0);
 
@@ -228,6 +236,7 @@ export default async function ReportsPage({
               {accountIds.length > 0 && <input type="hidden" name="accountIds" value={accountIds.join(',')} />}
               {categoryIds.length > 0 && <input type="hidden" name="categoryIds" value={categoryIds.join(',')} />}
               {tagIds.length > 0 && <input type="hidden" name="tagIds" value={tagIds.join(',')} />}
+              {!includeUncategorized && <input type="hidden" name="includeUncategorized" value="false" />}
               <div className="form-group" style={{ marginBottom: 0 }}>
                 <label className="form-label">From</label>
                 <input type="date" name="from" className="form-input" defaultValue={fromStr || from.toISOString().split('T')[0]} />
@@ -248,6 +257,7 @@ export default async function ReportsPage({
           initialAccountIds={accountIds.map(String)}
           initialCategoryIds={categoryIds.map(String)}
           initialTagIds={tagIds.map(String)}
+          initialIncludeUncategorized={includeUncategorized}
           accounts={allAccounts.map(a => ({ id: a.id, name: a.name }))}
           categories={allCategories.map(c => ({ id: c.id, name: c.name, color: c.color }))}
           tags={allTags.map(t => ({ id: t.id, name: `#${t.name}` }))}
@@ -259,6 +269,7 @@ export default async function ReportsPage({
           {categoryIds.length > 0 && ` · ${categoryIds.length} categor${categoryIds.length > 1 ? 'ies' : 'y'}`}
           {tagIds.length > 0 && ` · ${tagIds.length} tag${tagIds.length > 1 ? 's' : ''}`}
           {' · Transfers excluded'}
+          {!includeUncategorized && ' · Uncategorized excluded'}
         </div>
       </div>
 
