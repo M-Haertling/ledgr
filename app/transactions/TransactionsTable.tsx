@@ -105,7 +105,7 @@ export default function TransactionsTable({
                 <td style={{ whiteSpace: 'nowrap', color: 'var(--text-muted)', fontSize: '0.875rem' }}>
                   {tx.createdAt.toLocaleDateString()}
                 </td>
-                <td style={{ maxWidth: '300px', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                <td style={{ maxWidth: '300px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={tx.description}>
                   {tx.description}
                 </td>
                 <td>

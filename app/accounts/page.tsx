@@ -1,15 +1,23 @@
 export const dynamic = 'force-dynamic';
 
 import { db } from '@/lib/db';
-import { accounts } from '@/lib/db/schema';
+import { accounts, transactions } from '@/lib/db/schema';
 import { createAccount, deleteAccount, updateAccount } from '@/lib/actions/accounts';
-import { desc } from 'drizzle-orm';
+import { desc, max } from 'drizzle-orm';
 import EditAccountForm from './EditAccountForm';
 
 export default async function AccountsPage() {
-  const allAccounts = await db.query.accounts.findMany({
-    orderBy: [desc(accounts.createdAt)],
-  });
+  const [allAccounts, latestDates] = await Promise.all([
+    db.query.accounts.findMany({ orderBy: [desc(accounts.createdAt)] }),
+    db
+      .select({ accountId: transactions.accountId, latestDate: max(transactions.date) })
+      .from(transactions)
+      .groupBy(transactions.accountId),
+  ]);
+
+  const latestDateByAccount = Object.fromEntries(
+    latestDates.map((r) => [r.accountId, r.latestDate])
+  );
 
   return (
     <div>
@@ -54,14 +62,13 @@ export default async function AccountsPage() {
           </div>
         ) : (
           allAccounts.map((account) => (
-            <div key={account.id} className="list-item">
-              <EditAccountForm account={account} updateAction={updateAccount.bind(null, account.id)} />
-              <div className="flex gap-2">
-                <form action={deleteAccount.bind(null, account.id)}>
-                  <button type="submit" className="btn btn-danger btn-sm">Delete</button>
-                </form>
-              </div>
-            </div>
+            <EditAccountForm
+              key={account.id}
+              account={account}
+              updateAction={updateAccount.bind(null, account.id)}
+              deleteAction={deleteAccount.bind(null, account.id)}
+              lastTransactionDate={latestDateByAccount[account.id] ?? null}
+            />
           ))
         )}
       </div>
