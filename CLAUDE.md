@@ -76,3 +76,5 @@ See `features.md`.
 - Migrations are tracked in `/drizzle`. Drizzle maintains a `__drizzle_migrations` table and only runs migrations that haven't been applied yet.
 - On Docker deploy, `start.sh` runs `node scripts/migrate.mjs` automatically before the app starts — no manual migration step needed.
 - `transactions` has a composite unique constraint on `(account_id, date, description, amount)` to enforce deduplication. Upload uses `ON CONFLICT DO NOTHING`.
+
+**Important** When adding or removing tables, be sure to update the "Backup" and "Admin" pages, which have references to relevant application tables.
