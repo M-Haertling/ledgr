@@ -59,7 +59,7 @@ export default function UpdateCard({ update, projectId }: { update: Update; proj
       <div className="flex gap-2" style={{ alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: '0.5rem', flexWrap: 'wrap' }}>
         <div className="flex gap-2" style={{ alignItems: 'center', flexWrap: 'wrap' }}>
           <span style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--text-muted)' }}>
-            {new Date(update.date).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' })}
+            {new Date(update.date).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric', timeZone: 'UTC' })}
           </span>
           {update.newStatus && (
             <span
@@ -148,7 +148,7 @@ export default function UpdateCard({ update, projectId }: { update: Update; proj
                 className="flex gap-2"
                 style={{ alignItems: 'center', fontSize: '0.8rem', padding: '0.375rem 0.5rem', background: 'var(--bg)', borderRadius: '0.375rem', border: '1px solid var(--border)' }}
               >
-                <span style={{ color: 'var(--text-muted)' }}>{new Date(transaction.date).toLocaleDateString()}</span>
+                <span style={{ color: 'var(--text-muted)' }}>{new Date(transaction.date).toLocaleDateString('en-US', { timeZone: 'UTC' })}</span>
                 <span style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{transaction.description}</span>
                 <span style={{ color: 'var(--text-muted)' }}>{transaction.account.name}</span>
                 <span style={{ fontWeight: 600 }}>${parseFloat(transaction.amount).toFixed(2)}</span>
