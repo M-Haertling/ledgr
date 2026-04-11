@@ -174,6 +174,7 @@ export default async function ReportsPage({
       name: cat.categoryName || 'Uncategorized',
       value: parseFloat(cat.total),
       color: cat.categoryColor || '#94a3b8',
+      categoryId: cat.categoryId ?? null,
     }));
 
   const allAccounts = await db.query.accounts.findMany();
@@ -188,6 +189,23 @@ export default async function ReportsPage({
   if (!includeUncategorized) basePresetParams.set('includeUncategorized', 'false');
 
   const totalCategorySpending = categorySpending.reduce((s, c) => s + Math.max(0, parseFloat(c.total)), 0);
+
+  const fromDateStr = from.toISOString().split('T')[0];
+  const toDateStr = to.toISOString().split('T')[0];
+  const txAccountIds = accountIds.length ? accountIds.join(',') : '';
+  const txCategoryIds = categoryIds.length ? categoryIds.join(',') : '';
+  const txTagIds = tagIds.length ? tagIds.join(',') : '';
+
+  function buildTxUrl(overrides: Record<string, string> = {}) {
+    const p = new URLSearchParams({ from: fromDateStr, to: toDateStr });
+    if (txAccountIds) p.set('accountIds', txAccountIds);
+    if (txCategoryIds) p.set('categoryIds', txCategoryIds);
+    if (txTagIds) p.set('tagIds', txTagIds);
+    for (const [k, v] of Object.entries(overrides)) {
+      if (v) p.set(k, v); else p.delete(k);
+    }
+    return `/transactions?${p}`;
+  }
 
   return (
     <div>
@@ -275,43 +293,46 @@ export default async function ReportsPage({
 
       {/* Summary cards */}
       <div className="flex gap-4 mb-4">
-        <div className="card w-full" style={{ textAlign: 'center' }}>
+        <a className="card w-full" style={{ textAlign: 'center', cursor: 'pointer', textDecoration: 'none' }}
+          href={buildTxUrl({ type: 'debit' })} target="_blank" rel="noopener noreferrer">
           <div className="list-item-subtitle">Expenses</div>
           <div style={{ fontSize: '1.5rem', fontWeight: 'bold', color: '#ef4444' }}>
             -${expenseSum.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
           </div>
-        </div>
-        <div className="card w-full" style={{ textAlign: 'center' }}>
+        </a>
+        <a className="card w-full" style={{ textAlign: 'center', cursor: 'pointer', textDecoration: 'none' }}
+          href={buildTxUrl({ type: 'credit' })} target="_blank" rel="noopener noreferrer">
           <div className="list-item-subtitle">Income</div>
           <div style={{ fontSize: '1.5rem', fontWeight: 'bold', color: '#10b981' }}>
             +${incomeSum.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
           </div>
-        </div>
-        <div className="card w-full" style={{ textAlign: 'center' }}>
+        </a>
+        <a className="card w-full" style={{ textAlign: 'center', cursor: 'pointer', textDecoration: 'none' }}
+          href={buildTxUrl()} target="_blank" rel="noopener noreferrer">
           <div className="list-item-subtitle">Net</div>
           <div style={{ fontSize: '1.5rem', fontWeight: 'bold', color: net >= 0 ? '#10b981' : '#ef4444' }}>
             {net >= 0 ? '+' : '-'}${Math.abs(net).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
           </div>
-        </div>
+        </a>
       </div>
 
       {/* Spending vs Income Bar Chart */}
       <div className="card mb-4">
         <h2 className="card-title">Spending vs Income by Month</h2>
-        <SpendingIncomeChart data={chartData} />
+        <SpendingIncomeChart data={chartData} accountIds={txAccountIds} categoryIds={txCategoryIds} tagIds={txTagIds} />
       </div>
 
       {/* Spending by Category Stacked Bar Chart */}
       <div className="card mb-4">
         <h2 className="card-title">Spending by Category Over Time</h2>
-        <SpendingByCategoryChart data={stackedChartData} categories={allCategories} />
+        <SpendingByCategoryChart data={stackedChartData} categories={allCategories} accountIds={txAccountIds} tagIds={txTagIds} />
       </div>
 
       <div className="flex gap-4 mb-4">
         {/* Category Pie Chart */}
         <div className="card w-full">
           <h2 className="card-title">Spending by Category</h2>
-          <CategoryPieChart data={pieData} />
+          <CategoryPieChart data={pieData} fromDate={fromDateStr} toDate={toDateStr} accountIds={txAccountIds} tagIds={txTagIds} />
         </div>
 
         {/* Category breakdown bars */}
@@ -324,8 +345,12 @@ export default async function ReportsPage({
               categorySpending.map((cat, i) => {
                 const total = parseFloat(cat.total);
                 const percentage = totalCategorySpending > 0 ? (Math.max(0, total) / totalCategorySpending) * 100 : 0;
+                const catTxUrl = cat.categoryId != null
+                  ? buildTxUrl({ categoryIds: String(cat.categoryId) })
+                  : buildTxUrl({ categoryIds: '', uncategorized: 'true' });
                 return (
-                  <div key={i} className="mb-4">
+                  <a key={i} className="mb-4" style={{ display: 'block', textDecoration: 'none', cursor: 'pointer' }}
+                    href={catTxUrl} target="_blank" rel="noopener noreferrer">
                     <div className="flex justify-between items-center mb-1">
                       <div className="flex items-center gap-2">
                         <div style={{
@@ -351,7 +376,7 @@ export default async function ReportsPage({
                         backgroundColor: cat.categoryColor || '#94a3b8',
                       }} />
                     </div>
-                  </div>
+                  </a>
                 );
               })
             )}
@@ -370,7 +395,8 @@ export default async function ReportsPage({
               const total = parseFloat(acc.total);
               const percentage = expenseSum > 0 ? (total / expenseSum) * 100 : 0;
               return (
-                <div key={i} className="mb-4">
+                <a key={i} className="mb-4" style={{ display: 'block', textDecoration: 'none', cursor: 'pointer' }}
+                  href={buildTxUrl({ accountIds: String(acc.accountId), type: 'debit' })} target="_blank" rel="noopener noreferrer">
                   <div className="flex justify-between items-center mb-1">
                     <span style={{ fontWeight: 500 }}>{acc.accountName}</span>
                     <span style={{ fontWeight: 600 }}>${total.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
@@ -388,7 +414,7 @@ export default async function ReportsPage({
                       backgroundColor: 'var(--primary)',
                     }} />
                   </div>
-                </div>
+                </a>
               );
             })
           )}
