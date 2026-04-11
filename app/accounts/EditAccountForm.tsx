@@ -69,7 +69,7 @@ export default function EditAccountForm({
         <div className="list-item-subtitle">{account.type}</div>
       </div>
       <button className="btn btn-secondary btn-sm" onClick={() => setEditing(true)}>
-        Rename
+        Edit
       </button>
       <div style={{
         fontSize: '0.8rem',
