@@ -159,6 +159,69 @@ export async function deduplicateTransactions(): Promise<number> {
   return ids.length;
 }
 
+export async function getUploadDates(accountId: number): Promise<string[]> {
+  const rows = await db
+    .selectDistinct({ uploadDate: sql<string>`(${transactions.createdAt})::date` })
+    .from(transactions)
+    .where(eq(transactions.accountId, accountId))
+    .orderBy(sql`1 DESC`);
+  return rows.map(r => r.uploadDate);
+}
+
+export async function countTransactionsForUpload(
+  accountId: number,
+  uploadDate: string
+): Promise<number> {
+  const [{ total }] = await db
+    .select({ total: sql<number>`COUNT(*)` })
+    .from(transactions)
+    .where(and(
+      eq(transactions.accountId, accountId),
+      sql`(${transactions.createdAt})::date = ${uploadDate}::date`
+    ));
+  return Number(total);
+}
+
+export async function deleteTransactionsByUpload(
+  accountId: number,
+  uploadDate: string
+): Promise<number> {
+  const targets = await db
+    .select({ id: transactions.id })
+    .from(transactions)
+    .where(and(
+      eq(transactions.accountId, accountId),
+      sql`(${transactions.createdAt})::date = ${uploadDate}::date`
+    ));
+
+  if (targets.length === 0) return 0;
+  const ids = targets.map(r => r.id);
+
+  // Null transferPairId on outside transactions pointing INTO the batch (revert their type)
+  const outsideCredits = await db.select({ id: transactions.id }).from(transactions)
+    .where(and(inArray(transactions.transferPairId, ids), eq(transactions.isCredit, true)));
+  const outsideDebits = await db.select({ id: transactions.id }).from(transactions)
+    .where(and(inArray(transactions.transferPairId, ids), eq(transactions.isCredit, false)));
+  if (outsideCredits.length > 0)
+    await db.update(transactions).set({ transferPairId: null, type: 'credit' })
+      .where(inArray(transactions.id, outsideCredits.map(r => r.id)));
+  if (outsideDebits.length > 0)
+    await db.update(transactions).set({ transferPairId: null, type: 'debit' })
+      .where(inArray(transactions.id, outsideDebits.map(r => r.id)));
+
+  // Null transferPairId on the batch transactions themselves
+  await db.update(transactions).set({ transferPairId: null }).where(inArray(transactions.id, ids));
+
+  // Delete junction rows (no cascade on transactionTags.transactionId FK)
+  await db.delete(transactionTags).where(inArray(transactionTags.transactionId, ids));
+
+  // Delete transactions (projectUpdateTransactions cascades automatically)
+  await db.delete(transactions).where(inArray(transactions.id, ids));
+
+  revalidatePath('/transactions');
+  return ids.length;
+}
+
 export async function autoMapTransfers(): Promise<{ linked: number }> {
   // Find unlinked transactions that can be automatically mapped
   // Criteria: opposite type, same amount, dates within 7 days

@@ -9,6 +9,7 @@ import Link from 'next/link';
 import TransactionsTable from './TransactionsTable';
 import FiltersClient from './FiltersClient';
 import AddTransactionDialog from './AddTransactionDialog';
+import DeleteUploadDialog from './DeleteUploadDialog';
 import { deduplicateTransactions } from '@/lib/actions/transactions';
 
 const PAGE_SIZE = 50;
@@ -135,6 +136,7 @@ export default async function TransactionsPage({
           }}>
             <button type="submit" className="btn btn-secondary">Deduplicate</button>
           </form>
+          <DeleteUploadDialog accounts={allAccounts} />
           <AddTransactionDialog accounts={allAccounts} categories={allCategories} />
           <Link href="/transactions/upload" className="btn btn-primary">
             Upload CSV
