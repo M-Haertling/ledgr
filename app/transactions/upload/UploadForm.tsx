@@ -5,7 +5,8 @@ import { deleteTemplate } from '@/lib/actions/mappings';
 import ConfirmDeleteButton from '@/app/components/ConfirmDeleteButton';
 
 type AmountMode = 'single' | 'split';
-type UploadResult = { imported: number; skipped: number; failed: number };
+type FailedRow = { rowNumber: number; row: string[]; reason: string };
+type UploadResult = { imported: number; skipped: number; failed: number; failedRows: FailedRow[] };
 
 export default function UploadForm({ accounts, templates: initialTemplates }: { accounts: any[], templates: any[] }) {
   const [templates, setTemplates] = useState(initialTemplates);
@@ -17,6 +18,7 @@ export default function UploadForm({ accounts, templates: initialTemplates }: { 
   const [saveTemplate, setSaveTemplate] = useState<boolean>(false);
   const [selectedTemplateId, setSelectedTemplateId] = useState<string>('');
   const [amountMode, setAmountMode] = useState<AmountMode>('single');
+  const [hasHeader, setHasHeader] = useState<boolean>(true);
   const [uploading, setUploading] = useState(false);
   const [result, setResult] = useState<UploadResult | null>(null);
 
@@ -30,6 +32,7 @@ export default function UploadForm({ accounts, templates: initialTemplates }: { 
         setMapping(state.mapping || {});
         setAmountMode(state.amountMode || 'single');
         setTemplateName(state.templateName || '');
+        setHasHeader(state.hasHeader !== undefined ? state.hasHeader : true);
       } catch (e) {
         // Ignore JSON parse errors
       }
@@ -42,6 +45,7 @@ export default function UploadForm({ accounts, templates: initialTemplates }: { 
       mapping,
       amountMode,
       templateName,
+      hasHeader,
     }));
   };
 
@@ -109,6 +113,22 @@ export default function UploadForm({ accounts, templates: initialTemplates }: { 
 
   const activeFields = amountMode === 'single' ? singleFields : splitFields;
 
+  // When hasHeader is true, csvData[0] is headers; when false, all rows are data.
+  const columnLabels = csvData
+    ? csvData[0].map((col, idx) => (hasHeader ? col || `Column ${idx + 1}` : `Column ${idx + 1}`))
+    : [];
+  const sampleRow = csvData ? (hasHeader ? csvData[1] : csvData[0]) : null;
+  const previewDataRows = csvData ? (hasHeader ? csvData.slice(1, 4) : csvData.slice(0, 3)) : [];
+
+  const getAmountDisplay = (row: string[]) => {
+    if (amountMode === 'split') {
+      const credit = mapping.credit !== undefined ? row[mapping.credit] : null;
+      const debit = mapping.debit !== undefined ? row[mapping.debit] : null;
+      return credit || debit || '';
+    }
+    return mapping.amount !== undefined ? row[mapping.amount] : '';
+  };
+
   const handleSubmit = async (e: React.SyntheticEvent<HTMLFormElement>) => {
     e.preventDefault();
     if (!file || !accountId || !csvData) return;
@@ -124,12 +144,13 @@ export default function UploadForm({ accounts, templates: initialTemplates }: { 
           mapping,
           templateName,
           saveTemplate,
+          hasHeader,
         }),
       });
 
       if (response.ok) {
         const data = await response.json();
-        setResult({ imported: data.imported, skipped: data.skipped, failed: data.failed });
+        setResult({ imported: data.imported, skipped: data.skipped, failed: data.failed, failedRows: data.failedRows ?? [] });
         clearFormState();
       } else {
         alert('Upload failed');
@@ -197,6 +218,17 @@ export default function UploadForm({ accounts, templates: initialTemplates }: { 
             onChange={handleFileChange}
             required
           />
+          <label style={{ cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.5rem', marginTop: '0.5rem' }}>
+            <input
+              type="checkbox"
+              checked={hasHeader}
+              onChange={(e) => {
+                setHasHeader(e.target.checked);
+                saveFormState();
+              }}
+            />
+            <span style={{ fontSize: '0.875rem' }}>CSV has a header row</span>
+          </label>
         </div>
 
         {csvData && (
@@ -265,13 +297,13 @@ export default function UploadForm({ accounts, templates: initialTemplates }: { 
                   required={field.required}
                 >
                   <option value="">Select Column</option>
-                  {csvData[0].map((col, idx) => (
-                    <option key={idx} value={idx}>{col || `Column ${idx + 1}`}</option>
+                  {columnLabels.map((label, idx) => (
+                    <option key={idx} value={idx}>{label}</option>
                   ))}
                 </select>
-                {mapping[field.name] !== undefined && csvData[1] && (
+                {mapping[field.name] !== undefined && sampleRow && (
                   <p className="list-item-subtitle mt-1">
-                    Sample: <strong>{csvData[1][mapping[field.name]] || '(empty)'}</strong>
+                    Sample: <strong>{sampleRow[mapping[field.name]] || '(empty)'}</strong>
                   </p>
                 )}
               </div>
@@ -310,13 +342,13 @@ export default function UploadForm({ accounts, templates: initialTemplates }: { 
                 <table className="table">
                   <thead>
                     <tr>
-                      {csvData[0].map((col, idx) => (
-                        <th key={idx}>{col || `Column ${idx + 1}`}</th>
+                      {columnLabels.map((label, idx) => (
+                        <th key={idx}>{label}</th>
                       ))}
                     </tr>
                   </thead>
                   <tbody>
-                    {csvData.slice(1, 4).map((row, i) => (
+                    {previewDataRows.map((row, i) => (
                       <tr key={i}>
                         {row.map((cell, j) => (
                           <td key={j}>{cell}</td>
@@ -351,7 +383,7 @@ export default function UploadForm({ accounts, templates: initialTemplates }: { 
                     </tr>
                   </thead>
                   <tbody>
-                    {csvData.slice(1, 4).map((row, i) => (
+                    {previewDataRows.map((row, i) => (
                       <tr key={i}>
                         <td>{mapping.date !== undefined ? row[mapping.date] : <span className="list-item-subtitle">(unmapped)</span>}</td>
                         <td>{mapping.description !== undefined ? row[mapping.description] : <span className="list-item-subtitle">(unmapped)</span>}</td>
@@ -390,6 +422,37 @@ export default function UploadForm({ accounts, templates: initialTemplates }: { 
                     <div className="list-item-subtitle">Failed (invalid rows)</div>
                   </div>
                 </div>
+
+                {result.failedRows.length > 0 && (
+                  <div className="mt-4 mb-4">
+                    <h4 className="mb-2" style={{ color: '#ef4444' }}>Failed Rows</h4>
+                    <div className="table-container">
+                      <table className="table">
+                        <thead>
+                          <tr>
+                            <th>Row</th>
+                            <th>Date</th>
+                            <th>Description</th>
+                            <th>Amount</th>
+                            <th>Reason</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {result.failedRows.map((fr, i) => (
+                            <tr key={i}>
+                              <td>{fr.rowNumber}</td>
+                              <td>{mapping.date !== undefined ? fr.row[mapping.date] || '(empty)' : '(unmapped)'}</td>
+                              <td>{mapping.description !== undefined ? fr.row[mapping.description] || '(empty)' : '(unmapped)'}</td>
+                              <td>{getAmountDisplay(fr.row) || '(empty)'}</td>
+                              <td style={{ color: '#ef4444' }}>{fr.reason}</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                )}
+
                 <div className="flex gap-2">
                   <a href="/transactions" className="btn btn-primary w-full" style={{ textAlign: 'center' }}>
                     View Transactions

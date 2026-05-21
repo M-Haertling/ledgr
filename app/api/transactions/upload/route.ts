@@ -8,9 +8,11 @@ function patternToRegex(pattern: string): RegExp {
   return new RegExp(escaped, 'i');
 }
 
+type FailedRow = { rowNumber: number; row: string[]; reason: string };
+
 export async function POST(req: Request) {
   try {
-    const { accountId, csvData, mapping, templateName, saveTemplate } = await req.json();
+    const { accountId, csvData, mapping, templateName, saveTemplate, hasHeader = true } = await req.json();
 
     if (!accountId || !csvData || !mapping) {
       return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
@@ -34,22 +36,28 @@ export async function POST(req: Request) {
       orderBy: (rules, { desc, asc }) => [desc(rules.priority), asc(rules.id)],
     });
 
-    const rows = csvData.slice(1); // Skip header
+    const rows: string[][] = hasHeader ? csvData.slice(1) : csvData;
     let imported = 0;
     let skipped = 0;
-    let failed = 0;
+    const failedRows: FailedRow[] = [];
 
-    for (const row of rows) {
+    const fail = (rowIndex: number, row: string[], reason: string) => {
+      failedRows.push({ rowNumber: rowIndex + (hasHeader ? 2 : 1), row, reason });
+    };
+
+    for (let rowIndex = 0; rowIndex < rows.length; rowIndex++) {
+      const row = rows[rowIndex];
+
       // Skip blank rows
       if (row.every((cell: string) => !cell.trim())) continue;
 
       const dateStr = row[mapping.date];
       const description = row[mapping.description];
 
-      if (!dateStr || !description) { failed++; continue; }
+      if (!dateStr || !description) { fail(rowIndex, row, 'Missing date or description'); continue; }
 
       const date = new Date(dateStr);
-      if (isNaN(date.getTime())) { failed++; continue; }
+      if (isNaN(date.getTime())) { fail(rowIndex, row, `Invalid date: "${dateStr}"`); continue; }
 
       // Check for category from CSV if column is mapped
       let categoryIdFromCsv: number | null = null;
@@ -75,17 +83,17 @@ export async function POST(req: Request) {
         const debitStr = mapping.debit !== undefined ? (row[mapping.debit] || '') : '';
         const creditVal = parseFloat(creditStr.replace(/[^0-9.-]+/g, '')) || 0;
         const debitVal = parseFloat(debitStr.replace(/[^0-9.-]+/g, '')) || 0;
-        if (creditVal > 0) {
-          amount = creditVal;
+        if (creditVal !== 0) {
+          amount = Math.abs(creditVal);
           isCredit = true;
         } else {
-          amount = debitVal;
+          amount = Math.abs(debitVal);
           isCredit = false;
         }
       } else {
         // Single amount column
         const amountStr = row[mapping.amount];
-        if (!amountStr) { failed++; continue; }
+        if (!amountStr) { fail(rowIndex, row, 'Missing amount'); continue; }
         amount = parseFloat(amountStr.replace(/[^0-9.-]+/g, ''));
         isCredit = amount > 0;
 
@@ -100,7 +108,7 @@ export async function POST(req: Request) {
         }
       }
 
-      if (isNaN(amount) || amount === 0) { failed++; continue; }
+      if (isNaN(amount) || amount === 0) { fail(rowIndex, row, 'Invalid or zero amount'); continue; }
       amount = Math.abs(amount);
 
       // Auto-categorize and auto-tag
@@ -138,7 +146,7 @@ export async function POST(req: Request) {
       }
     }
 
-    return NextResponse.json({ success: true, imported, skipped, failed });
+    return NextResponse.json({ success: true, imported, skipped, failed: failedRows.length, failedRows });
   } catch (error) {
     console.error('Upload error:', error);
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
