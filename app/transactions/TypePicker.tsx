@@ -46,6 +46,18 @@ export default function TypePicker({
 
   const naturalType = isCredit ? 'credit' : 'debit';
 
+  const daysDiff = (a: Date, b: Date) => {
+    const msPerDay = 1000 * 60 * 60 * 24;
+    return Math.abs(Math.round((new Date(a).setHours(0,0,0,0) - new Date(b).setHours(0,0,0,0)) / msPerDay));
+  };
+
+  const rowHighlight = (candidateDate: Date) => {
+    const diff = daysDiff(candidateDate, date);
+    if (diff === 0) return 'rgba(16, 185, 129, 0.12)';
+    if (diff <= 3) return 'rgba(251, 146, 60, 0.15)';
+    return undefined;
+  };
+
   const handleChange = (newType: string) => {
     if (newType === type) return;
 
@@ -249,7 +261,8 @@ export default function TypePicker({
           <div
             className="card"
             style={{
-              width: '540px',
+              width: 'max-content',
+              minWidth: '420px',
               maxWidth: '90vw',
               maxHeight: '80vh',
               overflow: 'auto',
@@ -279,12 +292,12 @@ export default function TypePicker({
                   </thead>
                   <tbody>
                     {candidates.map((c) => (
-                      <tr key={c.id}>
+                      <tr key={c.id} style={{ backgroundColor: rowHighlight(c.date) }}>
                         <td style={{ whiteSpace: 'nowrap' }}>{new Date(c.date).toLocaleDateString()}</td>
-                        <td style={{ maxWidth: '160px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                        <td style={{ maxWidth: '260px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                           {c.description}
                         </td>
-                        <td>
+                        <td style={{ whiteSpace: 'nowrap' }}>
                           <span className="badge">{c.account.name}</span>
                         </td>
                         <td style={{ textAlign: 'right', fontWeight: 600, whiteSpace: 'nowrap' }}>
@@ -292,7 +305,7 @@ export default function TypePicker({
                             {c.isCredit ? '+' : '-'}${Math.abs(Number(c.amount)).toFixed(2)}
                           </span>
                         </td>
-                        <td>
+                        <td style={{ textAlign: 'right' }}>
                           <button
                             className="btn btn-primary btn-sm"
                             disabled={isPending}
