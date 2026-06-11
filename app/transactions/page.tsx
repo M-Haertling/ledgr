@@ -3,7 +3,7 @@ export const dynamic = 'force-dynamic';
 import { db } from '@/lib/db';
 import { transactions, transactionTags, categories } from '@/lib/db/schema';
 import {
-  desc, asc, eq, ilike, and, or, exists, isNull, inArray, gte, lte, sql, count
+  desc, asc, eq, ilike, and, or, exists, isNull, isNotNull, inArray, gte, lte, sql, count
 } from 'drizzle-orm';
 import Link from 'next/link';
 import TransactionsTable from './TransactionsTable';
@@ -125,6 +125,11 @@ export default async function TransactionsPage({
   const allCategories = await db.query.categories.findMany({ orderBy: [asc(categories.name)] });
   const allTags = await db.query.tags.findMany();
 
+  const categorizedHistory = await db
+    .select({ description: transactions.description, categoryId: transactions.categoryId })
+    .from(transactions)
+    .where(isNotNull(transactions.categoryId));
+
   return (
     <div>
       <div className="flex justify-between items-center mb-4">
@@ -164,6 +169,7 @@ export default async function TransactionsPage({
         transactions={allTransactions as any}
         categories={allCategories}
         allTags={allTags}
+        categorizedHistory={categorizedHistory as { description: string; categoryId: number }[]}
         currentPage={safePage}
         totalPages={totalPages}
         sortCol={sortCol}

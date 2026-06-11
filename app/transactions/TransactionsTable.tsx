@@ -1,10 +1,64 @@
 'use client';
 
+import { useMemo } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import CategoryPicker from './CategoryPicker';
 import TagPicker from './TagPicker';
 import TypePicker from './TypePicker';
 import NotePicker from './NotePicker';
+
+function normalizeDesc(desc: string): string {
+  return desc
+    .toLowerCase()
+    .replace(/[*#]\w+/g, '')
+    .replace(/\b\d[\d\-\/]*\b/g, '')
+    .replace(/[^\w\s]/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+function tokenize(desc: string): string[] {
+  return desc.toLowerCase().split(/[^a-z0-9]+/).filter(t => t.length >= 3);
+}
+
+function buildMaps(history: { description: string; categoryId: number }[]) {
+  const freqMap = new Map<string, Map<number, number>>();
+  const tokenIndex = new Map<string, Map<number, number>>();
+  for (const { description, categoryId } of history) {
+    const key = normalizeDesc(description);
+    if (!freqMap.has(key)) freqMap.set(key, new Map());
+    freqMap.get(key)!.set(categoryId, (freqMap.get(key)!.get(categoryId) ?? 0) + 1);
+    for (const token of tokenize(description)) {
+      if (!tokenIndex.has(token)) tokenIndex.set(token, new Map());
+      tokenIndex.get(token)!.set(categoryId, (tokenIndex.get(token)!.get(categoryId) ?? 0) + 1);
+    }
+  }
+  return { freqMap, tokenIndex };
+}
+
+function getSuggestions(
+  description: string,
+  freqMap: Map<string, Map<number, number>>,
+  tokenIndex: Map<string, Map<number, number>>,
+  max = 3
+): number[] {
+  const key = normalizeDesc(description);
+  const exact = freqMap.get(key);
+  if (exact?.size) {
+    return [...exact.entries()].sort((a, b) => b[1] - a[1]).slice(0, max).map(([id]) => id);
+  }
+  const scores = new Map<number, number>();
+  for (const token of tokenize(description)) {
+    for (const [catId, n] of tokenIndex.get(token) ?? []) {
+      scores.set(catId, (scores.get(catId) ?? 0) + n);
+    }
+  }
+  return [...scores.entries()]
+    .filter(([, s]) => s >= 2)
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, max)
+    .map(([id]) => id);
+}
 
 type Category = { id: number; name: string; color: string | null };
 type Transaction = {
@@ -28,6 +82,7 @@ export default function TransactionsTable({
   transactions,
   categories,
   allTags,
+  categorizedHistory,
   currentPage,
   totalPages,
   sortCol,
@@ -36,6 +91,7 @@ export default function TransactionsTable({
   transactions: Transaction[];
   categories: Category[];
   allTags: any[];
+  categorizedHistory: { description: string; categoryId: number }[];
   currentPage: number;
   totalPages: number;
   sortCol: string;
@@ -43,6 +99,8 @@ export default function TransactionsTable({
 }) {
   const router = useRouter();
   const searchParams = useSearchParams();
+
+  const { freqMap, tokenIndex } = useMemo(() => buildMaps(categorizedHistory), [categorizedHistory]);
 
   const setSort = (col: string) => {
     const params = new URLSearchParams(searchParams.toString());
@@ -116,6 +174,7 @@ export default function TransactionsTable({
                     transactionId={tx.id}
                     currentCategoryId={tx.categoryId}
                     categories={categories}
+                    suggestedCategoryIds={getSuggestions(tx.description, freqMap, tokenIndex)}
                   />
                 </td>
                 <td>
