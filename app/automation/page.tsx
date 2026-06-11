@@ -2,11 +2,12 @@ export const dynamic = 'force-dynamic';
 
 import { db } from '@/lib/db';
 import { categorizationRules } from '@/lib/db/schema';
-import { createRule, updateRule, deleteRule, applyRulesToUncategorized, applyRulesToAll, applySingleRule } from '@/lib/actions/rules';
+import { createRule, createAndRunRule, updateRule, deleteRule, applyRulesToUncategorized, applyRulesToAll, applySingleRule } from '@/lib/actions/rules';
 import ConfirmDeleteButton from '@/app/components/ConfirmDeleteButton';
 import { desc, asc, ilike, and, eq, isNull } from 'drizzle-orm';
 import EditRuleForm from './EditRuleForm';
 import AddRuleForm from './AddRuleForm';
+import CollapsibleRuleGroup from './CollapsibleRuleGroup';
 import Link from 'next/link';
 
 export default async function AutomationPage({
@@ -98,6 +99,7 @@ export default async function AutomationPage({
           allAccounts={allAccounts}
           allRuleTypes={allRuleTypes}
           createAction={createRule}
+          createAndRunAction={createAndRunRule}
         />
       </div>
 
@@ -143,15 +145,12 @@ export default async function AutomationPage({
           <p className="text-muted">{hasFilters ? 'No rules match your filters.' : 'No rules found. Add one above.'}</p>
         </div>
       ) : (
-        sortedTypes.map(ruleType => (
-          <div key={ruleType || '__none__'} className="mb-4">
-            {(sortedTypes.length > 1 || ruleType) && (
-              <h3 style={{ marginBottom: '0.5rem', color: ruleType ? 'var(--primary)' : 'var(--text-muted)', fontSize: '0.9rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-                {ruleType || 'Ungrouped'}
-              </h3>
-            )}
+        sortedTypes.map(ruleType => {
+          const rules = rulesByType[ruleType];
+          const showHeader = sortedTypes.length > 1 || !!ruleType;
+          const inner = (
             <div className="list-container">
-              {rulesByType[ruleType].map((rule) => (
+              {rules.map((rule) => (
                 <div key={rule.id} className="list-item">
                   <EditRuleForm
                     rule={rule}
@@ -170,8 +169,20 @@ export default async function AutomationPage({
                 </div>
               ))}
             </div>
-          </div>
-        ))
+          );
+          return showHeader ? (
+            <CollapsibleRuleGroup
+              key={ruleType || '__none__'}
+              title={ruleType || 'Ungrouped'}
+              count={rules.length}
+              muted={!ruleType}
+            >
+              {inner}
+            </CollapsibleRuleGroup>
+          ) : (
+            <div key="__single__" className="mb-4">{inner}</div>
+          );
+        })
       )}
     </div>
   );

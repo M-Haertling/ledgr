@@ -9,11 +9,13 @@ export default function AddRuleForm({
   allAccounts,
   allRuleTypes,
   createAction,
+  createAndRunAction,
 }: {
   allCategories: Option[];
   allAccounts: Option[];
   allRuleTypes: string[];
   createAction: (formData: FormData) => Promise<void>;
+  createAndRunAction: (formData: FormData) => Promise<void>;
 }) {
   const formRef = useRef<HTMLFormElement>(null);
 
@@ -71,8 +73,9 @@ export default function AddRuleForm({
           <label className="form-label">Priority (category rules)</label>
           <input type="number" name="priority" className="form-input" defaultValue="0" />
         </div>
-        <div className="flex items-center mt-4">
+        <div className="flex items-center gap-2 mt-4">
           <button type="submit" className="btn btn-primary">Add Rule</button>
+          <button type="submit" formAction={createAndRunAction} className="btn btn-secondary">Add and Run</button>
         </div>
       </div>
     </form>
