@@ -325,7 +325,15 @@ export default async function ReportsPage({
       {/* Spending by Category Stacked Bar Chart */}
       <div className="card mb-4">
         <h2 className="card-title">Spending by Category Over Time</h2>
-        <SpendingByCategoryChart data={stackedChartData} categories={allCategories} accountIds={txAccountIds} tagIds={txTagIds} />
+        <SpendingByCategoryChart
+          data={stackedChartData}
+          categories={[
+            ...allCategories,
+            ...(includeUncategorized ? [{ id: null, name: 'Uncategorized', color: '#94a3b8' }] : []),
+          ]}
+          accountIds={txAccountIds}
+          tagIds={txTagIds}
+        />
       </div>
 
       <div className="flex gap-4 mb-4">
