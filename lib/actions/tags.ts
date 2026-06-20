@@ -4,6 +4,7 @@ import { db } from '@/lib/db';
 import { tags, transactions, transactionTags, categoryTags } from '@/lib/db/schema';
 import { eq, and } from 'drizzle-orm';
 import { revalidatePath } from 'next/cache';
+import { deleteTagWithCascade } from '@/lib/api/tags';
 
 export async function createTag(formData: FormData) {
   const name = formData.get('name') as string;
@@ -20,12 +21,7 @@ export async function createTag(formData: FormData) {
 }
 
 export async function deleteTag(id: number, formData: FormData) {
-  // category_tags and transaction_tags both have ON DELETE CASCADE via FK,
-  // but delete explicitly to be safe with any non-cascading setups
-  await db.delete(transactionTags).where(eq(transactionTags.tagId, id));
-  await db.delete(categoryTags).where(eq(categoryTags.tagId, id));
-  await db.delete(tags).where(eq(tags.id, id));
-
+  await deleteTagWithCascade(id);
   revalidatePath('/tags');
   revalidatePath('/transactions');
 }

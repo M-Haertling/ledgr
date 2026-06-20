@@ -51,6 +51,9 @@ export default function RootLayout({
               <Link href="/admin" className="nav-link">
                 Admin
               </Link>
+              <Link href="/api-docs" className="nav-link">
+                API Docs
+              </Link>
             </div>
           </div>
         </nav>

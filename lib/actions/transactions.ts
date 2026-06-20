@@ -4,26 +4,13 @@ import { db } from '@/lib/db';
 import { transactions, transactionTags, categoryTags } from '@/lib/db/schema';
 import { eq, inArray, sql, notInArray, and, isNull, or } from 'drizzle-orm';
 import { revalidatePath } from 'next/cache';
+import {
+  deduplicateTransactions as deduplicateHelper,
+  updateTransactionCategory as updateCategoryHelper,
+} from '@/lib/api/transactions';
 
 export async function updateTransactionCategory(transactionId: number, categoryId: number | null) {
-  await db.update(transactions)
-    .set({ categoryId })
-    .where(eq(transactions.id, transactionId));
-
-  // Auto-apply tags linked to the new category
-  if (categoryId !== null) {
-    const linkedTags = await db
-      .select({ tagId: categoryTags.tagId })
-      .from(categoryTags)
-      .where(eq(categoryTags.categoryId, categoryId));
-
-    if (linkedTags.length > 0) {
-      await db.insert(transactionTags)
-        .values(linkedTags.map(({ tagId }) => ({ transactionId, tagId })))
-        .onConflictDoNothing();
-    }
-  }
-
+  await updateCategoryHelper(transactionId, categoryId);
   revalidatePath('/transactions');
 }
 
@@ -137,26 +124,9 @@ export async function revertTransactionFromTransfer(transactionId: number): Prom
 }
 
 export async function deduplicateTransactions(): Promise<number> {
-  // Find the canonical id (lowest) for each unique (account, date, description, amount) group.
-  // Delete all others. The unique constraint prevents future duplicates automatically.
-  const keepers = db
-    .select({ id: sql<number>`MIN(id)` })
-    .from(transactions)
-    .groupBy(transactions.accountId, transactions.date, transactions.description, transactions.amount);
-
-  const duplicates = await db
-    .select({ id: transactions.id })
-    .from(transactions)
-    .where(notInArray(transactions.id, keepers));
-
-  if (duplicates.length === 0) return 0;
-
-  const ids = duplicates.map(r => r.id);
-  await db.delete(transactionTags).where(inArray(transactionTags.transactionId, ids));
-  await db.delete(transactions).where(inArray(transactions.id, ids));
-
+  const count = await deduplicateHelper();
   revalidatePath('/transactions');
-  return ids.length;
+  return count;
 }
 
 export async function getUploadDates(accountId: number): Promise<string[]> {

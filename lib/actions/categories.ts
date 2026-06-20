@@ -1,9 +1,10 @@
 'use server';
 
 import { db } from '@/lib/db';
-import { categories, transactions, categorizationRules, categoryTags } from '@/lib/db/schema';
+import { categories } from '@/lib/db/schema';
 import { eq } from 'drizzle-orm';
 import { revalidatePath } from 'next/cache';
+import { deleteCategoryWithCascade } from '@/lib/api/categories';
 
 export async function createCategory(formData: FormData) {
   const name = formData.get('name') as string;
@@ -37,13 +38,7 @@ export async function updateCategory(id: number, formData: FormData) {
 }
 
 export async function deleteCategory(id: number, formData: FormData) {
-  // Clear all transaction mappings to this category
-  await db.update(transactions).set({ categoryId: null }).where(eq(transactions.categoryId, id));
-  // Remove any rules that reference this category
-  await db.delete(categorizationRules).where(eq(categorizationRules.categoryId, id));
-  // Remove category-tag associations (also covered by ON DELETE CASCADE)
-  await db.delete(categoryTags).where(eq(categoryTags.categoryId, id));
-  await db.delete(categories).where(eq(categories.id, id));
+  await deleteCategoryWithCascade(id);
   revalidatePath('/categories');
   revalidatePath('/transactions');
 }
