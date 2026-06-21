@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import ColorPicker, { pickNextColor } from './ColorPicker';
 
-type ParentOption = { id: number; name: string };
+type ParentOption = { id: number; name: string; isGroup?: boolean };
 
 export default function AddCategoryForm({
   createAction,
@@ -35,9 +35,20 @@ export default function AddCategoryForm({
             <label htmlFor="parentId" className="form-label">Group (optional)</label>
             <select id="parentId" name="parentId" className="form-input">
               <option value="">— None —</option>
-              {parentOptions.map(p => (
-                <option key={p.id} value={p.id}>{p.name}</option>
-              ))}
+              {parentOptions.some(p => p.isGroup) && (
+                <optgroup label="Existing Groups">
+                  {parentOptions.filter(p => p.isGroup).map(p => (
+                    <option key={p.id} value={p.id}>{p.name}</option>
+                  ))}
+                </optgroup>
+              )}
+              {parentOptions.some(p => !p.isGroup) && (
+                <optgroup label="Other Categories">
+                  {parentOptions.filter(p => !p.isGroup).map(p => (
+                    <option key={p.id} value={p.id}>{p.name}</option>
+                  ))}
+                </optgroup>
+              )}
             </select>
           </div>
         )}

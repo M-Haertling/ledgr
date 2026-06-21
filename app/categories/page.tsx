@@ -16,7 +16,7 @@ export default async function CategoriesPage() {
 
   const usedColors = allCategories.map(c => c.color);
   const rootCategories = allCategories.filter(c => c.parentId === null);
-  const parentOptions = rootCategories.map(c => ({ id: c.id, name: c.name }));
+  const parentOptions = rootCategories.map(c => ({ id: c.id, name: c.name, isGroup: c.children.length > 0 }));
 
   const parents = rootCategories.filter(c => c.children.length > 0);
   const orphans = rootCategories.filter(c => c.children.length === 0);

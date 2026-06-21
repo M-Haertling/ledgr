@@ -4,7 +4,7 @@ import { useState } from 'react';
 import ColorPicker from './ColorPicker';
 
 type Category = { id: number; name: string; color: string | null; parentId?: number | null };
-type ParentOption = { id: number; name: string };
+type ParentOption = { id: number; name: string; isGroup?: boolean };
 
 export default function EditCategoryForm({
   category,
@@ -56,11 +56,25 @@ export default function EditCategoryForm({
       {parentOptions.length > 0 && (
         <select name="parentId" className="form-input" defaultValue={category.parentId ?? ''}>
           <option value="">— No Group —</option>
-          {parentOptions
-            .filter(p => p.id !== category.id)
-            .map(p => (
-              <option key={p.id} value={p.id}>{p.name}</option>
-            ))}
+          {(() => {
+            const opts = parentOptions.filter(p => p.id !== category.id);
+            const groups = opts.filter(p => p.isGroup);
+            const others = opts.filter(p => !p.isGroup);
+            return (
+              <>
+                {groups.length > 0 && (
+                  <optgroup label="Existing Groups">
+                    {groups.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
+                  </optgroup>
+                )}
+                {others.length > 0 && (
+                  <optgroup label="Other Categories">
+                    {others.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
+                  </optgroup>
+                )}
+              </>
+            );
+          })()}
         </select>
       )}
       <ColorPicker name="color" value={color} onChange={setColor} />
