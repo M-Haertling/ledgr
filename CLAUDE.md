@@ -10,6 +10,8 @@ A custom application for managing and tracking spending that will run on Docker.
 - **Containerization:** Docker & Docker Compose.
 - **Language:** TypeScript.
 - **Charts:** Recharts.
+- **API Docs:** OpenAPI 3.0.3 spec auto-generated via `@asteasolutions/zod-to-openapi`; Swagger UI at `/api-docs`.
+- **Testing:** Vitest with `@vitest/coverage-v8`.
 
 # Features
 See `features.md`.
@@ -48,8 +50,20 @@ See `features.md`.
         - `SqlEditor.tsx`: Client component — SQL input, execute, and result table display.
     - `/backup`: Backup and restore interface for all database tables as CSV.
         - `BackupRestoreClient.tsx`: Client component — per-table download and CSV restore upload.
+    - `/api-docs`: Swagger UI page (rendered client-side via `next/dynamic`).
     - `/api`: Backend API routes.
         - `/transactions/upload`: Server-side CSV processing. Returns imported/skipped/failed counts.
+        - `/transactions/route.ts`, `/transactions/[id]/route.ts`: REST CRUD + filtering/pagination for transactions.
+        - `/transactions/deduplicate/route.ts`: Triggers deduplication.
+        - `/accounts/route.ts`, `/accounts/[id]/route.ts`: REST CRUD for accounts.
+        - `/categories/route.ts`, `/categories/[id]/route.ts`: REST CRUD for categories.
+        - `/tags/route.ts`, `/tags/[id]/route.ts`: REST CRUD for tags.
+        - `/rules/route.ts`, `/rules/[id]/route.ts`: REST CRUD for categorization rules.
+        - `/rules/apply-all/route.ts`, `/rules/apply-uncategorized/route.ts`: Bulk rule application.
+        - `/projects/route.ts`, `/projects/[id]/route.ts`: REST CRUD for projects.
+        - `/projects/[id]/updates/route.ts`: Add project updates.
+        - `/project-updates/[id]/route.ts`: Edit/delete individual project updates.
+        - `/openapi.json/route.ts`: Serves the auto-generated OpenAPI 3.0.3 spec.
 - `/scripts`: Node.js utility scripts run outside the app.
     - `import.mjs`: CSV import script for bulk-loading transactions directly via pg.
     - `migrate.mjs`: Drizzle migration runner for applying schema migrations.
@@ -57,6 +71,14 @@ See `features.md`.
     - `/db`: Database connection and schema definitions.
         - `index.ts`: Drizzle client initialization.
         - `schema.ts`: Drizzle PostgreSQL table definitions and relations.
+    - `/schemas`: Zod schemas used for REST API request validation and OpenAPI spec generation.
+        - `z.ts`: Re-exports Zod extended with `@asteasolutions/zod-to-openapi`.
+        - `accounts.ts`, `categories.ts`, `tags.ts`, `rules.ts`, `transactions.ts`, `projects.ts`, `project-updates.ts`: Per-domain request/response schemas.
+    - `/api`: Pure business logic helpers shared between Server Actions and REST routes. No `'use server'` directive.
+        - `rules.ts`: `patternToRegex`, `applyRulesToUncategorized`, `applyRulesToAll`, `applySingleRule`.
+        - `transactions.ts`: `deduplicateTransactions`, `deleteTransaction`, `updateTransactionCategory`.
+        - `categories.ts`: `deleteCategoryWithCascade`.
+        - `tags.ts`: `deleteTagWithCascade`.
     - `/actions`: Next.js Server Actions for CRUD and business logic.
         - `accounts.ts`: Account CRUD (create, update, delete).
         - `categories.ts`: Category CRUD. Delete clears transaction mappings and orphaned rules.
@@ -65,6 +87,12 @@ See `features.md`.
         - `rules.ts`: Rule management and `applyRulesToUncategorized` (wildcard, tag, account-scoped).
         - `mappings.ts`: CSV upload template CRUD (save, load, delete named column-mapping templates).
         - `projects.ts`: Project CRUD, update CRUD, transaction link/unlink, and `getTransactionsForPicker` for the modal search.
+    - `openapi.ts`: Builds the OpenAPI 3.0.3 spec from all Zod schemas using `@asteasolutions/zod-to-openapi`.
+- `/__tests__`: Vitest unit tests mirroring the `lib/` structure.
+    - `lib/api/rules.test.ts`: `patternToRegex` (pure) and `applyRulesToUncategorized` (DB mocked).
+    - `lib/api/transactions.test.ts`: `updateTransactionCategory` and `deleteTransaction` (DB mocked).
+    - `lib/schemas/rules.test.ts`, `lib/schemas/transactions.test.ts`: Zod schema validation tests.
+- `vitest.config.ts`: Vitest configuration with native tsconfig path resolution.
 - `/drizzle`: SQL migration files and metadata.
 - `/public`: Static assets like icons and SVGs.
 - `docker-compose.yml`: Defines the PostgreSQL container and environment.
