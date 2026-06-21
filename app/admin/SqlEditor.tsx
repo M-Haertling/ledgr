@@ -22,7 +22,7 @@ const QUICK_TABLES = [
   'projects',
   'project_updates',
   'project_update_transactions',
-  '__drizzle_migrations',
+  'drizzle.__drizzle_migrations',
 ];
 
 export default function SqlEditor() {
