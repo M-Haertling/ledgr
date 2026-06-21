@@ -4,6 +4,8 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import MultiSelect from './MultiSelect';
 
+type CategoryOption = { id: number; name: string; color?: string | null; isParent?: boolean; indent?: boolean };
+
 type FiltersClientProps = {
   initialSearch: string;
   initialFrom: string;
@@ -16,7 +18,7 @@ type FiltersClientProps = {
   sortCol: string;
   sortDir: string;
   accounts: { id: number; name: string }[];
-  categories: { id: number; name: string; color: string | null }[];
+  categoryOptions: CategoryOption[];
   tags: { id: number; name: string }[];
 };
 
@@ -32,7 +34,7 @@ export default function FiltersClient({
   sortCol,
   sortDir,
   accounts,
-  categories,
+  categoryOptions,
   tags,
 }: FiltersClientProps) {
   const [search, setSearch] = useState(initialSearch);
@@ -172,7 +174,7 @@ export default function FiltersClient({
         <MultiSelect
           paramName="categoryIds"
           label="Categories"
-          options={categories.map(c => ({ id: c.id, name: c.name, color: c.color }))}
+          options={categoryOptions}
           selected={categoryIds}
           value={categoryIds}
           onChange={setCategoryIds}

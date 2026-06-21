@@ -3,11 +3,14 @@ export const dynamic = 'force-dynamic';
 import { db } from '@/lib/db';
 import { transactions, categories, accounts, transactionTags } from '@/lib/db/schema';
 import { and, or, asc, eq, gte, lte, sql, inArray, exists, ne, isNotNull } from 'drizzle-orm';
+import { alias } from 'drizzle-orm/pg-core';
 import Link from 'next/link';
 import SpendingIncomeChart from './SpendingIncomeChart';
 import CategoryPieChart from './CategoryPieChart';
 import SpendingByCategoryChart from './SpendingByCategoryChart';
 import ReportsFiltersClient from './ReportsFiltersClient';
+import { expandCategoryIds } from '@/lib/utils/categories';
+import { buildCategoryOptions } from '@/lib/utils/categoryOptions';
 
 export default async function ReportsPage({
   searchParams,
@@ -20,6 +23,7 @@ export default async function ReportsPage({
   const preset = (params.preset as string) || 'month';
   const fromStr = params.from as string;
   const toStr = params.to as string;
+  const groupBy = (params.groupBy as string) === 'parent' ? 'parent' : 'category';
 
   // Date range based on preset
   let from: Date;
@@ -37,24 +41,35 @@ export default async function ReportsPage({
     from = new Date(fromStr);
     to = toStr ? new Date(toStr) : now;
   } else {
-    // Default: current month
     from = new Date(now.getFullYear(), now.getMonth(), 1);
     to = now;
   }
 
-  // Toggle: include uncategorized (default true — only false when explicitly set)
   const includeUncategorized = params.includeUncategorized !== 'false';
 
   // Multi-value filters
   const accountIds = params.accountIds
     ? (Array.isArray(params.accountIds) ? params.accountIds : (params.accountIds as string).split(',')).map(Number).filter(Boolean)
     : [];
-  const categoryIds = params.categoryIds
+  const rawCategoryIds = params.categoryIds
     ? (Array.isArray(params.categoryIds) ? params.categoryIds : (params.categoryIds as string).split(',')).map(Number).filter(Boolean)
     : [];
   const tagIds = params.tagIds
     ? (Array.isArray(params.tagIds) ? params.tagIds : (params.tagIds as string).split(',')).map(Number).filter(Boolean)
     : [];
+
+  // Fetch all categories with parent info for filter expansion and grouped display
+  const allCategoriesRaw = await db.query.categories.findMany({
+    orderBy: [asc(categories.name)],
+    with: { parent: { columns: { id: true, name: true } } },
+  });
+  const allCategories = allCategoriesRaw.map(({ parent, ...c }) => ({
+    ...c,
+    parentName: parent?.name ?? null,
+  }));
+
+  // Expand parent IDs to children for DB filtering
+  const categoryIds = expandCategoryIds(rawCategoryIds, allCategories);
 
   // Base filters — always exclude transfers
   const baseFilters = [
@@ -63,13 +78,8 @@ export default async function ReportsPage({
     ne(transactions.type, 'transfer'),
   ];
 
-  if (!includeUncategorized) {
-    baseFilters.push(isNotNull(transactions.categoryId));
-  }
-
-  if (accountIds.length > 0) {
-    baseFilters.push(inArray(transactions.accountId, accountIds));
-  }
+  if (!includeUncategorized) baseFilters.push(isNotNull(transactions.categoryId));
+  if (accountIds.length > 0) baseFilters.push(inArray(transactions.accountId, accountIds));
 
   if (categoryIds.length > 0 && tagIds.length > 0) {
     const tagExists = exists(
@@ -91,7 +101,7 @@ export default async function ReportsPage({
     );
   }
 
-  // Summary totals (no transfers)
+  // Summary totals
   const [expRow] = await db.select({ sum: sql<string>`COALESCE(sum(amount), 0)` })
     .from(transactions)
     .where(and(...baseFilters, eq(transactions.isCredit, false)));
@@ -104,18 +114,38 @@ export default async function ReportsPage({
   const incomeSum = parseFloat(incRow?.sum || '0');
   const net = incomeSum - expenseSum;
 
-  // Spending by Category — net of debits minus credits per category (removes returns)
-  const categorySpending = await db.select({
-    categoryId: transactions.categoryId,
-    categoryName: categories.name,
-    categoryColor: categories.color,
-    total: sql<string>`COALESCE(sum(CASE WHEN NOT is_credit THEN amount::numeric ELSE -amount::numeric END), 0)`,
-  })
-    .from(transactions)
-    .leftJoin(categories, eq(transactions.categoryId, categories.id))
-    .where(and(...baseFilters))
-    .groupBy(transactions.categoryId, categories.name, categories.color)
-    .orderBy(sql`sum(CASE WHEN NOT is_credit THEN amount::numeric ELSE -amount::numeric END) DESC`);
+  // Spending by Category (or Group when groupBy=parent)
+  const parentCat = alias(categories, 'parent_cat');
+  const spendingExpr = sql<string>`COALESCE(sum(CASE WHEN NOT is_credit THEN amount::numeric ELSE -amount::numeric END), 0)`;
+
+  const categorySpending = groupBy === 'parent'
+    ? await db.select({
+        categoryId: sql<number | null>`COALESCE(${parentCat.id}, ${categories.id})`,
+        categoryName: sql<string>`COALESCE(${parentCat.name}, ${categories.name})`,
+        categoryColor: sql<string | null>`COALESCE(${parentCat.color}, ${categories.color})`,
+        total: spendingExpr,
+      })
+        .from(transactions)
+        .leftJoin(categories, eq(transactions.categoryId, categories.id))
+        .leftJoin(parentCat, eq(categories.parentId, parentCat.id))
+        .where(and(...baseFilters))
+        .groupBy(
+          sql`COALESCE(${parentCat.id}, ${categories.id})`,
+          sql`COALESCE(${parentCat.name}, ${categories.name})`,
+          sql`COALESCE(${parentCat.color}, ${categories.color})`,
+        )
+        .orderBy(sql`sum(CASE WHEN NOT is_credit THEN amount::numeric ELSE -amount::numeric END) DESC`)
+    : await db.select({
+        categoryId: transactions.categoryId,
+        categoryName: categories.name,
+        categoryColor: categories.color,
+        total: spendingExpr,
+      })
+        .from(transactions)
+        .leftJoin(categories, eq(transactions.categoryId, categories.id))
+        .where(and(...baseFilters))
+        .groupBy(transactions.categoryId, categories.name, categories.color)
+        .orderBy(sql`sum(CASE WHEN NOT is_credit THEN amount::numeric ELSE -amount::numeric END) DESC`);
 
   // Spending by Account
   const accountSpending = await db.select({
@@ -129,7 +159,7 @@ export default async function ReportsPage({
     .groupBy(transactions.accountId, accounts.name)
     .orderBy(sql`sum(amount) DESC`);
 
-  // Monthly breakdown for bar chart (no transfers)
+  // Monthly breakdown for bar chart
   const monthlyData = await db.select({
     month: sql<string>`TO_CHAR(date_trunc('month', date), 'Mon YYYY')`,
     monthSort: sql<string>`date_trunc('month', date)`,
@@ -147,17 +177,30 @@ export default async function ReportsPage({
     expenses: parseFloat(row.expenses),
   }));
 
-  // Monthly spending by category (net, no transfers)
-  const monthlyCategoryData = await db.select({
-    month: sql<string>`TO_CHAR(date_trunc('month', date), 'Mon YYYY')`,
-    categoryId: transactions.categoryId,
-    amount: sql<string>`COALESCE(sum(CASE WHEN NOT is_credit THEN amount::numeric ELSE -amount::numeric END), 0)`,
-  })
-    .from(transactions)
-    .where(and(...baseFilters))
-    .groupBy(sql`date_trunc('month', date)`, transactions.categoryId)
-    .having(sql`sum(CASE WHEN NOT is_credit THEN amount::numeric ELSE -amount::numeric END) > 0`)
-    .orderBy(sql`date_trunc('month', date) ASC`);
+  // Monthly spending by category/group for line chart
+  const monthlyCategoryData = groupBy === 'parent'
+    ? await db.select({
+        month: sql<string>`TO_CHAR(date_trunc('month', date), 'Mon YYYY')`,
+        categoryId: sql<number | null>`COALESCE(${parentCat.id}, ${categories.id})`,
+        amount: sql<string>`COALESCE(sum(CASE WHEN NOT is_credit THEN amount::numeric ELSE -amount::numeric END), 0)`,
+      })
+        .from(transactions)
+        .leftJoin(categories, eq(transactions.categoryId, categories.id))
+        .leftJoin(parentCat, eq(categories.parentId, parentCat.id))
+        .where(and(...baseFilters))
+        .groupBy(sql`date_trunc('month', date)`, sql`COALESCE(${parentCat.id}, ${categories.id})`)
+        .having(sql`sum(CASE WHEN NOT is_credit THEN amount::numeric ELSE -amount::numeric END) > 0`)
+        .orderBy(sql`date_trunc('month', date) ASC`)
+    : await db.select({
+        month: sql<string>`TO_CHAR(date_trunc('month', date), 'Mon YYYY')`,
+        categoryId: transactions.categoryId,
+        amount: sql<string>`COALESCE(sum(CASE WHEN NOT is_credit THEN amount::numeric ELSE -amount::numeric END), 0)`,
+      })
+        .from(transactions)
+        .where(and(...baseFilters))
+        .groupBy(sql`date_trunc('month', date)`, transactions.categoryId)
+        .having(sql`sum(CASE WHEN NOT is_credit THEN amount::numeric ELSE -amount::numeric END) > 0`)
+        .orderBy(sql`date_trunc('month', date) ASC`);
 
   const categorySpendingByMonth: Record<string, any> = {};
   monthlyCategoryData.forEach(row => {
@@ -177,23 +220,37 @@ export default async function ReportsPage({
       categoryId: cat.categoryId ?? null,
     }));
 
+  // For SpendingByCategoryChart, pass the group-level or leaf-level category list
+  const chartCategories = groupBy === 'parent'
+    ? [
+        ...categorySpending
+          .filter(c => c.categoryId !== null)
+          .map(c => ({ id: c.categoryId as number, name: c.categoryName!, color: c.categoryColor ?? null })),
+        ...(includeUncategorized ? [{ id: null as null, name: 'Uncategorized', color: '#94a3b8' }] : []),
+      ]
+    : [
+        ...allCategories,
+        ...(includeUncategorized ? [{ id: null as null, name: 'Uncategorized', color: '#94a3b8' }] : []),
+      ];
+
   const allAccounts = await db.query.accounts.findMany();
-  const allCategories = await db.query.categories.findMany({ orderBy: [asc(categories.name)] });
   const allTags = await db.query.tags.findMany();
+  const categoryOptions = buildCategoryOptions(allCategories);
 
   // Build base params for preset links (preserve filters)
   const basePresetParams = new URLSearchParams();
   if (accountIds.length) basePresetParams.set('accountIds', accountIds.join(','));
-  if (categoryIds.length) basePresetParams.set('categoryIds', categoryIds.join(','));
+  if (rawCategoryIds.length) basePresetParams.set('categoryIds', rawCategoryIds.join(','));
   if (tagIds.length) basePresetParams.set('tagIds', tagIds.join(','));
   if (!includeUncategorized) basePresetParams.set('includeUncategorized', 'false');
+  if (groupBy === 'parent') basePresetParams.set('groupBy', 'parent');
 
   const totalCategorySpending = categorySpending.reduce((s, c) => s + Math.max(0, parseFloat(c.total)), 0);
 
   const fromDateStr = from.toISOString().split('T')[0];
   const toDateStr = to.toISOString().split('T')[0];
   const txAccountIds = accountIds.length ? accountIds.join(',') : '';
-  const txCategoryIds = categoryIds.length ? categoryIds.join(',') : '';
+  const txCategoryIds = rawCategoryIds.length ? rawCategoryIds.join(',') : '';
   const txTagIds = tagIds.length ? tagIds.join(',') : '';
 
   function buildTxUrl(overrides: Record<string, string> = {}) {
@@ -216,45 +273,21 @@ export default async function ReportsPage({
         <div className="flex gap-2 mb-4" style={{ flexWrap: 'wrap', alignItems: 'center' }}>
           <span className="form-label" style={{ marginBottom: 0 }}>Period:</span>
           <div className="btn-group">
-            <Link
-              href={`/reports?${new URLSearchParams({ ...Object.fromEntries(basePresetParams), preset: 'month' })}`}
-              className={`btn btn-sm ${preset === 'month' ? 'active' : ''}`}
-            >
-              Current Month
-            </Link>
-            <Link
-              href={`/reports?${new URLSearchParams({ ...Object.fromEntries(basePresetParams), preset: 'prevmonth' })}`}
-              className={`btn btn-sm ${preset === 'prevmonth' ? 'active' : ''}`}
-            >
-              Previous Month
-            </Link>
-            <Link
-              href={`/reports?${new URLSearchParams({ ...Object.fromEntries(basePresetParams), preset: 'ytd' })}`}
-              className={`btn btn-sm ${preset === 'ytd' ? 'active' : ''}`}
-            >
-              Year to Date
-            </Link>
-            <Link
-              href={`/reports?${new URLSearchParams({ ...Object.fromEntries(basePresetParams), preset: '1year' })}`}
-              className={`btn btn-sm ${preset === '1year' ? 'active' : ''}`}
-            >
-              1 Year
-            </Link>
-            <Link
-              href={`/reports?${new URLSearchParams({ ...Object.fromEntries(basePresetParams), preset: 'custom' })}`}
-              className={`btn btn-sm ${preset === 'custom' ? 'active' : ''}`}
-            >
-              Custom
-            </Link>
+            <Link href={`/reports?${new URLSearchParams({ ...Object.fromEntries(basePresetParams), preset: 'month' })}`} className={`btn btn-sm ${preset === 'month' ? 'active' : ''}`}>Current Month</Link>
+            <Link href={`/reports?${new URLSearchParams({ ...Object.fromEntries(basePresetParams), preset: 'prevmonth' })}`} className={`btn btn-sm ${preset === 'prevmonth' ? 'active' : ''}`}>Previous Month</Link>
+            <Link href={`/reports?${new URLSearchParams({ ...Object.fromEntries(basePresetParams), preset: 'ytd' })}`} className={`btn btn-sm ${preset === 'ytd' ? 'active' : ''}`}>Year to Date</Link>
+            <Link href={`/reports?${new URLSearchParams({ ...Object.fromEntries(basePresetParams), preset: '1year' })}`} className={`btn btn-sm ${preset === '1year' ? 'active' : ''}`}>1 Year</Link>
+            <Link href={`/reports?${new URLSearchParams({ ...Object.fromEntries(basePresetParams), preset: 'custom' })}`} className={`btn btn-sm ${preset === 'custom' ? 'active' : ''}`}>Custom</Link>
           </div>
 
           {preset === 'custom' && (
             <form className="flex gap-2 items-end" style={{ marginLeft: '0.5rem' }}>
               <input type="hidden" name="preset" value="custom" />
               {accountIds.length > 0 && <input type="hidden" name="accountIds" value={accountIds.join(',')} />}
-              {categoryIds.length > 0 && <input type="hidden" name="categoryIds" value={categoryIds.join(',')} />}
+              {rawCategoryIds.length > 0 && <input type="hidden" name="categoryIds" value={rawCategoryIds.join(',')} />}
               {tagIds.length > 0 && <input type="hidden" name="tagIds" value={tagIds.join(',')} />}
               {!includeUncategorized && <input type="hidden" name="includeUncategorized" value="false" />}
+              {groupBy === 'parent' && <input type="hidden" name="groupBy" value="parent" />}
               <div className="form-group" style={{ marginBottom: 0 }}>
                 <label className="form-label">From</label>
                 <input type="date" name="from" className="form-input" defaultValue={fromStr || from.toISOString().split('T')[0]} />
@@ -273,21 +306,23 @@ export default async function ReportsPage({
           fromStr={fromStr || ''}
           toStr={toStr || ''}
           initialAccountIds={accountIds.map(String)}
-          initialCategoryIds={categoryIds.map(String)}
+          initialCategoryIds={rawCategoryIds.map(String)}
           initialTagIds={tagIds.map(String)}
           initialIncludeUncategorized={includeUncategorized}
+          groupBy={groupBy}
           accounts={allAccounts.map(a => ({ id: a.id, name: a.name }))}
-          categories={allCategories.map(c => ({ id: c.id, name: c.name, color: c.color }))}
+          categoryOptions={categoryOptions}
           tags={allTags.map(t => ({ id: t.id, name: `#${t.name}` }))}
         />
 
         <div className="list-item-subtitle mt-2">
           Showing: {from.toLocaleDateString()} – {to.toLocaleDateString()}
           {accountIds.length > 0 && ` · ${accountIds.length} account${accountIds.length > 1 ? 's' : ''}`}
-          {categoryIds.length > 0 && ` · ${categoryIds.length} categor${categoryIds.length > 1 ? 'ies' : 'y'}`}
+          {rawCategoryIds.length > 0 && ` · ${rawCategoryIds.length} categor${rawCategoryIds.length > 1 ? 'ies' : 'y'}`}
           {tagIds.length > 0 && ` · ${tagIds.length} tag${tagIds.length > 1 ? 's' : ''}`}
           {' · Transfers excluded'}
           {!includeUncategorized && ' · Uncategorized excluded'}
+          {groupBy === 'parent' && ' · Grouped by parent'}
         </div>
       </div>
 
@@ -322,15 +357,14 @@ export default async function ReportsPage({
         <SpendingIncomeChart data={chartData} accountIds={txAccountIds} categoryIds={txCategoryIds} tagIds={txTagIds} />
       </div>
 
-      {/* Spending by Category Stacked Bar Chart */}
+      {/* Spending by Category/Group Over Time */}
       <div className="card mb-4">
-        <h2 className="card-title">Spending by Category Over Time</h2>
+        <h2 className="card-title">
+          Spending by {groupBy === 'parent' ? 'Group' : 'Category'} Over Time
+        </h2>
         <SpendingByCategoryChart
           data={stackedChartData}
-          categories={[
-            ...allCategories,
-            ...(includeUncategorized ? [{ id: null, name: 'Uncategorized', color: '#94a3b8' }] : []),
-          ]}
+          categories={chartCategories}
           accountIds={txAccountIds}
           tagIds={txTagIds}
         />
@@ -339,13 +373,13 @@ export default async function ReportsPage({
       <div className="flex gap-4 mb-4">
         {/* Category Pie Chart */}
         <div className="card w-full">
-          <h2 className="card-title">Spending by Category</h2>
+          <h2 className="card-title">Spending by {groupBy === 'parent' ? 'Group' : 'Category'}</h2>
           <CategoryPieChart data={pieData} fromDate={fromDateStr} toDate={toDateStr} accountIds={txAccountIds} tagIds={txTagIds} />
         </div>
 
-        {/* Category breakdown bars */}
+        {/* Category/Group breakdown bars */}
         <div className="card w-full">
-          <h2 className="card-title">Category Breakdown</h2>
+          <h2 className="card-title">{groupBy === 'parent' ? 'Group' : 'Category'} Breakdown</h2>
           <div className="mt-4">
             {categorySpending.length === 0 ? (
               <p className="text-muted">No data for this period.</p>
@@ -361,28 +395,13 @@ export default async function ReportsPage({
                     href={catTxUrl} target="_blank" rel="noopener noreferrer">
                     <div className="flex justify-between items-center mb-1">
                       <div className="flex items-center gap-2">
-                        <div style={{
-                          width: '10px',
-                          height: '10px',
-                          borderRadius: '50%',
-                          backgroundColor: cat.categoryColor || '#94a3b8',
-                        }} />
+                        <div style={{ width: '10px', height: '10px', borderRadius: '50%', backgroundColor: cat.categoryColor || '#94a3b8' }} />
                         <span style={{ fontWeight: 500 }}>{cat.categoryName || 'Uncategorized'}</span>
                       </div>
                       <span style={{ fontWeight: 600 }}>${total.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
                     </div>
-                    <div style={{
-                      width: '100%',
-                      height: '8px',
-                      backgroundColor: 'var(--bg)',
-                      borderRadius: '4px',
-                      overflow: 'hidden',
-                    }}>
-                      <div style={{
-                        width: `${percentage}%`,
-                        height: '100%',
-                        backgroundColor: cat.categoryColor || '#94a3b8',
-                      }} />
+                    <div style={{ width: '100%', height: '8px', backgroundColor: 'var(--bg)', borderRadius: '4px', overflow: 'hidden' }}>
+                      <div style={{ width: `${percentage}%`, height: '100%', backgroundColor: cat.categoryColor || '#94a3b8' }} />
                     </div>
                   </a>
                 );
@@ -409,18 +428,8 @@ export default async function ReportsPage({
                     <span style={{ fontWeight: 500 }}>{acc.accountName}</span>
                     <span style={{ fontWeight: 600 }}>${total.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
                   </div>
-                  <div style={{
-                    width: '100%',
-                    height: '8px',
-                    backgroundColor: 'var(--bg)',
-                    borderRadius: '4px',
-                    overflow: 'hidden',
-                  }}>
-                    <div style={{
-                      width: `${percentage}%`,
-                      height: '100%',
-                      backgroundColor: 'var(--primary)',
-                    }} />
+                  <div style={{ width: '100%', height: '8px', backgroundColor: 'var(--bg)', borderRadius: '4px', overflow: 'hidden' }}>
+                    <div style={{ width: `${percentage}%`, height: '100%', backgroundColor: 'var(--primary)' }} />
                   </div>
                 </a>
               );

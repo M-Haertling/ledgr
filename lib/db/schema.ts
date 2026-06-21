@@ -18,12 +18,19 @@ export const categories = pgTable('categories', {
   id: serial('id').primaryKey(),
   name: text('name').notNull(),
   color: text('color'),
+  parentId: integer('parent_id').references((): AnyPgColumn => categories.id),
   createdAt: timestamp('created_at').defaultNow().notNull(),
 });
 
-export const categoriesRelations = relations(categories, ({ many }) => ({
+export const categoriesRelations = relations(categories, ({ one, many }) => ({
   transactions: many(transactions),
   categoryTags: many(categoryTags),
+  parent: one(categories, {
+    fields: [categories.parentId],
+    references: [categories.id],
+    relationName: 'parent_child',
+  }),
+  children: many(categories, { relationName: 'parent_child' }),
 }));
 
 export const transactions = pgTable('transactions', {

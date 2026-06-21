@@ -2,7 +2,23 @@
 
 import { updateTransactionCategory } from '@/lib/actions/transactions';
 
-type Category = { id: number; name: string; color: string | null };
+type Category = { id: number; name: string; color: string | null; parentId?: number | null; parentName?: string | null };
+
+function groupByParent(cats: Category[]): { parentName: string | null; items: Category[] }[] {
+  const groups = new Map<string, { parentName: string | null; items: Category[] }>();
+  for (const cat of cats) {
+    const key = cat.parentName ?? '';
+    if (!groups.has(key)) groups.set(key, { parentName: cat.parentName ?? null, items: [] });
+    groups.get(key)!.items.push(cat);
+  }
+  const result = Array.from(groups.values());
+  result.sort((a, b) => {
+    if (a.parentName === null && b.parentName !== null) return 1;
+    if (a.parentName !== null && b.parentName === null) return -1;
+    return (a.parentName ?? '').localeCompare(b.parentName ?? '');
+  });
+  return result;
+}
 
 export default function CategoryPicker({
   transactionId,
@@ -20,6 +36,15 @@ export default function CategoryPicker({
     .filter((c): c is Category => !!c);
   const suggestedIds = new Set(suggestedCategoryIds);
   const rest = categories.filter(c => !suggestedIds.has(c.id));
+  const grouped = groupByParent(rest);
+
+  const renderGroup = (items: Category[], label: string) => (
+    <optgroup key={label} label={label}>
+      {items.map(cat => (
+        <option key={cat.id} value={cat.id}>{cat.name}</option>
+      ))}
+    </optgroup>
+  );
 
   return (
     <select
@@ -32,23 +57,19 @@ export default function CategoryPicker({
       }}
     >
       <option value="">Uncategorized</option>
-      {suggested.length > 0 ? (
-        <>
-          <optgroup label="— Suggested —">
-            {suggested.map(cat => (
-              <option key={cat.id} value={cat.id}>{cat.name}</option>
-            ))}
-          </optgroup>
-          <optgroup label="— All Categories —">
-            {rest.map(cat => (
-              <option key={cat.id} value={cat.id}>{cat.name}</option>
-            ))}
-          </optgroup>
-        </>
-      ) : (
-        categories.map(cat => (
-          <option key={cat.id} value={cat.id}>{cat.name}</option>
-        ))
+      {suggested.length > 0 && (
+        <optgroup label="— Suggested —">
+          {suggested.map(cat => (
+            <option key={cat.id} value={cat.id}>{cat.name}</option>
+          ))}
+        </optgroup>
+      )}
+      {grouped.map(group =>
+        group.parentName
+          ? renderGroup(group.items, group.parentName)
+          : group.items.length > 0
+            ? renderGroup(group.items, suggested.length > 0 ? '— All Categories —' : '— Ungrouped —')
+            : null
       )}
     </select>
   );

@@ -3,13 +3,16 @@
 import { useState } from 'react';
 import ColorPicker from './ColorPicker';
 
-type Category = { id: number; name: string; color: string | null };
+type Category = { id: number; name: string; color: string | null; parentId?: number | null };
+type ParentOption = { id: number; name: string };
 
 export default function EditCategoryForm({
   category,
+  parentOptions,
   updateAction,
 }: {
   category: Category;
+  parentOptions: ParentOption[];
   updateAction: (formData: FormData) => Promise<void>;
 }) {
   const [editing, setEditing] = useState(false);
@@ -50,6 +53,16 @@ export default function EditCategoryForm({
         required
         autoFocus
       />
+      {parentOptions.length > 0 && (
+        <select name="parentId" className="form-input" defaultValue={category.parentId ?? ''}>
+          <option value="">— No Group —</option>
+          {parentOptions
+            .filter(p => p.id !== category.id)
+            .map(p => (
+              <option key={p.id} value={p.id}>{p.name}</option>
+            ))}
+        </select>
+      )}
       <ColorPicker name="color" value={color} onChange={setColor} />
       <button type="submit" className="btn btn-primary btn-sm">Save</button>
       <button type="button" className="btn btn-secondary btn-sm" onClick={() => setEditing(false)}>

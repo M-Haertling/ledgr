@@ -3,7 +3,13 @@
 import { useState, useRef, useEffect } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 
-type Option = { id: number | string; name: string; color?: string | null };
+type Option = {
+  id: number | string;
+  name: string;
+  color?: string | null;
+  isParent?: boolean;
+  indent?: boolean;
+};
 
 export default function MultiSelect({
   paramName,
@@ -29,7 +35,6 @@ export default function MultiSelect({
   const searchParams = useSearchParams();
   const ref = useRef<HTMLDivElement>(null);
 
-  // Sync checked state when selected/value prop changes
   useEffect(() => {
     setChecked(new Set(value ?? selected));
   }, [(value ?? selected).join(',')]);
@@ -52,9 +57,7 @@ export default function MultiSelect({
       next.add(id);
     }
     setChecked(next);
-    if (controlled) {
-      onChange!(Array.from(next));
-    }
+    if (controlled) onChange!(Array.from(next));
   };
 
   const apply = () => {
@@ -84,7 +87,7 @@ export default function MultiSelect({
     <div className="multi-select" ref={ref}>
       <button
         type="button"
-        className={`btn btn-secondary btn-sm`}
+        className="btn btn-secondary btn-sm"
         onClick={() => setOpen(!open)}
         style={activeCount > 0 ? { borderColor: 'var(--primary)', color: 'var(--primary)' } : undefined}
       >
@@ -96,7 +99,14 @@ export default function MultiSelect({
             <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)', padding: '0.25rem' }}>No options</p>
           ) : (
             options.map(opt => (
-              <label key={opt.id} className="multi-select-option">
+              <label
+                key={opt.id}
+                className="multi-select-option"
+                style={{
+                  paddingLeft: opt.indent ? '1.5rem' : undefined,
+                  fontWeight: opt.isParent ? 600 : undefined,
+                }}
+              >
                 <input
                   type="checkbox"
                   checked={checked.has(String(opt.id))}

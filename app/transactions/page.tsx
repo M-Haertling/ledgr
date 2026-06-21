@@ -11,6 +11,8 @@ import FiltersClient from './FiltersClient';
 import AddTransactionDialog from './AddTransactionDialog';
 import DeleteUploadDialog from './DeleteUploadDialog';
 import { deduplicateTransactions } from '@/lib/actions/transactions';
+import { expandCategoryIds } from '@/lib/utils/categories';
+import { buildCategoryOptions } from '@/lib/utils/categoryOptions';
 
 const PAGE_SIZE = 50;
 
@@ -23,13 +25,13 @@ export default async function TransactionsPage({
 
   // Multi-value filters
   const accountIds = params.accountIds ? (params.accountIds as string).split(',').map(Number).filter(Boolean) : [];
-  const categoryIds = params.categoryIds ? (params.categoryIds as string).split(',').map(Number).filter(Boolean) : [];
+  const rawCategoryIds = params.categoryIds ? (params.categoryIds as string).split(',').map(Number).filter(Boolean) : [];
   const tagIds = params.tagIds ? (params.tagIds as string).split(',').map(Number).filter(Boolean) : [];
 
   // Other filters
   const search = params.search as string | undefined;
   const uncategorized = params.uncategorized === 'true';
-  const typeFilter = params.type as string | undefined; // 'credit' | 'debit'
+  const typeFilter = params.type as string | undefined;
   const from = params.from ? new Date(params.from as string) : undefined;
   const to = params.to ? new Date(params.to as string) : undefined;
 
@@ -39,6 +41,19 @@ export default async function TransactionsPage({
 
   // Pagination
   const page = params.page ? parseInt(params.page as string) : 0;
+
+  const allCategories = await db.query.categories.findMany({
+    orderBy: [asc(categories.name)],
+    with: { parent: { columns: { id: true, name: true } } },
+  });
+
+  const enrichedCategories = allCategories.map(({ parent, ...c }) => ({
+    ...c,
+    parentName: parent?.name ?? null,
+  }));
+
+  // Expand any parent IDs to include their children
+  const categoryIds = expandCategoryIds(rawCategoryIds, enrichedCategories);
 
   // Helper to convert wildcard pattern to regex
   const patternToLike = (pattern: string): string => {
@@ -122,13 +137,14 @@ export default async function TransactionsPage({
   });
 
   const allAccounts = await db.query.accounts.findMany();
-  const allCategories = await db.query.categories.findMany({ orderBy: [asc(categories.name)] });
   const allTags = await db.query.tags.findMany();
 
   const categorizedHistory = await db
     .select({ description: transactions.description, categoryId: transactions.categoryId })
     .from(transactions)
     .where(isNotNull(transactions.categoryId));
+
+  const categoryOptions = buildCategoryOptions(enrichedCategories);
 
   return (
     <div>
@@ -142,7 +158,7 @@ export default async function TransactionsPage({
             <button type="submit" className="btn btn-secondary">Deduplicate</button>
           </form>
           <DeleteUploadDialog accounts={allAccounts} />
-          <AddTransactionDialog accounts={allAccounts} categories={allCategories} />
+          <AddTransactionDialog accounts={allAccounts} categories={enrichedCategories} />
           <Link href="/transactions/upload" className="btn btn-primary">
             Upload CSV
           </Link>
@@ -156,18 +172,18 @@ export default async function TransactionsPage({
         initialType={typeFilter || ''}
         initialUncategorized={uncategorized}
         initialAccountIds={accountIds.map(String)}
-        initialCategoryIds={categoryIds.map(String)}
+        initialCategoryIds={rawCategoryIds.map(String)}
         initialTagIds={tagIds.map(String)}
         sortCol={sortCol}
         sortDir={sortDir}
         accounts={allAccounts.map(a => ({ id: a.id, name: a.name }))}
-        categories={allCategories.map(c => ({ id: c.id, name: c.name, color: c.color }))}
+        categoryOptions={categoryOptions}
         tags={allTags.map(t => ({ id: t.id, name: `#${t.name}` }))}
       />
 
       <TransactionsTable
         transactions={allTransactions as any}
-        categories={allCategories}
+        categories={enrichedCategories}
         allTags={allTags}
         categorizedHistory={categorizedHistory as { description: string; categoryId: number }[]}
         currentPage={safePage}
