@@ -57,17 +57,29 @@ export async function POST(req: Request) {
       }
       break;
 
-    case 'categories':
+    case 'categories': {
+      const parentUpdates: { id: number; parentId: number }[] = [];
       for (const r of rows) {
-        await db.insert(categories).values({
+        const result = await db.insert(categories).values({
           id: parseInt(r.id),
           name: r.name,
           color: r.color || null,
           createdAt: r.created_at ? new Date(r.created_at) : new Date(),
-        }).onConflictDoNothing();
-        inserted++;
+        }).onConflictDoNothing().returning({ id: categories.id });
+        if (result.length > 0) {
+          inserted++;
+          if (r.parent_id) {
+            parentUpdates.push({ id: parseInt(r.id), parentId: parseInt(r.parent_id) });
+          }
+        } else {
+          skipped++;
+        }
+      }
+      for (const { id, parentId } of parentUpdates) {
+        await db.update(categories).set({ parentId }).where(eq(categories.id, id));
       }
       break;
+    }
 
     case 'tags':
       for (const r of rows) {

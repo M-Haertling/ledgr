@@ -37,7 +37,7 @@ export async function GET(req: Request) {
     }
     case 'categories': {
       const rows = await db.query.categories.findMany();
-      csv = toCsv(rows.map(r => ({ id: r.id, name: r.name, color: r.color, created_at: r.createdAt.toISOString() })));
+      csv = toCsv(rows.map(r => ({ id: r.id, name: r.name, color: r.color, parent_id: r.parentId, created_at: r.createdAt.toISOString() })));
       filename = 'categories.csv';
       break;
     }
