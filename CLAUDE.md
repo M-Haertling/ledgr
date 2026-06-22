@@ -25,11 +25,12 @@ See `features.md`.
     - `/categories`: Category management CRUD with inline rename and color picker.
     - `/tags`: Tag management CRUD with inline rename.
     - `/automation`: Rule-based auto-categorization management.
-    - `/projects`: Home improvement project tracking.
-        - `page.tsx`: Project list with status badge, update count, and total cost per project.
-        - `EditProjectForm.tsx`: Client component — inline edit toggle for name, description, and status.
-        - `/[id]`: Project detail page.
-            - `page.tsx`: Project header, updates feed (sorted by date), all linked transactions table.
+    - `/activities`: General-purpose activity tracking (vacations, home projects, events, vehicle work, etc.). Each activity has an optional type and budget; the UI compares budget vs. actual spending from linked transactions.
+        - `page.tsx`: Activity list with status badge, type, update count, budget, and actual total cost per activity.
+        - `ActivitiesTable.tsx`: Client component — sortable/filterable table with budget vs. actual columns.
+        - `EditActivityForm.tsx`: Client component — inline edit toggle for name, description, status, type, and budget.
+        - `/[id]`: Activity detail page.
+            - `page.tsx`: Activity header (with budget vs. actual summary), updates feed (sorted by date), all linked transactions table.
             - `AddUpdateForm.tsx`: Client component — add update with date (defaults today), content, optional status change.
             - `UpdateCard.tsx`: Client component — per-update card with inline edit, delete, linked transactions, and transaction picker trigger.
             - `TransactionPicker.tsx`: Client component — modal dialog with live search to link/unlink transactions to an update.
@@ -60,9 +61,9 @@ See `features.md`.
         - `/tags/route.ts`, `/tags/[id]/route.ts`: REST CRUD for tags.
         - `/rules/route.ts`, `/rules/[id]/route.ts`: REST CRUD for categorization rules.
         - `/rules/apply-all/route.ts`, `/rules/apply-uncategorized/route.ts`: Bulk rule application.
-        - `/projects/route.ts`, `/projects/[id]/route.ts`: REST CRUD for projects.
-        - `/projects/[id]/updates/route.ts`: Add project updates.
-        - `/project-updates/[id]/route.ts`: Edit/delete individual project updates.
+        - `/activities/route.ts`, `/activities/[id]/route.ts`: REST CRUD for activities.
+        - `/activities/[id]/updates/route.ts`: Add activity updates.
+        - `/activity-updates/[id]/route.ts`: Edit/delete individual activity updates.
         - `/openapi.json/route.ts`: Serves the auto-generated OpenAPI 3.0.3 spec.
 - `/scripts`: Node.js utility scripts run outside the app.
     - `import.mjs`: CSV import script for bulk-loading transactions directly via pg.
@@ -73,7 +74,7 @@ See `features.md`.
         - `schema.ts`: Drizzle PostgreSQL table definitions and relations.
     - `/schemas`: Zod schemas used for REST API request validation and OpenAPI spec generation.
         - `z.ts`: Re-exports Zod extended with `@asteasolutions/zod-to-openapi`.
-        - `accounts.ts`, `categories.ts`, `tags.ts`, `rules.ts`, `transactions.ts`, `projects.ts`, `project-updates.ts`: Per-domain request/response schemas.
+        - `accounts.ts`, `categories.ts`, `tags.ts`, `rules.ts`, `transactions.ts`, `activities.ts`, `activity-updates.ts`: Per-domain request/response schemas.
     - `/api`: Pure business logic helpers shared between Server Actions and REST routes. No `'use server'` directive.
         - `rules.ts`: `patternToRegex`, `applyRulesToUncategorized`, `applyRulesToAll`, `applySingleRule`.
         - `transactions.ts`: `deduplicateTransactions`, `deleteTransaction`, `updateTransactionCategory`.
@@ -86,7 +87,7 @@ See `features.md`.
         - `transactions.ts`: `updateTransactionCategory`, `updateTransactionNotes`, `addTransaction`, `deduplicateTransactions`, `findTransferCandidates`.
         - `rules.ts`: Rule management and `applyRulesToUncategorized` (wildcard, tag, account-scoped).
         - `mappings.ts`: CSV upload template CRUD (save, load, delete named column-mapping templates).
-        - `projects.ts`: Project CRUD, update CRUD, transaction link/unlink, and `getTransactionsForPicker` for the modal search.
+        - `activities.ts`: Activity CRUD (including type/budget), update CRUD, transaction link/unlink, and `getTransactionsForPicker` for the modal search.
     - `openapi.ts`: Builds the OpenAPI 3.0.3 spec from all Zod schemas using `@asteasolutions/zod-to-openapi`.
 - `/__tests__`: Vitest unit tests mirroring the `lib/` structure.
     - `lib/api/rules.test.ts`: `patternToRegex` (pure) and `applyRulesToUncategorized` (DB mocked).
@@ -104,5 +105,8 @@ See `features.md`.
 - Migrations are tracked in `/drizzle`. Drizzle maintains a `__drizzle_migrations` table and only runs migrations that haven't been applied yet.
 - On Docker deploy, `start.sh` runs `node scripts/migrate.mjs` automatically before the app starts — no manual migration step needed.
 - `transactions` has a composite unique constraint on `(account_id, date, description, amount)` to enforce deduplication. Upload uses `ON CONFLICT DO NOTHING`.
+- **Every `.sql` file in `/drizzle` must have a matching entry in `/drizzle/meta/_journal.json`.** `migrate.mjs` uses Drizzle's journal-driven `migrator`, so any migration missing from the journal is silently skipped and will never run on a fresh database. When hand-writing a migration, add a journal entry with the next `idx` and a `when` timestamp greater than the prior entry. Prefer idempotent DDL (`ADD COLUMN IF NOT EXISTS`, `CREATE TABLE IF NOT EXISTS`, `IF NOT EXISTS` indexes) so re-runs and partially-migrated databases stay safe.
 
 **Important** When adding or removing tables, be sure to update the "Backup" and "Admin" pages, which have references to relevant application tables.
+
+**Important** This file is the source of truth for project structure. When you add, remove, rename, or move pages, API routes, server actions, schemas, lib helpers, or tables, update the relevant section of this file in the same change so it stays accurate.

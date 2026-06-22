@@ -19,9 +19,9 @@ const QUICK_TABLES = [
   'categorization_rules',
   'rule_tags',
   'mappings',
-  'projects',
-  'project_updates',
-  'project_update_transactions',
+  'activities',
+  'activity_updates',
+  'activity_update_transactions',
   'drizzle.__drizzle_migrations',
 ];
 

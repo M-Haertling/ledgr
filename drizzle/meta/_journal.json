@@ -61,8 +61,36 @@
     {
       "idx": 8,
       "version": "7",
+      "when": 1743897700000,
+      "tag": "0008_add_project_type",
+      "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1743897800000,
+      "tag": "0009_category_tags",
+      "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
       "when": 1750464000000,
       "tag": "0010_add_category_parent_id",
+      "breakpoints": true
+    },
+    {
+      "idx": 11,
+      "version": "7",
+      "when": 1750550400000,
+      "tag": "0011_add_project_budget",
+      "breakpoints": true
+    },
+    {
+      "idx": 12,
+      "version": "7",
+      "when": 1750636800000,
+      "tag": "0012_rename_projects_to_activities",
       "breakpoints": true
     }
   ]

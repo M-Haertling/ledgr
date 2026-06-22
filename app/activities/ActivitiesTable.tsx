@@ -2,7 +2,7 @@
 
 import { useState, useMemo, useRef, useEffect } from 'react';
 import Link from 'next/link';
-import { deleteProject } from '@/lib/actions/projects';
+import { deleteActivity } from '@/lib/actions/activities';
 import ConfirmDeleteButton from '@/app/components/ConfirmDeleteButton';
 
 const STATUS_COLORS: Record<string, string> = {
@@ -12,19 +12,20 @@ const STATUS_COLORS: Record<string, string> = {
   Finished: '#22c55e',
 };
 
-type ProjectRow = {
+type ActivityRow = {
   id: number;
   name: string;
   description: string | null;
   status: string;
   type: string | null;
+  budget: number | null;
   updateCount: number;
   totalCost: number;
   startDate: string | null;
   endDate: string | null;
 };
 
-type SortCol = 'name' | 'status' | 'type' | 'startDate' | 'endDate' | 'updateCount' | 'totalCost';
+type SortCol = 'name' | 'status' | 'type' | 'startDate' | 'endDate' | 'updateCount' | 'totalCost' | 'budget';
 type SortDir = 'asc' | 'desc';
 
 const ALL_STATUSES = ['TODO', 'Planning', 'Started', 'Finished'];
@@ -118,7 +119,7 @@ function FilterDropdown({
 
 // ── Main table ────────────────────────────────────────────────────────────────
 
-export default function ProjectsTable({ projects }: { projects: ProjectRow[] }) {
+export default function ActivitiesTable({ activities }: { activities: ActivityRow[] }) {
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState<string[]>([]);
   const [typeFilter, setTypeFilter] = useState<string[]>([]);
@@ -137,29 +138,29 @@ export default function ProjectsTable({ projects }: { projects: ProjectRow[] }) 
   // Derive unique types from the data
   const allTypes = useMemo(() => {
     const seen = new Set<string>();
-    for (const p of projects) {
-      if (p.type) seen.add(p.type);
+    for (const a of activities) {
+      if (a.type) seen.add(a.type);
     }
     return Array.from(seen).sort();
-  }, [projects]);
+  }, [activities]);
 
   const filtered = useMemo(() => {
-    let rows = projects;
+    let rows = activities;
 
     if (search.trim()) {
       const q = search.trim().toLowerCase();
-      rows = rows.filter(p =>
-        p.name.toLowerCase().includes(q) ||
-        (p.description ?? '').toLowerCase().includes(q)
+      rows = rows.filter(a =>
+        a.name.toLowerCase().includes(q) ||
+        (a.description ?? '').toLowerCase().includes(q)
       );
     }
 
     if (statusFilter.length > 0) {
-      rows = rows.filter(p => statusFilter.includes(p.status));
+      rows = rows.filter(a => statusFilter.includes(a.status));
     }
 
     if (typeFilter.length > 0) {
-      rows = rows.filter(p => p.type && typeFilter.includes(p.type));
+      rows = rows.filter(a => a.type && typeFilter.includes(a.type));
     }
 
     rows = [...rows].sort((a, b) => {
@@ -173,6 +174,7 @@ export default function ProjectsTable({ projects }: { projects: ProjectRow[] }) 
         case 'endDate':     av = a.endDate ?? '';         bv = b.endDate ?? '';         break;
         case 'updateCount': av = a.updateCount;           bv = b.updateCount;           break;
         case 'totalCost':   av = a.totalCost;             bv = b.totalCost;             break;
+        case 'budget':      av = a.budget ?? -1;          bv = b.budget ?? -1;          break;
         default:            av = '';                      bv = '';
       }
       if (av === bv) return 0;
@@ -181,7 +183,7 @@ export default function ProjectsTable({ projects }: { projects: ProjectRow[] }) 
     });
 
     return rows;
-  }, [projects, search, statusFilter, typeFilter, sortCol, sortDir]);
+  }, [activities, search, statusFilter, typeFilter, sortCol, sortDir]);
 
   const sortIndicator = (col: SortCol) => {
     if (sortCol !== col) return <span className="sort-indicator" style={{ opacity: 0.3 }}>↕</span>;
@@ -228,7 +230,7 @@ export default function ProjectsTable({ projects }: { projects: ProjectRow[] }) 
       </div>
 
       {filtered.length === 0 ? (
-        <p className="text-muted" style={{ padding: '1rem 0' }}>No projects match your filters.</p>
+        <p className="text-muted" style={{ padding: '1rem 0' }}>No activities match your filters.</p>
       ) : (
         <div className="table-container">
           <table className="table">
@@ -240,43 +242,53 @@ export default function ProjectsTable({ projects }: { projects: ProjectRow[] }) 
                 <th className="sortable" onClick={() => handleSort('startDate')}>Started {sortIndicator('startDate')}</th>
                 <th className="sortable" onClick={() => handleSort('endDate')}>Finished {sortIndicator('endDate')}</th>
                 <th className="sortable" onClick={() => handleSort('updateCount')} style={{ textAlign: 'right' }}>Updates {sortIndicator('updateCount')}</th>
-                <th className="sortable" onClick={() => handleSort('totalCost')} style={{ textAlign: 'right' }}>Total Cost {sortIndicator('totalCost')}</th>
+                <th className="sortable" onClick={() => handleSort('budget')} style={{ textAlign: 'right' }}>Budget {sortIndicator('budget')}</th>
+                <th className="sortable" onClick={() => handleSort('totalCost')} style={{ textAlign: 'right' }}>Actual {sortIndicator('totalCost')}</th>
                 <th></th>
               </tr>
             </thead>
             <tbody>
-              {filtered.map(p => {
-                const color = STATUS_COLORS[p.status] ?? '#94a3b8';
+              {filtered.map(a => {
+                const color = STATUS_COLORS[a.status] ?? '#94a3b8';
                 return (
-                  <tr key={p.id}>
+                  <tr key={a.id}>
                     <td>
-                      <Link href={`/projects/${p.id}`} style={{ fontWeight: 500, textDecoration: 'none', color: 'var(--text)' }}>
-                        {p.name}
+                      <Link href={`/activities/${a.id}`} style={{ fontWeight: 500, textDecoration: 'none', color: 'var(--text)' }}>
+                        {a.name}
                       </Link>
-                      {p.description && (
+                      {a.description && (
                         <div className="text-muted" style={{ fontSize: '0.8rem', marginTop: '0.1rem', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: '300px' }}>
-                          {p.description}
+                          {a.description}
                         </div>
                       )}
                     </td>
                     <td>
                       <span className="badge" style={{ backgroundColor: color + '22', color, borderColor: color + '44' }}>
-                        {p.status}
+                        {a.status}
                       </span>
                     </td>
                     <td style={{ fontSize: '0.875rem' }}>
-                      {p.type ? <span className="badge">{p.type}</span> : <span className="text-muted">—</span>}
+                      {a.type ? <span className="badge">{a.type}</span> : <span className="text-muted">—</span>}
                     </td>
-                    <td style={{ whiteSpace: 'nowrap', fontSize: '0.875rem' }}>{fmt(p.startDate)}</td>
-                    <td style={{ whiteSpace: 'nowrap', fontSize: '0.875rem' }}>{fmt(p.endDate)}</td>
-                    <td style={{ textAlign: 'right' }}>{p.updateCount}</td>
-                    <td style={{ textAlign: 'right', fontWeight: 500 }}>${p.totalCost.toFixed(2)}</td>
+                    <td style={{ whiteSpace: 'nowrap', fontSize: '0.875rem' }}>{fmt(a.startDate)}</td>
+                    <td style={{ whiteSpace: 'nowrap', fontSize: '0.875rem' }}>{fmt(a.endDate)}</td>
+                    <td style={{ textAlign: 'right' }}>{a.updateCount}</td>
+                    <td style={{ textAlign: 'right' }}>
+                      {a.budget != null ? `$${a.budget.toFixed(2)}` : <span className="text-muted">—</span>}
+                    </td>
+                    <td style={{ textAlign: 'right', fontWeight: 500 }}>
+                      {a.budget != null ? (
+                        <span style={{ color: a.totalCost > a.budget ? '#ef4444' : '#22c55e' }}>
+                          ${a.totalCost.toFixed(2)}
+                        </span>
+                      ) : `$${a.totalCost.toFixed(2)}`}
+                    </td>
                     <td>
                       <div className="flex gap-2" style={{ justifyContent: 'flex-end' }}>
-                        <Link href={`/projects/${p.id}`} className="btn btn-sm" style={{ border: '1px solid var(--border)' }}>
+                        <Link href={`/activities/${a.id}`} className="btn btn-sm" style={{ border: '1px solid var(--border)' }}>
                           View
                         </Link>
-                        <ConfirmDeleteButton action={deleteProject.bind(null, p.id)} />
+                        <ConfirmDeleteButton action={deleteActivity.bind(null, a.id)} />
                       </div>
                     </td>
                   </tr>

@@ -1,31 +1,31 @@
 import { db } from '@/lib/db';
-import { projects, projectUpdates } from '@/lib/db/schema';
+import { activities, activityUpdates } from '@/lib/db/schema';
 import { eq } from 'drizzle-orm';
 import { NextResponse } from 'next/server';
-import { CreateProjectUpdateBody } from '@/lib/schemas/project-updates';
+import { CreateActivityUpdateBody } from '@/lib/schemas/activity-updates';
 
 type Params = { params: Promise<{ id: string }> };
 
 export async function POST(req: Request, { params }: Params) {
   try {
-    const projectId = parseInt((await params).id);
-    if (isNaN(projectId)) return NextResponse.json({ error: 'Invalid project ID' }, { status: 400 });
+    const activityId = parseInt((await params).id);
+    if (isNaN(activityId)) return NextResponse.json({ error: 'Invalid activity ID' }, { status: 400 });
 
-    const result = CreateProjectUpdateBody.safeParse(await req.json());
+    const result = CreateActivityUpdateBody.safeParse(await req.json());
     if (!result.success) {
       return NextResponse.json({ error: result.error.flatten() }, { status: 400 });
     }
     const { content, date, newStatus } = result.data;
 
-    const [created] = await db.insert(projectUpdates).values({
-      projectId,
+    const [created] = await db.insert(activityUpdates).values({
+      activityId,
       content,
       newStatus: newStatus ?? null,
       date: new Date(date),
     }).returning();
 
     if (newStatus) {
-      await db.update(projects).set({ status: newStatus }).where(eq(projects.id, projectId));
+      await db.update(activities).set({ status: newStatus }).where(eq(activities.id, activityId));
     }
 
     return NextResponse.json(created, { status: 201 });

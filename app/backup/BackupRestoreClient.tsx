@@ -6,7 +6,7 @@ type TableDef = { key: string; label: string; description: string };
 
 const TABLE_ORDER = [
   'accounts', 'categories', 'tags', 'transactions', 'transaction_tags', 'rules',
-  'mappings', 'projects', 'project_updates', 'project_update_transactions',
+  'mappings', 'activities', 'activity_updates', 'activity_update_transactions',
 ];
 
 export default function BackupRestoreClient({ tables }: { tables: TableDef[] }) {
@@ -159,7 +159,7 @@ export default function BackupRestoreClient({ tables }: { tables: TableDef[] }) 
         <h2 className="card-title">Restore Individual Table</h2>
         <p className="list-item-subtitle mb-4">
           Upload a single CSV file to restore one table. Existing records (same ID) are skipped.
-          Restore in order: Accounts → Categories → Tags → Transactions → Transaction Tags → Rules → Mappings → Projects → Project Updates → Project Update Transactions.
+          Restore in order: Accounts → Categories → Tags → Transactions → Transaction Tags → Rules → Mappings → Activities → Activity Updates → Activity Update Transactions.
         </p>
         <div className="flex gap-2 items-center mb-3" style={{ flexWrap: 'wrap' }}>
           <select

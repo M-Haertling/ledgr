@@ -1,20 +1,21 @@
 'use client';
 
 import { useState, useTransition } from 'react';
-import { updateProject } from '@/lib/actions/projects';
+import { updateActivity } from '@/lib/actions/activities';
 
-type Project = {
+type Activity = {
   id: number;
   name: string;
   description: string | null;
   status: string;
   type: string | null;
+  budget: string | null;
 };
 
 const STATUS_OPTIONS = ['TODO', 'Planning', 'Started', 'Finished'];
-const TYPE_SUGGESTIONS = ['Renovation', 'Repair', 'Upgrade', 'Landscaping', 'Maintenance', 'New Construction', 'Other'];
+const TYPE_SUGGESTIONS = ['Travel', 'Event', 'Home', 'Vehicle', 'Education', 'Health', 'Entertainment', 'Other'];
 
-export default function EditProjectForm({ project }: { project: Project }) {
+export default function EditActivityForm({ activity }: { activity: Activity }) {
   const [editing, setEditing] = useState(false);
   const [isPending, startTransition] = useTransition();
 
@@ -38,7 +39,7 @@ export default function EditProjectForm({ project }: { project: Project }) {
     <form
       action={async (formData) => {
         startTransition(async () => {
-          await updateProject(project.id, formData);
+          await updateActivity(activity.id, formData);
           setEditing(false);
         });
       }}
@@ -50,7 +51,7 @@ export default function EditProjectForm({ project }: { project: Project }) {
           <input
             type="text"
             name="name"
-            defaultValue={project.name}
+            defaultValue={activity.name}
             className="form-input"
             required
             autoFocus
@@ -60,7 +61,7 @@ export default function EditProjectForm({ project }: { project: Project }) {
           <label className="form-label">Description</label>
           <textarea
             name="description"
-            defaultValue={project.description ?? ''}
+            defaultValue={activity.description ?? ''}
             className="form-input"
             rows={3}
             style={{ resize: 'vertical' }}
@@ -68,7 +69,7 @@ export default function EditProjectForm({ project }: { project: Project }) {
         </div>
         <div className="form-group" style={{ flex: '0 1 160px', marginBottom: 0 }}>
           <label className="form-label">Status</label>
-          <select name="status" defaultValue={project.status} className="form-select">
+          <select name="status" defaultValue={activity.status} className="form-select">
             {STATUS_OPTIONS.map((s) => (
               <option key={s} value={s}>{s}</option>
             ))}
@@ -79,14 +80,26 @@ export default function EditProjectForm({ project }: { project: Project }) {
           <input
             type="text"
             name="type"
-            defaultValue={project.type ?? ''}
+            defaultValue={activity.type ?? ''}
             className="form-input"
-            placeholder="e.g. Renovation"
+            placeholder="e.g. Travel"
             list="edit-type-suggestions"
           />
           <datalist id="edit-type-suggestions">
             {TYPE_SUGGESTIONS.map(t => <option key={t} value={t} />)}
           </datalist>
+        </div>
+        <div className="form-group" style={{ flex: '0 1 160px', marginBottom: 0 }}>
+          <label className="form-label">Budget</label>
+          <input
+            type="number"
+            name="budget"
+            defaultValue={activity.budget ?? ''}
+            className="form-input"
+            placeholder="Optional"
+            min="0"
+            step="0.01"
+          />
         </div>
       </div>
       <div className="flex gap-2">

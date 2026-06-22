@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useTransition, useEffect } from 'react';
-import { linkTransaction, unlinkTransaction, getTransactionsForPicker } from '@/lib/actions/projects';
+import { linkTransaction, unlinkTransaction, getTransactionsForPicker } from '@/lib/actions/activities';
 
 type Transaction = {
   id: number;

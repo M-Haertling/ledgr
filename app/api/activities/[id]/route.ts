@@ -1,8 +1,8 @@
 import { db } from '@/lib/db';
-import { projects, projectUpdates, projectUpdateTransactions, transactions, accounts, categories, transactionTags, tags } from '@/lib/db/schema';
+import { activities, activityUpdates, activityUpdateTransactions, transactions, accounts, categories, transactionTags, tags } from '@/lib/db/schema';
 import { eq, desc, inArray } from 'drizzle-orm';
 import { NextResponse } from 'next/server';
-import { UpdateProjectBody } from '@/lib/schemas/projects';
+import { UpdateActivityBody } from '@/lib/schemas/activities';
 
 type Params = { params: Promise<{ id: string }> };
 
@@ -13,25 +13,25 @@ function parseId(id: string) {
 
 export async function GET(_req: Request, { params }: Params) {
   try {
-    const projectId = parseId((await params).id);
-    if (!projectId) return NextResponse.json({ error: 'Invalid ID' }, { status: 400 });
+    const activityId = parseId((await params).id);
+    if (!activityId) return NextResponse.json({ error: 'Invalid ID' }, { status: 400 });
 
-    const project = await db.query.projects.findFirst({
-      where: eq(projects.id, projectId),
+    const activity = await db.query.activities.findFirst({
+      where: eq(activities.id, activityId),
     });
-    if (!project) return NextResponse.json({ error: 'Not found' }, { status: 404 });
+    if (!activity) return NextResponse.json({ error: 'Not found' }, { status: 404 });
 
-    const updates = await db.query.projectUpdates.findMany({
-      where: eq(projectUpdates.projectId, projectId),
-      orderBy: [desc(projectUpdates.date)],
+    const updates = await db.query.activityUpdates.findMany({
+      where: eq(activityUpdates.activityId, activityId),
+      orderBy: [desc(activityUpdates.date)],
     });
 
     const updateIds = updates.map(u => u.id);
 
     const putRows = updateIds.length > 0
       ? await db.select()
-          .from(projectUpdateTransactions)
-          .where(inArray(projectUpdateTransactions.updateId, updateIds))
+          .from(activityUpdateTransactions)
+          .where(inArray(activityUpdateTransactions.updateId, updateIds))
       : [];
 
     const txIds = [...new Set(putRows.map(r => r.transactionId))];
@@ -87,15 +87,16 @@ export async function GET(_req: Request, { params }: Params) {
     }
 
     return NextResponse.json({
-      id: project.id,
-      name: project.name,
-      description: project.description,
-      status: project.status,
-      type: project.type,
-      createdAt: project.createdAt,
+      id: activity.id,
+      name: activity.name,
+      description: activity.description,
+      status: activity.status,
+      type: activity.type,
+      budget: activity.budget ? parseFloat(activity.budget) : null,
+      createdAt: activity.createdAt,
       updates: updates.map(u => ({
         id: u.id,
-        projectId: u.projectId,
+        activityId: u.activityId,
         content: u.content,
         newStatus: u.newStatus,
         date: u.date,
@@ -122,23 +123,23 @@ export async function GET(_req: Request, { params }: Params) {
       })),
     });
   } catch (e: any) {
-    console.error('Project GET error:', e?.message, e?.stack);
+    console.error('Activity GET error:', e?.message, e?.stack);
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }
 
 export async function PUT(req: Request, { params }: Params) {
   try {
-    const projectId = parseId((await params).id);
-    if (!projectId) return NextResponse.json({ error: 'Invalid ID' }, { status: 400 });
+    const activityId = parseId((await params).id);
+    if (!activityId) return NextResponse.json({ error: 'Invalid ID' }, { status: 400 });
 
-    const result = UpdateProjectBody.safeParse(await req.json());
+    const result = UpdateActivityBody.safeParse(await req.json());
     if (!result.success) return NextResponse.json({ error: result.error.flatten() }, { status: 400 });
 
-    const { name, description, status, type } = result.data;
-    const [updated] = await db.update(projects)
-      .set({ name, description: description ?? null, status, type: type ?? null })
-      .where(eq(projects.id, projectId))
+    const { name, description, status, type, budget } = result.data;
+    const [updated] = await db.update(activities)
+      .set({ name, description: description ?? null, status, type: type ?? null, budget: budget != null ? String(budget) : null })
+      .where(eq(activities.id, activityId))
       .returning();
     if (!updated) return NextResponse.json({ error: 'Not found' }, { status: 404 });
 
@@ -150,10 +151,10 @@ export async function PUT(req: Request, { params }: Params) {
 
 export async function DELETE(_req: Request, { params }: Params) {
   try {
-    const projectId = parseId((await params).id);
-    if (!projectId) return NextResponse.json({ error: 'Invalid ID' }, { status: 400 });
+    const activityId = parseId((await params).id);
+    if (!activityId) return NextResponse.json({ error: 'Invalid ID' }, { status: 400 });
 
-    const [deleted] = await db.delete(projects).where(eq(projects.id, projectId)).returning({ id: projects.id });
+    const [deleted] = await db.delete(activities).where(eq(activities.id, activityId)).returning({ id: activities.id });
     if (!deleted) return NextResponse.json({ error: 'Not found' }, { status: 404 });
 
     return NextResponse.json({ success: true });

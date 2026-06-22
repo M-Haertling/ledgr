@@ -171,50 +171,51 @@ export const mappingsRelations = relations(mappings, ({ one }) => ({
   }),
 }));
 
-export const projects = pgTable('projects', {
+export const activities = pgTable('activities', {
   id: serial('id').primaryKey(),
   name: text('name').notNull(),
   description: text('description'),
   status: text('status').notNull().default('TODO'),
   type: text('type'),
+  budget: decimal('budget'),
   createdAt: timestamp('created_at').defaultNow().notNull(),
 });
 
-export const projectsRelations = relations(projects, ({ many }) => ({
-  updates: many(projectUpdates),
+export const activitiesRelations = relations(activities, ({ many }) => ({
+  updates: many(activityUpdates),
 }));
 
-export const projectUpdates = pgTable('project_updates', {
+export const activityUpdates = pgTable('activity_updates', {
   id: serial('id').primaryKey(),
-  projectId: integer('project_id').references(() => projects.id, { onDelete: 'cascade' }).notNull(),
+  activityId: integer('activity_id').references(() => activities.id, { onDelete: 'cascade' }).notNull(),
   content: text('content').notNull(),
   newStatus: text('new_status'),
   date: timestamp('date').notNull(),
   createdAt: timestamp('created_at').defaultNow().notNull(),
 });
 
-export const projectUpdatesRelations = relations(projectUpdates, ({ one, many }) => ({
-  project: one(projects, {
-    fields: [projectUpdates.projectId],
-    references: [projects.id],
+export const activityUpdatesRelations = relations(activityUpdates, ({ one, many }) => ({
+  activity: one(activities, {
+    fields: [activityUpdates.activityId],
+    references: [activities.id],
   }),
-  updateTransactions: many(projectUpdateTransactions),
+  updateTransactions: many(activityUpdateTransactions),
 }));
 
-export const projectUpdateTransactions = pgTable('project_update_transactions', {
-  updateId: integer('update_id').references(() => projectUpdates.id, { onDelete: 'cascade' }).notNull(),
+export const activityUpdateTransactions = pgTable('activity_update_transactions', {
+  updateId: integer('update_id').references(() => activityUpdates.id, { onDelete: 'cascade' }).notNull(),
   transactionId: integer('transaction_id').references(() => transactions.id, { onDelete: 'cascade' }).notNull(),
 }, (table) => [
   { pk: [table.updateId, table.transactionId] }
 ]);
 
-export const projectUpdateTransactionsRelations = relations(projectUpdateTransactions, ({ one }) => ({
-  update: one(projectUpdates, {
-    fields: [projectUpdateTransactions.updateId],
-    references: [projectUpdates.id],
+export const activityUpdateTransactionsRelations = relations(activityUpdateTransactions, ({ one }) => ({
+  update: one(activityUpdates, {
+    fields: [activityUpdateTransactions.updateId],
+    references: [activityUpdates.id],
   }),
   transaction: one(transactions, {
-    fields: [projectUpdateTransactions.transactionId],
+    fields: [activityUpdateTransactions.transactionId],
     references: [transactions.id],
   }),
 }));

@@ -185,7 +185,7 @@ export async function deleteTransactionsByUpload(
   // Delete junction rows (no cascade on transactionTags.transactionId FK)
   await db.delete(transactionTags).where(inArray(transactionTags.transactionId, ids));
 
-  // Delete transactions (projectUpdateTransactions cascades automatically)
+  // Delete transactions (activityUpdateTransactions cascades automatically)
   await db.delete(transactions).where(inArray(transactions.id, ids));
 
   revalidatePath('/transactions');

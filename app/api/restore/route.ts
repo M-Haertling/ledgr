@@ -2,7 +2,7 @@ import { db } from '@/lib/db';
 import { eq } from 'drizzle-orm';
 import {
   accounts, categories, tags, transactions, transactionTags, categorizationRules, ruleTags,
-  mappings, projects, projectUpdates, projectUpdateTransactions,
+  mappings, activities, activityUpdates, activityUpdateTransactions,
 } from '@/lib/db/schema';
 import { NextResponse } from 'next/server';
 
@@ -176,24 +176,26 @@ export async function POST(req: Request) {
       }
       break;
 
-    case 'projects':
+    case 'activities':
       for (const r of rows) {
-        await db.insert(projects).values({
+        await db.insert(activities).values({
           id: parseInt(r.id),
           name: r.name,
           description: r.description || null,
           status: r.status || 'TODO',
+          type: r.type || null,
+          budget: r.budget || null,
           createdAt: r.created_at ? new Date(r.created_at) : new Date(),
         }).onConflictDoNothing();
         inserted++;
       }
       break;
 
-    case 'project_updates':
+    case 'activity_updates':
       for (const r of rows) {
-        await db.insert(projectUpdates).values({
+        await db.insert(activityUpdates).values({
           id: parseInt(r.id),
-          projectId: parseInt(r.project_id),
+          activityId: parseInt(r.activity_id),
           content: r.content,
           newStatus: r.new_status || null,
           date: new Date(r.date),
@@ -203,9 +205,9 @@ export async function POST(req: Request) {
       }
       break;
 
-    case 'project_update_transactions':
+    case 'activity_update_transactions':
       for (const r of rows) {
-        await db.insert(projectUpdateTransactions).values({
+        await db.insert(activityUpdateTransactions).values({
           updateId: parseInt(r.update_id),
           transactionId: parseInt(r.transaction_id),
         }).onConflictDoNothing();

@@ -1,11 +1,11 @@
 export const dynamic = 'force-dynamic';
 
 import { db } from '@/lib/db';
-import { projects, projectUpdates } from '@/lib/db/schema';
+import { activities, activityUpdates } from '@/lib/db/schema';
 import { eq, desc } from 'drizzle-orm';
 import { notFound } from 'next/navigation';
 import Link from 'next/link';
-import EditProjectForm from '../EditProjectForm';
+import EditActivityForm from '../EditActivityForm';
 import AddUpdateForm from './AddUpdateForm';
 import UpdateCard from './UpdateCard';
 
@@ -16,19 +16,19 @@ const STATUS_COLORS: Record<string, string> = {
   Finished: '#22c55e',
 };
 
-export default async function ProjectDetailPage({ params }: { params: Promise<{ id: string }> }) {
+export default async function ActivityDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  const projectId = parseInt(id);
+  const activityId = parseInt(id);
 
-  const project = await db.query.projects.findFirst({
-    where: eq(projects.id, projectId),
+  const activity = await db.query.activities.findFirst({
+    where: eq(activities.id, activityId),
   });
 
-  if (!project) notFound();
+  if (!activity) notFound();
 
-  const updates = await db.query.projectUpdates.findMany({
-    where: eq(projectUpdates.projectId, projectId),
-    orderBy: [desc(projectUpdates.date)],
+  const updates = await db.query.activityUpdates.findMany({
+    where: eq(activityUpdates.activityId, activityId),
+    orderBy: [desc(activityUpdates.date)],
     with: {
       updateTransactions: {
         with: {
@@ -67,35 +67,54 @@ export default async function ProjectDetailPage({ params }: { params: Promise<{ 
   return (
     <div>
       <div className="flex gap-2 mb-4" style={{ alignItems: 'center' }}>
-        <Link href="/projects" className="text-muted" style={{ textDecoration: 'none', fontSize: '0.875rem' }}>
-          ← Projects
+        <Link href="/activities" className="text-muted" style={{ textDecoration: 'none', fontSize: '0.875rem' }}>
+          ← Activities
         </Link>
       </div>
 
-      {/* Project Header */}
+      {/* Activity Header */}
       <div className="card mb-4">
         <div className="flex gap-2 mb-2" style={{ alignItems: 'center', flexWrap: 'wrap' }}>
-          <h1 style={{ margin: 0, fontSize: '1.5rem', fontWeight: 700 }}>{project.name}</h1>
+          <h1 style={{ margin: 0, fontSize: '1.5rem', fontWeight: 700 }}>{activity.name}</h1>
           <span
             className="badge"
             style={{
-              backgroundColor: (STATUS_COLORS[project.status] ?? '#94a3b8') + '22',
-              color: STATUS_COLORS[project.status] ?? '#94a3b8',
-              borderColor: (STATUS_COLORS[project.status] ?? '#94a3b8') + '44',
+              backgroundColor: (STATUS_COLORS[activity.status] ?? '#94a3b8') + '22',
+              color: STATUS_COLORS[activity.status] ?? '#94a3b8',
+              borderColor: (STATUS_COLORS[activity.status] ?? '#94a3b8') + '44',
             }}
           >
-            {project.status}
+            {activity.status}
           </span>
-          {project.type && (
-            <span className="badge">{project.type}</span>
+          {activity.type && (
+            <span className="badge">{activity.type}</span>
           )}
         </div>
-        {project.description && (
-          <p className="text-muted" style={{ marginBottom: '0.75rem', whiteSpace: 'pre-wrap' }}>{project.description}</p>
+        {activity.description && (
+          <p className="text-muted" style={{ marginBottom: '0.75rem', whiteSpace: 'pre-wrap' }}>{activity.description}</p>
         )}
         <div className="flex gap-4" style={{ fontSize: '0.875rem', color: 'var(--text-muted)', marginBottom: '0.75rem', flexWrap: 'wrap' }}>
           <span>{updates.length} update{updates.length !== 1 ? 's' : ''}</span>
-          <span style={{ fontWeight: 600, color: 'var(--text)' }}>Total Cost: ${totalCost.toFixed(2)}</span>
+          {activity.budget ? (() => {
+            const budget = parseFloat(activity.budget);
+            const over = totalCost > budget;
+            return (
+              <span>
+                Spent:{' '}
+                <span style={{ fontWeight: 600, color: over ? '#ef4444' : '#22c55e' }}>
+                  ${totalCost.toFixed(2)}
+                </span>
+                {' / '}
+                <span style={{ color: 'var(--text)' }}>${budget.toFixed(2)} budget</span>
+                {' '}
+                <span style={{ color: over ? '#ef4444' : '#22c55e' }}>
+                  ({over ? '+' : '-'}${Math.abs(totalCost - budget).toFixed(2)} {over ? 'over' : 'under'})
+                </span>
+              </span>
+            );
+          })() : (
+            <span style={{ fontWeight: 600, color: 'var(--text)' }}>Total: ${totalCost.toFixed(2)}</span>
+          )}
           {startDate && (
             <span>Started: <span style={{ color: 'var(--text)' }}>{startDate.toLocaleDateString()}</span></span>
           )}
@@ -103,7 +122,7 @@ export default async function ProjectDetailPage({ params }: { params: Promise<{ 
             <span>Finished: <span style={{ color: 'var(--text)' }}>{endDate.toLocaleDateString()}</span></span>
           )}
         </div>
-        <EditProjectForm project={project} />
+        <EditActivityForm activity={activity} />
       </div>
 
       {/* All Linked Transactions */}
@@ -148,7 +167,7 @@ export default async function ProjectDetailPage({ params }: { params: Promise<{ 
       {/* Add Update */}
       <div className="card mb-4">
         <h2 className="card-title">Add Update</h2>
-        <AddUpdateForm projectId={projectId} />
+        <AddUpdateForm activityId={activityId} />
       </div>
 
       {/* Updates Feed */}
@@ -166,7 +185,7 @@ export default async function ProjectDetailPage({ params }: { params: Promise<{ 
             <UpdateCard
               key={update.id}
               update={update}
-              projectId={projectId}
+              activityId={activityId}
             />
           ))}
         </div>

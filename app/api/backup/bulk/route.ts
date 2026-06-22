@@ -80,27 +80,29 @@ export async function GET() {
     created_at: r.createdAt.toISOString(),
   }))));
 
-  const projectRows = await db.query.projects.findMany();
-  zip.file('projects.csv', toCsv(projectRows.map(r => ({
+  const activityRows = await db.query.activities.findMany();
+  zip.file('activities.csv', toCsv(activityRows.map(r => ({
     id: r.id,
     name: r.name,
     description: r.description,
     status: r.status,
+    type: r.type,
+    budget: r.budget,
     created_at: r.createdAt.toISOString(),
   }))));
 
-  const projectUpdateRows = await db.query.projectUpdates.findMany();
-  zip.file('project_updates.csv', toCsv(projectUpdateRows.map(r => ({
+  const activityUpdateRows = await db.query.activityUpdates.findMany();
+  zip.file('activity_updates.csv', toCsv(activityUpdateRows.map(r => ({
     id: r.id,
-    project_id: r.projectId,
+    activity_id: r.activityId,
     content: r.content,
     new_status: r.newStatus,
     date: r.date.toISOString(),
     created_at: r.createdAt.toISOString(),
   }))));
 
-  const putRows = await db.query.projectUpdateTransactions.findMany();
-  zip.file('project_update_transactions.csv', toCsv(putRows.map(r => ({
+  const activityUpdateTransactionRows = await db.query.activityUpdateTransactions.findMany();
+  zip.file('activity_update_transactions.csv', toCsv(activityUpdateTransactionRows.map(r => ({
     update_id: r.updateId,
     transaction_id: r.transactionId,
   }))));

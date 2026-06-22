@@ -36,8 +36,8 @@ export default function RootLayout({
               <Link href="/tags" className="nav-link">
                 Tags
               </Link>
-              <Link href="/projects" className="nav-link">
-                Projects
+              <Link href="/activities" className="nav-link">
+                Activities
               </Link>
               <Link href="/automation" className="nav-link">
                 Automation

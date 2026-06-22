@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useTransition } from 'react';
-import { updateProjectUpdate, deleteProjectUpdate, unlinkTransaction } from '@/lib/actions/projects';
+import { updateActivityUpdate, deleteActivityUpdate, unlinkTransaction } from '@/lib/actions/activities';
 import TransactionPicker from './TransactionPicker';
 import ConfirmDeleteButton from '@/app/components/ConfirmDeleteButton';
 
@@ -30,7 +30,7 @@ type Update = {
   updateTransactions: { transaction: Transaction }[];
 };
 
-export default function UpdateCard({ update, projectId }: { update: Update; projectId: number }) {
+export default function UpdateCard({ update, activityId }: { update: Update; activityId: number }) {
   const [editing, setEditing] = useState(false);
   const [showPicker, setShowPicker] = useState(false);
   const [isPending, startTransition] = useTransition();
@@ -42,14 +42,14 @@ export default function UpdateCard({ update, projectId }: { update: Update; proj
 
   function handleSave(formData: FormData) {
     startTransition(async () => {
-      await updateProjectUpdate(update.id, projectId, formData);
+      await updateActivityUpdate(update.id, activityId, formData);
       setEditing(false);
     });
   }
 
   function handleDelete(formData: FormData) {
     startTransition(async () => {
-      await deleteProjectUpdate(update.id, projectId, formData);
+      await deleteActivityUpdate(update.id, activityId, formData);
     });
   }
 

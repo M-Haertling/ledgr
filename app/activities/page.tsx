@@ -1,14 +1,14 @@
 export const dynamic = 'force-dynamic';
 
 import { db } from '@/lib/db';
-import { projects } from '@/lib/db/schema';
-import { createProject } from '@/lib/actions/projects';
+import { activities } from '@/lib/db/schema';
+import { createActivity } from '@/lib/actions/activities';
 import { desc } from 'drizzle-orm';
-import ProjectsTable from './ProjectsTable';
+import ActivitiesTable from './ActivitiesTable';
 
-export default async function ProjectsPage() {
-  const allProjects = await db.query.projects.findMany({
-    orderBy: [desc(projects.createdAt)],
+export default async function ActivitiesPage() {
+  const allActivities = await db.query.activities.findMany({
+    orderBy: [desc(activities.createdAt)],
     with: {
       updates: {
         with: {
@@ -20,28 +20,29 @@ export default async function ProjectsPage() {
     },
   });
 
-  const projectRows = allProjects.map((project) => {
+  const activityRows = allActivities.map((activity) => {
     let totalCost = 0;
-    for (const update of project.updates) {
+    for (const update of activity.updates) {
       for (const ut of update.updateTransactions) {
         totalCost += parseFloat(ut.transaction.amount);
       }
     }
 
-    const startedDates = project.updates
+    const startedDates = activity.updates
       .filter(u => u.newStatus === 'Started')
       .map(u => new Date(u.date).getTime());
-    const finishedDates = project.updates
+    const finishedDates = activity.updates
       .filter(u => u.newStatus === 'Finished')
       .map(u => new Date(u.date).getTime());
 
     return {
-      id: project.id,
-      name: project.name,
-      description: project.description,
-      status: project.status,
-      type: project.type,
-      updateCount: project.updates.length,
+      id: activity.id,
+      name: activity.name,
+      description: activity.description,
+      status: activity.status,
+      type: activity.type,
+      budget: activity.budget ? parseFloat(activity.budget) : null,
+      updateCount: activity.updates.length,
       totalCost,
       startDate: startedDates.length > 0 ? new Date(Math.min(...startedDates)).toISOString() : null,
       endDate: finishedDates.length > 0 ? new Date(Math.min(...finishedDates)).toISOString() : null,
@@ -50,11 +51,11 @@ export default async function ProjectsPage() {
 
   return (
     <div>
-      <h1 className="mb-4">Projects</h1>
+      <h1 className="mb-4">Activities</h1>
 
       <div className="card mb-4">
-        <h2 className="card-title">New Project</h2>
-        <form action={createProject}>
+        <h2 className="card-title">New Activity</h2>
+        <form action={createActivity}>
           <div className="flex gap-4" style={{ flexWrap: 'wrap' }}>
             <div className="form-group" style={{ flex: '1 1 200px' }}>
               <label htmlFor="name" className="form-label">Name</label>
@@ -63,7 +64,7 @@ export default async function ProjectsPage() {
                 id="name"
                 name="name"
                 className="form-input"
-                placeholder="e.g. Bathroom Renovation"
+                placeholder="e.g. Summer Vacation 2026"
                 required
               />
             </div>
@@ -94,28 +95,41 @@ export default async function ProjectsPage() {
                 id="type"
                 name="type"
                 className="form-input"
-                placeholder="e.g. Renovation"
+                placeholder="e.g. Travel"
                 list="new-type-suggestions"
               />
               <datalist id="new-type-suggestions">
-                <option value="Renovation" />
-                <option value="Repair" />
-                <option value="Upgrade" />
-                <option value="Landscaping" />
-                <option value="Maintenance" />
-                <option value="New Construction" />
+                <option value="Travel" />
+                <option value="Event" />
+                <option value="Home" />
+                <option value="Vehicle" />
+                <option value="Education" />
+                <option value="Health" />
+                <option value="Entertainment" />
                 <option value="Other" />
               </datalist>
             </div>
+            <div className="form-group" style={{ flex: '0 1 160px' }}>
+              <label htmlFor="budget" className="form-label">Budget</label>
+              <input
+                type="number"
+                id="budget"
+                name="budget"
+                className="form-input"
+                placeholder="Optional"
+                min="0"
+                step="0.01"
+              />
+            </div>
             <div className="flex items-center mt-4">
-              <button type="submit" className="btn btn-primary">Add Project</button>
+              <button type="submit" className="btn btn-primary">Add Activity</button>
             </div>
           </div>
         </form>
       </div>
 
       <div className="card">
-        <ProjectsTable projects={projectRows} />
+        <ActivitiesTable activities={activityRows} />
       </div>
     </div>
   );

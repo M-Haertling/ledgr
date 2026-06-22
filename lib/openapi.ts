@@ -11,16 +11,16 @@ import {
 } from './schemas/transactions';
 import { RuleSchema, CreateRuleBody, UpdateRuleBody, AffectedSchema } from './schemas/rules';
 import {
-  ProjectSchema,
-  CreateProjectBody,
-  UpdateProjectBody,
-  ProjectDetailSchema,
-} from './schemas/projects';
+  ActivitySchema,
+  CreateActivityBody,
+  UpdateActivityBody,
+  ActivityDetailSchema,
+} from './schemas/activities';
 import {
-  ProjectUpdateSchema,
-  CreateProjectUpdateBody,
-  UpdateProjectUpdateBody,
-} from './schemas/project-updates';
+  ActivityUpdateSchema,
+  CreateActivityUpdateBody,
+  UpdateActivityUpdateBody,
+} from './schemas/activity-updates';
 
 const registry = new OpenAPIRegistry();
 
@@ -47,14 +47,14 @@ registry.register('CreateRuleBody', CreateRuleBody);
 registry.register('UpdateRuleBody', UpdateRuleBody);
 const Affected = registry.register('AffectedResponse', AffectedSchema);
 
-const Project = registry.register('Project', ProjectSchema);
-registry.register('CreateProjectBody', CreateProjectBody);
-registry.register('UpdateProjectBody', UpdateProjectBody);
-const ProjectDetail = registry.register('ProjectDetail', ProjectDetailSchema);
+const Activity = registry.register('Activity', ActivitySchema);
+registry.register('CreateActivityBody', CreateActivityBody);
+registry.register('UpdateActivityBody', UpdateActivityBody);
+const ActivityDetail = registry.register('ActivityDetail', ActivityDetailSchema);
 
-const ProjectUpdate = registry.register('ProjectUpdate', ProjectUpdateSchema);
-registry.register('CreateProjectUpdateBody', CreateProjectUpdateBody);
-registry.register('UpdateProjectUpdateBody', UpdateProjectUpdateBody);
+const ActivityUpdate = registry.register('ActivityUpdate', ActivityUpdateSchema);
+registry.register('CreateActivityUpdateBody', CreateActivityUpdateBody);
+registry.register('UpdateActivityUpdateBody', UpdateActivityUpdateBody);
 
 const ErrorResponse = registry.register('ErrorResponse', z.object({
   error: z.string().openapi({ example: 'Not found' }),
@@ -173,18 +173,18 @@ registry.registerPath({ method: 'delete', path: '/rules/{id}', tags: ['Rules'], 
 registry.registerPath({ method: 'post', path: '/rules/apply-uncategorized', tags: ['Rules'], summary: 'Apply rules to uncategorized transactions', responses: affectedResponse() });
 registry.registerPath({ method: 'post', path: '/rules/apply-all', tags: ['Rules'], summary: 'Apply rules to all transactions (overwrites existing categories)', responses: affectedResponse() });
 
-// ── Projects ──────────────────────────────────────────────────────────────────
-registry.registerPath({ method: 'get', path: '/projects', tags: ['Projects'], summary: 'List all projects', responses: listResponse(Project) });
-registry.registerPath({ method: 'post', path: '/projects', tags: ['Projects'], summary: 'Create project', request: { body: { content: { 'application/json': { schema: CreateProjectBody } } } }, responses: createdResponse(Project) });
-registry.registerPath({ method: 'get', path: '/projects/{id}', tags: ['Projects'], summary: 'Get project with updates and linked transactions', request: { params: idParam }, responses: itemResponse(ProjectDetail) });
-registry.registerPath({ method: 'put', path: '/projects/{id}', tags: ['Projects'], summary: 'Update project', request: { params: idParam, body: { content: { 'application/json': { schema: UpdateProjectBody } } } }, responses: updatedResponse(Project) });
-registry.registerPath({ method: 'delete', path: '/projects/{id}', tags: ['Projects'], summary: 'Delete project (cascades to updates and transaction links)', request: { params: idParam }, responses: deletedResponse() });
-registry.registerPath({ method: 'post', path: '/projects/{id}/updates', tags: ['Projects'], summary: 'Add update to project', request: { params: idParam, body: { content: { 'application/json': { schema: CreateProjectUpdateBody } } } }, responses: createdResponse(ProjectUpdate) });
+// ── Activities ────────────────────────────────────────────────────────────────
+registry.registerPath({ method: 'get', path: '/activities', tags: ['Activities'], summary: 'List all activities', responses: listResponse(Activity) });
+registry.registerPath({ method: 'post', path: '/activities', tags: ['Activities'], summary: 'Create activity', request: { body: { content: { 'application/json': { schema: CreateActivityBody } } } }, responses: createdResponse(Activity) });
+registry.registerPath({ method: 'get', path: '/activities/{id}', tags: ['Activities'], summary: 'Get activity with updates and linked transactions', request: { params: idParam }, responses: itemResponse(ActivityDetail) });
+registry.registerPath({ method: 'put', path: '/activities/{id}', tags: ['Activities'], summary: 'Update activity', request: { params: idParam, body: { content: { 'application/json': { schema: UpdateActivityBody } } } }, responses: updatedResponse(Activity) });
+registry.registerPath({ method: 'delete', path: '/activities/{id}', tags: ['Activities'], summary: 'Delete activity (cascades to updates and transaction links)', request: { params: idParam }, responses: deletedResponse() });
+registry.registerPath({ method: 'post', path: '/activities/{id}/updates', tags: ['Activities'], summary: 'Add update to activity', request: { params: idParam, body: { content: { 'application/json': { schema: CreateActivityUpdateBody } } } }, responses: createdResponse(ActivityUpdate) });
 
-// ── Project Updates ───────────────────────────────────────────────────────────
-registry.registerPath({ method: 'get', path: '/project-updates/{id}', tags: ['Project Updates'], summary: 'Get project update', request: { params: idParam }, responses: itemResponse(ProjectUpdate) });
-registry.registerPath({ method: 'put', path: '/project-updates/{id}', tags: ['Project Updates'], summary: 'Update project update', request: { params: idParam, body: { content: { 'application/json': { schema: UpdateProjectUpdateBody } } } }, responses: updatedResponse(ProjectUpdate) });
-registry.registerPath({ method: 'delete', path: '/project-updates/{id}', tags: ['Project Updates'], summary: 'Delete project update', request: { params: idParam }, responses: deletedResponse() });
+// ── Activity Updates ──────────────────────────────────────────────────────────
+registry.registerPath({ method: 'get', path: '/activity-updates/{id}', tags: ['Activity Updates'], summary: 'Get activity update', request: { params: idParam }, responses: itemResponse(ActivityUpdate) });
+registry.registerPath({ method: 'put', path: '/activity-updates/{id}', tags: ['Activity Updates'], summary: 'Update activity update', request: { params: idParam, body: { content: { 'application/json': { schema: UpdateActivityUpdateBody } } } }, responses: updatedResponse(ActivityUpdate) });
+registry.registerPath({ method: 'delete', path: '/activity-updates/{id}', tags: ['Activity Updates'], summary: 'Delete activity update', request: { params: idParam }, responses: deletedResponse() });
 
 // ── Spec Generator ────────────────────────────────────────────────────────────
 export function generateOpenApiSpec() {

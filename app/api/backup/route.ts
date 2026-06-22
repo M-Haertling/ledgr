@@ -98,38 +98,40 @@ export async function GET(req: Request) {
       filename = 'mappings.csv';
       break;
     }
-    case 'projects': {
-      const rows = await db.query.projects.findMany();
+    case 'activities': {
+      const rows = await db.query.activities.findMany();
       csv = toCsv(rows.map(r => ({
         id: r.id,
         name: r.name,
         description: r.description,
         status: r.status,
+        type: r.type,
+        budget: r.budget,
         created_at: r.createdAt.toISOString(),
       })));
-      filename = 'projects.csv';
+      filename = 'activities.csv';
       break;
     }
-    case 'project_updates': {
-      const rows = await db.query.projectUpdates.findMany();
+    case 'activity_updates': {
+      const rows = await db.query.activityUpdates.findMany();
       csv = toCsv(rows.map(r => ({
         id: r.id,
-        project_id: r.projectId,
+        activity_id: r.activityId,
         content: r.content,
         new_status: r.newStatus,
         date: r.date.toISOString(),
         created_at: r.createdAt.toISOString(),
       })));
-      filename = 'project_updates.csv';
+      filename = 'activity_updates.csv';
       break;
     }
-    case 'project_update_transactions': {
-      const rows = await db.query.projectUpdateTransactions.findMany();
+    case 'activity_update_transactions': {
+      const rows = await db.query.activityUpdateTransactions.findMany();
       csv = toCsv(rows.map(r => ({
         update_id: r.updateId,
         transaction_id: r.transactionId,
       })));
-      filename = 'project_update_transactions.csv';
+      filename = 'activity_update_transactions.csv';
       break;
     }
     default:

@@ -10,9 +10,9 @@ export const TABLES = [
   { key: 'transaction_tags', label: 'Transaction Tags', description: 'Tag assignments per transaction' },
   { key: 'rules', label: 'Rules', description: 'Automation rules with tag associations' },
   { key: 'mappings', label: 'Mappings', description: 'CSV upload column mapping templates' },
-  { key: 'projects', label: 'Projects', description: 'Home improvement project records' },
-  { key: 'project_updates', label: 'Project Updates', description: 'Updates and notes per project' },
-  { key: 'project_update_transactions', label: 'Project Update Transactions', description: 'Transaction links per project update' },
+  { key: 'activities', label: 'Activities', description: 'Activity records (vacations, home projects, events, etc.)' },
+  { key: 'activity_updates', label: 'Activity Updates', description: 'Updates and notes per activity' },
+  { key: 'activity_update_transactions', label: 'Activity Update Transactions', description: 'Transaction links per activity update' },
 ];
 
 export default function BackupRestorePage() {

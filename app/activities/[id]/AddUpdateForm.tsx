@@ -1,18 +1,18 @@
 'use client';
 
 import { useState, useTransition, useRef } from 'react';
-import { addProjectUpdate } from '@/lib/actions/projects';
+import { addActivityUpdate } from '@/lib/actions/activities';
 
 const STATUS_OPTIONS = ['', 'TODO', 'Planning', 'Started', 'Finished'];
 
-export default function AddUpdateForm({ projectId }: { projectId: number }) {
+export default function AddUpdateForm({ activityId }: { activityId: number }) {
   const today = new Date().toISOString().split('T')[0];
   const [isPending, startTransition] = useTransition();
   const formRef = useRef<HTMLFormElement>(null);
 
   function handleSubmit(formData: FormData) {
     startTransition(async () => {
-      await addProjectUpdate(projectId, formData);
+      await addActivityUpdate(activityId, formData);
       formRef.current?.reset();
       // Reset date to today after clearing
       const dateInput = formRef.current?.querySelector<HTMLInputElement>('input[name="date"]');
