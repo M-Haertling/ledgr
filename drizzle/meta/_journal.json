@@ -40,56 +40,56 @@
     {
       "idx": 5,
       "version": "7",
-      "when": 1775388654350,
+      "when": 1775699369728,
       "tag": "0005_broad_mother_askani",
       "breakpoints": true
     },
     {
       "idx": 6,
       "version": "7",
-      "when": 1775389514197,
+      "when": 1775785769728,
       "tag": "0006_cultured_firebird",
       "breakpoints": true
     },
     {
       "idx": 7,
       "version": "7",
-      "when": 1743897600000,
+      "when": 1775872169728,
       "tag": "0007_add_projects",
       "breakpoints": true
     },
     {
       "idx": 8,
       "version": "7",
-      "when": 1743897700000,
+      "when": 1775958569728,
       "tag": "0008_add_project_type",
       "breakpoints": true
     },
     {
       "idx": 9,
       "version": "7",
-      "when": 1743897800000,
+      "when": 1776044969728,
       "tag": "0009_category_tags",
       "breakpoints": true
     },
     {
       "idx": 10,
       "version": "7",
-      "when": 1750464000000,
+      "when": 1776131369728,
       "tag": "0010_add_category_parent_id",
       "breakpoints": true
     },
     {
       "idx": 11,
       "version": "7",
-      "when": 1750550400000,
+      "when": 1776217769728,
       "tag": "0011_add_project_budget",
       "breakpoints": true
     },
     {
       "idx": 12,
       "version": "7",
-      "when": 1750636800000,
+      "when": 1776304169728,
       "tag": "0012_rename_projects_to_activities",
       "breakpoints": true
     }

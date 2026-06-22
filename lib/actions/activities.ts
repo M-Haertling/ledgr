@@ -119,13 +119,11 @@ export async function unlinkTransaction(updateId: number, transactionId: number)
 
 export async function getTransactionsForPicker(search: string) {
   const { transactions } = await import('@/lib/db/schema');
-  const { ilike, or, desc } = await import('drizzle-orm');
+  const { ilike, desc } = await import('drizzle-orm');
 
   const results = await db.query.transactions.findMany({
     where: search
-      ? or(
-          ilike(transactions.description, `%${search}%`),
-        )
+      ? ilike(transactions.description, `%${search}%`)
       : undefined,
     orderBy: [desc(transactions.date)],
     limit: 50,

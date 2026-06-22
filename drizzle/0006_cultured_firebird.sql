@@ -1,1 +1,1 @@
-ALTER TABLE "categorization_rules" ADD COLUMN "rule_type" text;
+ALTER TABLE "categorization_rules" ADD COLUMN IF NOT EXISTS "rule_type" text;
