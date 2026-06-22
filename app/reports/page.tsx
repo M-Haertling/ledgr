@@ -20,10 +20,10 @@ export default async function ReportsPage({
   const params = await searchParams;
 
   const now = new Date();
-  const preset = (params.preset as string) || 'month';
+  const preset = (params.preset as string) || 'ytd';
   const fromStr = params.from as string;
   const toStr = params.to as string;
-  const groupBy = (params.groupBy as string) === 'parent' ? 'parent' : 'category';
+  const groupBy = (params.groupBy as string) === 'category' ? 'category' : 'parent';
 
   // Date range based on preset
   let from: Date;
@@ -220,17 +220,18 @@ export default async function ReportsPage({
       categoryId: cat.categoryId ?? null,
     }));
 
-  // For SpendingByCategoryChart, pass the group-level or leaf-level category list
+  // For SpendingByCategoryChart: only include categories that have >0 spending in at least one month
+  const activeChartCategoryIds = new Set(monthlyCategoryData.map(r => r.categoryId?.toString() ?? 'null'));
   const chartCategories = groupBy === 'parent'
     ? [
         ...categorySpending
-          .filter(c => c.categoryId !== null)
+          .filter(c => c.categoryId !== null && activeChartCategoryIds.has(c.categoryId.toString()))
           .map(c => ({ id: c.categoryId as number, name: c.categoryName!, color: c.categoryColor ?? null })),
-        ...(includeUncategorized ? [{ id: null as null, name: 'Uncategorized', color: '#94a3b8' }] : []),
+        ...(includeUncategorized && activeChartCategoryIds.has('null') ? [{ id: null as null, name: 'Uncategorized', color: '#94a3b8' }] : []),
       ]
     : [
-        ...allCategories,
-        ...(includeUncategorized ? [{ id: null as null, name: 'Uncategorized', color: '#94a3b8' }] : []),
+        ...allCategories.filter(c => activeChartCategoryIds.has(c.id.toString())),
+        ...(includeUncategorized && activeChartCategoryIds.has('null') ? [{ id: null as null, name: 'Uncategorized', color: '#94a3b8' }] : []),
       ];
 
   const allAccounts = await db.query.accounts.findMany();
