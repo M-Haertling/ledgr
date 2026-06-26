@@ -175,6 +175,7 @@ export default function TransactionsTable({
                     currentCategoryId={tx.categoryId}
                     categories={categories}
                     suggestedCategoryIds={getSuggestions(tx.description, freqMap, tokenIndex)}
+                    transactionType={tx.type}
                   />
                 </td>
                 <td>

@@ -25,12 +25,22 @@ export default function CategoryPicker({
   currentCategoryId,
   categories,
   suggestedCategoryIds = [],
+  transactionType,
 }: {
   transactionId: number;
   currentCategoryId: number | null;
   categories: Category[];
   suggestedCategoryIds?: number[];
+  transactionType: string;
 }) {
+  if (transactionType === 'transfer') {
+    return (
+      <span style={{ color: 'var(--text-muted)', fontSize: '0.8rem', fontStyle: 'italic' }}>
+        — N/A (transfer) —
+      </span>
+    );
+  }
+
   const suggested = suggestedCategoryIds
     .map(id => categories.find(c => c.id === id))
     .filter((c): c is Category => !!c);

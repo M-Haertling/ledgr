@@ -85,17 +85,17 @@ export async function findTransferCandidates(transactionId: number): Promise<Tra
 
 export async function linkTransferPair(txId1: number, txId2: number): Promise<void> {
   await db.update(transactions)
-    .set({ type: 'transfer', transferPairId: txId2 })
+    .set({ type: 'transfer', transferPairId: txId2, categoryId: null })
     .where(eq(transactions.id, txId1));
   await db.update(transactions)
-    .set({ type: 'transfer', transferPairId: txId1 })
+    .set({ type: 'transfer', transferPairId: txId1, categoryId: null })
     .where(eq(transactions.id, txId2));
   revalidatePath('/transactions');
 }
 
 export async function setTransactionAsTransfer(transactionId: number): Promise<void> {
   await db.update(transactions)
-    .set({ type: 'transfer' })
+    .set({ type: 'transfer', categoryId: null })
     .where(eq(transactions.id, transactionId));
   revalidatePath('/transactions');
 }

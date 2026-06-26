@@ -1,7 +1,7 @@
 import { db } from '@/lib/db';
 import { transactions, transactionTags } from '@/lib/db/schema';
 import {
-  eq, ilike, and, or, exists, isNull, inArray, gte, lte, type SQL,
+  eq, ne, ilike, and, or, exists, isNull, inArray, gte, lte, type SQL,
 } from 'drizzle-orm';
 
 /** Convert a user wildcard pattern (`*`) into a SQL LIKE pattern. */
@@ -30,7 +30,10 @@ export function buildTransactionFilters(opts: TransactionFilterOptions): SQL[] {
   const filters: SQL[] = [];
 
   if (accountIds.length > 0) filters.push(inArray(transactions.accountId, accountIds));
-  if (uncategorized) filters.push(isNull(transactions.categoryId));
+  if (uncategorized) {
+    filters.push(isNull(transactions.categoryId));
+    filters.push(ne(transactions.type, 'transfer'));
+  }
 
   if (search) {
     const like = patternToLike(search);

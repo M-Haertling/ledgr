@@ -1,6 +1,6 @@
 import { db } from '@/lib/db';
 import { transactions, transactionTags } from '@/lib/db/schema';
-import { eq, isNull } from 'drizzle-orm';
+import { eq, ne, and, isNull } from 'drizzle-orm';
 
 export function patternToRegex(pattern: string): RegExp {
   const escaped = pattern.replace(/[.+?^${}()|[\]\\]/g, '\\$&').replace(/\*/g, '.*');
@@ -87,8 +87,10 @@ async function applyCategoryRules(onlyUncategorized: boolean): Promise<number> {
   const engine = await loadRuleEngine();
   const categoryRules = engine.rules.filter(r => r.categoryId);
   const txs = onlyUncategorized
-    ? await db.query.transactions.findMany({ where: isNull(transactions.categoryId) })
-    : await db.query.transactions.findMany();
+    ? await db.query.transactions.findMany({
+        where: and(isNull(transactions.categoryId), ne(transactions.type, 'transfer')),
+      })
+    : await db.query.transactions.findMany({ where: ne(transactions.type, 'transfer') });
 
   let updatedCount = 0;
   for (const tx of txs) {
@@ -117,6 +119,7 @@ export async function applySingleRule(id: number): Promise<void> {
   const tagIds = tagsForApplication(engine, rule, rule.categoryId);
   const allTransactions = await db.query.transactions.findMany();
   for (const tx of allTransactions) {
+    if (tx.type === 'transfer') continue;
     if (!ruleMatchesTransaction(rule, tx.description, tx.accountId)) continue;
     if (rule.categoryId) {
       await db.update(transactions).set({ categoryId: rule.categoryId }).where(eq(transactions.id, tx.id));

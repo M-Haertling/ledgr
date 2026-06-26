@@ -13,7 +13,7 @@ vi.mock('@/lib/db', () => ({
 }));
 
 vi.mock('@/lib/db/schema', () => ({
-  transactions: { id: {}, categoryId: {} },
+  transactions: { id: {}, categoryId: {}, type: {} },
   categorizationRules: {},
   transactionTags: {},
   categoryTags: {},
@@ -21,10 +21,12 @@ vi.mock('@/lib/db/schema', () => ({
 
 vi.mock('drizzle-orm', () => ({
   eq: vi.fn(() => ({})),
+  ne: vi.fn(() => ({})),
+  and: vi.fn(() => ({})),
   isNull: vi.fn(() => ({})),
 }));
 
-import { patternToRegex, applyRulesToUncategorized } from '@/lib/api/rules';
+import { patternToRegex, applyRulesToUncategorized, applySingleRule } from '@/lib/api/rules';
 import { db } from '@/lib/db';
 
 const mockDb = db as any;
@@ -216,5 +218,36 @@ describe('applyRulesToUncategorized', () => {
 
     await applyRulesToUncategorized();
     expect(valuesMock).not.toHaveBeenCalled();
+  });
+});
+
+describe('applySingleRule', () => {
+  let setMock: ReturnType<typeof vi.fn>;
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    const whereMock = vi.fn().mockResolvedValue(undefined);
+    setMock = vi.fn(() => ({ where: whereMock }));
+    mockDb.update.mockReturnValue({ set: setMock });
+    mockDb.insert.mockReturnValue({
+      values: vi.fn(() => ({ onConflictDoNothing: vi.fn().mockResolvedValue(undefined) })),
+    });
+    mockDb.query.categoryTags.findMany.mockResolvedValue([]);
+  });
+
+  it('skips transfers even when their description matches the rule', async () => {
+    mockDb.query.categorizationRules.findMany.mockResolvedValue([
+      { id: 1, pattern: 'AMAZON*', categoryId: 5, accountId: null, priority: 0, ruleTags: [{ tagId: 10 }] },
+    ]);
+    mockDb.query.transactions.findMany.mockResolvedValue([
+      { id: 10, description: 'AMAZON PRIME', categoryId: null, accountId: 1, type: 'transfer' },
+      { id: 11, description: 'AMAZON PRIME', categoryId: null, accountId: 1, type: 'debit' },
+    ]);
+
+    await applySingleRule(1);
+
+    // Only the non-transfer transaction is categorized and tagged.
+    expect(mockDb.update).toHaveBeenCalledTimes(1);
+    expect(setMock).toHaveBeenCalledWith({ categoryId: 5 });
   });
 });
