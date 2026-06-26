@@ -76,8 +76,10 @@ See `features.md`.
         - `z.ts`: Re-exports Zod extended with `@asteasolutions/zod-to-openapi`.
         - `accounts.ts`, `categories.ts`, `tags.ts`, `rules.ts`, `transactions.ts`, `activities.ts`, `activity-updates.ts`: Per-domain request/response schemas.
     - `/api`: Pure business logic helpers shared between Server Actions and REST routes. No `'use server'` directive.
-        - `rules.ts`: `patternToRegex`, `applyRulesToUncategorized`, `applyRulesToAll`, `applySingleRule`.
+        - `rules.ts`: `patternToRegex`, `ruleMatchesTransaction` (shared account-scope + pattern matcher), `applyRulesToUncategorized`, `applyRulesToAll`, `applySingleRule`.
         - `transactions.ts`: `deduplicateTransactions`, `deleteTransaction`, `updateTransactionCategory`.
+        - `transactionFilters.ts`: `patternToLike` and `buildTransactionFilters` — shared WHERE-clause builder used by both the Transactions page and the REST transactions route.
+        - `backup.ts`: `toCsv` and `tableExports` — single source of truth for table serialization, consumed by both the per-table and bulk ZIP backup routes.
         - `categories.ts`: `deleteCategoryWithCascade`.
         - `tags.ts`: `deleteTagWithCascade`.
     - `/actions`: Next.js Server Actions for CRUD and business logic.

@@ -37,18 +37,9 @@ export async function createAndRunRule(formData: FormData) {
 }
 
 export async function updateRule(id: number, formData: FormData) {
-  const pattern = formData.get('pattern') as string;
-  const categoryIdRaw = formData.get('categoryId') as string;
-  const accountIdRaw = formData.get('accountId') as string;
-  const priority = parseInt(formData.get('priority') as string) || 0;
-  const ruleType = (formData.get('ruleType') as string) || null;
-  const categoryId = categoryIdRaw ? parseInt(categoryIdRaw) : null;
-  const accountId = accountIdRaw ? parseInt(accountIdRaw) : null;
-
-  if (!pattern || !categoryId) throw new Error('Pattern and category are required');
-
+  const values = parseRuleFormData(formData);
   await db.update(categorizationRules)
-    .set({ pattern, categoryId, accountId, priority, ruleType })
+    .set(values)
     .where(eq(categorizationRules.id, id));
   revalidatePath('/automation');
 }

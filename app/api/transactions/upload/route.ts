@@ -1,12 +1,8 @@
 import { db } from '@/lib/db';
-import { transactions, mappings, categorizationRules, transactionTags, categories } from '@/lib/db/schema';
+import { transactions, mappings, transactionTags, categories } from '@/lib/db/schema';
 import { eq } from 'drizzle-orm';
 import { NextResponse } from 'next/server';
-
-function patternToRegex(pattern: string): RegExp {
-  const escaped = pattern.replace(/[.+?^${}()|[\]\\]/g, '\\$&').replace(/\*/g, '.*');
-  return new RegExp(escaped, 'i');
-}
+import { ruleMatchesTransaction } from '@/lib/api/rules';
 
 type FailedRow = { rowNumber: number; row: string[]; reason: string };
 
@@ -111,16 +107,13 @@ export async function POST(req: Request) {
       if (isNaN(amount) || amount === 0) { fail(rowIndex, row, 'Invalid or zero amount'); continue; }
       amount = Math.abs(amount);
 
-      // Auto-categorize and auto-tag
+      // Auto-categorize and auto-tag from the first matching rule
       let categoryId = categoryIdFromCsv || null;
       let matchedTagIds: number[] = [];
-      for (const rule of rules) {
-        if (rule.accountId && rule.accountId !== parseInt(accountId)) continue;
-        const regex = patternToRegex(rule.pattern);
-        if (!regex.test(description)) continue;
-        if (rule.categoryId && !categoryId) categoryId = rule.categoryId;
-        matchedTagIds = rule.ruleTags.map((rt: { tagId: number }) => rt.tagId);
-        break;
+      const matchedRule = rules.find(rule => ruleMatchesTransaction(rule, description, parseInt(accountId)));
+      if (matchedRule) {
+        if (matchedRule.categoryId && !categoryId) categoryId = matchedRule.categoryId;
+        matchedTagIds = matchedRule.ruleTags.map((rt: { tagId: number }) => rt.tagId);
       }
 
       // Duplicate check enforced by unique constraint — ON CONFLICT DO NOTHING skips duplicates.

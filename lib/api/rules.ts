@@ -7,46 +7,41 @@ export function patternToRegex(pattern: string): RegExp {
   return new RegExp(escaped, 'i');
 }
 
-export async function applyRulesToUncategorized(): Promise<number> {
+/** True if a rule's account scope and description pattern both match a transaction. */
+export function ruleMatchesTransaction(
+  rule: { pattern: string; accountId: number | null },
+  description: string,
+  accountId: number,
+): boolean {
+  if (rule.accountId && rule.accountId !== accountId) return false;
+  return patternToRegex(rule.pattern).test(description);
+}
+
+async function applyCategoryRules(onlyUncategorized: boolean): Promise<number> {
   const rules = await db.query.categorizationRules.findMany({
     orderBy: (r, { desc, asc }) => [desc(r.priority), asc(r.id)],
   });
   const categoryRules = rules.filter(r => r.categoryId);
-  const uncategorized = await db.query.transactions.findMany({
-    where: isNull(transactions.categoryId),
-  });
+  const txs = onlyUncategorized
+    ? await db.query.transactions.findMany({ where: isNull(transactions.categoryId) })
+    : await db.query.transactions.findMany();
 
   let updatedCount = 0;
-  for (const tx of uncategorized) {
-    for (const rule of categoryRules) {
-      if (rule.accountId && rule.accountId !== tx.accountId) continue;
-      if (!patternToRegex(rule.pattern).test(tx.description)) continue;
-      await db.update(transactions).set({ categoryId: rule.categoryId }).where(eq(transactions.id, tx.id));
-      updatedCount++;
-      break;
-    }
+  for (const tx of txs) {
+    const rule = categoryRules.find(r => ruleMatchesTransaction(r, tx.description, tx.accountId));
+    if (!rule) continue;
+    await db.update(transactions).set({ categoryId: rule.categoryId }).where(eq(transactions.id, tx.id));
+    updatedCount++;
   }
   return updatedCount;
 }
 
-export async function applyRulesToAll(): Promise<number> {
-  const rules = await db.query.categorizationRules.findMany({
-    orderBy: (r, { desc, asc }) => [desc(r.priority), asc(r.id)],
-  });
-  const categoryRules = rules.filter(r => r.categoryId);
-  const allTransactions = await db.query.transactions.findMany();
+export function applyRulesToUncategorized(): Promise<number> {
+  return applyCategoryRules(true);
+}
 
-  let updatedCount = 0;
-  for (const tx of allTransactions) {
-    for (const rule of categoryRules) {
-      if (rule.accountId && rule.accountId !== tx.accountId) continue;
-      if (!patternToRegex(rule.pattern).test(tx.description)) continue;
-      await db.update(transactions).set({ categoryId: rule.categoryId }).where(eq(transactions.id, tx.id));
-      updatedCount++;
-      break;
-    }
-  }
-  return updatedCount;
+export function applyRulesToAll(): Promise<number> {
+  return applyCategoryRules(false);
 }
 
 export async function applySingleRule(id: number): Promise<void> {
@@ -61,11 +56,8 @@ export async function applySingleRule(id: number): Promise<void> {
   const categoryTagIds = catTags.map(ct => ct.tagId);
 
   const allTransactions = await db.query.transactions.findMany();
-  const regex = patternToRegex(rule.pattern);
-
   for (const tx of allTransactions) {
-    if (rule.accountId && rule.accountId !== tx.accountId) continue;
-    if (!regex.test(tx.description)) continue;
+    if (!ruleMatchesTransaction(rule, tx.description, tx.accountId)) continue;
     if (rule.categoryId) {
       await db.update(transactions).set({ categoryId: rule.categoryId }).where(eq(transactions.id, tx.id));
     }

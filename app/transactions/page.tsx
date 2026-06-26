@@ -1,10 +1,8 @@
 export const dynamic = 'force-dynamic';
 
 import { db } from '@/lib/db';
-import { transactions, transactionTags, categories } from '@/lib/db/schema';
-import {
-  desc, asc, eq, ilike, and, or, exists, isNull, isNotNull, inArray, gte, lte, sql, count
-} from 'drizzle-orm';
+import { transactions, categories } from '@/lib/db/schema';
+import { desc, asc, and, isNotNull, sql, count } from 'drizzle-orm';
 import Link from 'next/link';
 import TransactionsTable from './TransactionsTable';
 import FiltersClient from './FiltersClient';
@@ -13,6 +11,7 @@ import DeleteUploadDialog from './DeleteUploadDialog';
 import { deduplicateTransactions } from '@/lib/actions/transactions';
 import { expandCategoryIds } from '@/lib/utils/categories';
 import { buildCategoryOptions } from '@/lib/utils/categoryOptions';
+import { buildTransactionFilters } from '@/lib/api/transactionFilters';
 
 const PAGE_SIZE = 50;
 
@@ -55,52 +54,17 @@ export default async function TransactionsPage({
   // Expand any parent IDs to include their children
   const categoryIds = expandCategoryIds(rawCategoryIds, enrichedCategories);
 
-  // Helper to convert wildcard pattern to regex
-  const patternToLike = (pattern: string): string => {
-    return '%' + pattern.replace(/\*/g, '%') + '%';
-  };
-
   // Build filters
-  const filters = [];
-  if (accountIds.length > 0) filters.push(inArray(transactions.accountId, accountIds));
-  if (uncategorized) filters.push(isNull(transactions.categoryId));
-  if (search) {
-    const searchPattern = patternToLike(search);
-    filters.push(
-      or(
-        ilike(transactions.description, searchPattern),
-        ilike(transactions.notes, searchPattern)
-      )
-    );
-  }
-  if (typeFilter === 'credit') filters.push(eq(transactions.type, 'credit'));
-  if (typeFilter === 'debit') filters.push(eq(transactions.type, 'debit'));
-  if (typeFilter === 'transfer') filters.push(eq(transactions.type, 'transfer'));
-  if (from && !isNaN(from.getTime())) filters.push(gte(transactions.date, from));
-  if (to && !isNaN(to.getTime())) {
-    const toEnd = new Date(to);
-    toEnd.setHours(23, 59, 59, 999);
-    filters.push(lte(transactions.date, toEnd));
-  }
-  if (categoryIds.length > 0 && tagIds.length > 0) {
-    const tagExists = exists(
-      db.select().from(transactionTags).where(
-        and(eq(transactionTags.transactionId, transactions.id), inArray(transactionTags.tagId, tagIds))
-      )
-    );
-    const combined = or(inArray(transactions.categoryId, categoryIds), tagExists);
-    if (combined) filters.push(combined);
-  } else if (categoryIds.length > 0) {
-    filters.push(inArray(transactions.categoryId, categoryIds));
-  } else if (tagIds.length > 0) {
-    filters.push(
-      exists(
-        db.select().from(transactionTags).where(
-          and(eq(transactionTags.transactionId, transactions.id), inArray(transactionTags.tagId, tagIds))
-        )
-      )
-    );
-  }
+  const filters = buildTransactionFilters({
+    accountIds,
+    categoryIds,
+    tagIds,
+    search,
+    uncategorized,
+    type: typeFilter,
+    from,
+    to,
+  });
 
   const whereClause = filters.length > 0 ? and(...filters) : undefined;
 
