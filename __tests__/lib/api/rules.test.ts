@@ -5,8 +5,10 @@ vi.mock('@/lib/db', () => ({
     query: {
       categorizationRules: { findMany: vi.fn() },
       transactions: { findMany: vi.fn() },
+      categoryTags: { findMany: vi.fn() },
     },
     update: vi.fn(),
+    insert: vi.fn(),
   },
 }));
 
@@ -79,16 +81,24 @@ describe('patternToRegex', () => {
 });
 
 describe('applyRulesToUncategorized', () => {
+  let valuesMock: ReturnType<typeof vi.fn>;
+
   beforeEach(() => {
     vi.clearAllMocks();
     const whereMock = vi.fn().mockResolvedValue(undefined);
     const setMock = vi.fn(() => ({ where: whereMock }));
     mockDb.update.mockReturnValue({ set: setMock });
+
+    valuesMock = vi.fn(() => ({ onConflictDoNothing: vi.fn().mockResolvedValue(undefined) }));
+    mockDb.insert.mockReturnValue({ values: valuesMock });
+
+    // No category→tag links by default; individual tests override as needed.
+    mockDb.query.categoryTags.findMany.mockResolvedValue([]);
   });
 
   it('returns 0 when there are no uncategorized transactions', async () => {
     mockDb.query.categorizationRules.findMany.mockResolvedValue([
-      { id: 1, pattern: 'AMAZON*', categoryId: 1, accountId: null, priority: 0 },
+      { id: 1, pattern: 'AMAZON*', categoryId: 1, accountId: null, priority: 0, ruleTags: [] },
     ]);
     mockDb.query.transactions.findMany.mockResolvedValue([]);
 
@@ -107,7 +117,7 @@ describe('applyRulesToUncategorized', () => {
 
   it('applies a matching rule and returns updated count', async () => {
     mockDb.query.categorizationRules.findMany.mockResolvedValue([
-      { id: 1, pattern: 'AMAZON*', categoryId: 5, accountId: null, priority: 0 },
+      { id: 1, pattern: 'AMAZON*', categoryId: 5, accountId: null, priority: 0, ruleTags: [] },
     ]);
     mockDb.query.transactions.findMany.mockResolvedValue([
       { id: 10, description: 'AMAZON PRIME', categoryId: null, accountId: 1 },
@@ -120,8 +130,8 @@ describe('applyRulesToUncategorized', () => {
   it('only applies the first matching rule per transaction', async () => {
     // Rules are returned pre-sorted by priority desc — rule 1 is higher priority
     mockDb.query.categorizationRules.findMany.mockResolvedValue([
-      { id: 1, pattern: 'AMAZON*', categoryId: 5, accountId: null, priority: 1 },
-      { id: 2, pattern: 'AMAZON PRIME', categoryId: 6, accountId: null, priority: 0 },
+      { id: 1, pattern: 'AMAZON*', categoryId: 5, accountId: null, priority: 1, ruleTags: [] },
+      { id: 2, pattern: 'AMAZON PRIME', categoryId: 6, accountId: null, priority: 0, ruleTags: [] },
     ]);
     mockDb.query.transactions.findMany.mockResolvedValue([
       { id: 10, description: 'AMAZON PRIME', categoryId: null, accountId: 1 },
@@ -133,7 +143,7 @@ describe('applyRulesToUncategorized', () => {
 
   it('skips transactions from a different account when rule is account-scoped', async () => {
     mockDb.query.categorizationRules.findMany.mockResolvedValue([
-      { id: 1, pattern: 'AMAZON*', categoryId: 5, accountId: 2, priority: 0 },
+      { id: 1, pattern: 'AMAZON*', categoryId: 5, accountId: 2, priority: 0, ruleTags: [] },
     ]);
     mockDb.query.transactions.findMany.mockResolvedValue([
       { id: 10, description: 'AMAZON PRIME', categoryId: null, accountId: 1 },
@@ -145,7 +155,7 @@ describe('applyRulesToUncategorized', () => {
 
   it('applies an account-scoped rule when the account matches', async () => {
     mockDb.query.categorizationRules.findMany.mockResolvedValue([
-      { id: 1, pattern: 'AMAZON*', categoryId: 5, accountId: 1, priority: 0 },
+      { id: 1, pattern: 'AMAZON*', categoryId: 5, accountId: 1, priority: 0, ruleTags: [] },
     ]);
     mockDb.query.transactions.findMany.mockResolvedValue([
       { id: 10, description: 'AMAZON PRIME', categoryId: null, accountId: 1 },
@@ -156,7 +166,7 @@ describe('applyRulesToUncategorized', () => {
 
   it('ignores rules without a categoryId (tag-only rules)', async () => {
     mockDb.query.categorizationRules.findMany.mockResolvedValue([
-      { id: 1, pattern: 'AMAZON*', categoryId: null, accountId: null, priority: 0 },
+      { id: 1, pattern: 'AMAZON*', categoryId: null, accountId: null, priority: 0, ruleTags: [] },
     ]);
     mockDb.query.transactions.findMany.mockResolvedValue([
       { id: 10, description: 'AMAZON PRIME', categoryId: null, accountId: 1 },
@@ -167,8 +177,8 @@ describe('applyRulesToUncategorized', () => {
 
   it('handles multiple transactions matching different rules', async () => {
     mockDb.query.categorizationRules.findMany.mockResolvedValue([
-      { id: 1, pattern: 'AMAZON*', categoryId: 5, accountId: null, priority: 1 },
-      { id: 2, pattern: 'WHOLE FOODS*', categoryId: 6, accountId: null, priority: 0 },
+      { id: 1, pattern: 'AMAZON*', categoryId: 5, accountId: null, priority: 1, ruleTags: [] },
+      { id: 2, pattern: 'WHOLE FOODS*', categoryId: 6, accountId: null, priority: 0, ruleTags: [] },
     ]);
     mockDb.query.transactions.findMany.mockResolvedValue([
       { id: 10, description: 'AMAZON PRIME', categoryId: null, accountId: 1 },
@@ -178,5 +188,33 @@ describe('applyRulesToUncategorized', () => {
 
     expect(await applyRulesToUncategorized()).toBe(2);
     expect(mockDb.update).toHaveBeenCalledTimes(2);
+  });
+
+  it("applies both the rule's own tags and the assigned category's linked tags", async () => {
+    mockDb.query.categorizationRules.findMany.mockResolvedValue([
+      { id: 1, pattern: 'AMAZON*', categoryId: 5, accountId: null, priority: 0, ruleTags: [{ tagId: 10 }] },
+    ]);
+    mockDb.query.categoryTags.findMany.mockResolvedValue([{ categoryId: 5, tagId: 20 }]);
+    mockDb.query.transactions.findMany.mockResolvedValue([
+      { id: 100, description: 'AMAZON PRIME', categoryId: null, accountId: 1 },
+    ]);
+
+    expect(await applyRulesToUncategorized()).toBe(1);
+    expect(valuesMock).toHaveBeenCalledWith([
+      { transactionId: 100, tagId: 10 },
+      { transactionId: 100, tagId: 20 },
+    ]);
+  });
+
+  it('applies no tags when the rule and category have none', async () => {
+    mockDb.query.categorizationRules.findMany.mockResolvedValue([
+      { id: 1, pattern: 'AMAZON*', categoryId: 5, accountId: null, priority: 0, ruleTags: [] },
+    ]);
+    mockDb.query.transactions.findMany.mockResolvedValue([
+      { id: 100, description: 'AMAZON PRIME', categoryId: null, accountId: 1 },
+    ]);
+
+    await applyRulesToUncategorized();
+    expect(valuesMock).not.toHaveBeenCalled();
   });
 });

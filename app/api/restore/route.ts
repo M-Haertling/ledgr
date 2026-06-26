@@ -1,7 +1,7 @@
 import { db } from '@/lib/db';
 import { eq } from 'drizzle-orm';
 import {
-  accounts, categories, tags, transactions, transactionTags, categorizationRules, ruleTags,
+  accounts, categories, categoryTags, tags, transactions, transactionTags, categorizationRules, ruleTags,
   mappings, activities, activityUpdates, activityUpdateTransactions,
 } from '@/lib/db/schema';
 import { NextResponse } from 'next/server';
@@ -132,6 +132,16 @@ export async function POST(req: Request) {
       for (const r of rows) {
         await db.insert(transactionTags).values({
           transactionId: parseInt(r.transaction_id),
+          tagId: parseInt(r.tag_id),
+        }).onConflictDoNothing();
+        inserted++;
+      }
+      break;
+
+    case 'category_tags':
+      for (const r of rows) {
+        await db.insert(categoryTags).values({
+          categoryId: parseInt(r.category_id),
           tagId: parseInt(r.tag_id),
         }).onConflictDoNothing();
         inserted++;

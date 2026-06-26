@@ -1,14 +1,9 @@
 import { db } from '@/lib/db';
-import { transactions, transactionTags } from '@/lib/db/schema';
-import {
-  desc, asc, eq, ilike, and, or, exists, isNull, inArray, gte, lte, sql, count,
-} from 'drizzle-orm';
+import { transactions } from '@/lib/db/schema';
+import { desc, asc, eq, and, sql, count } from 'drizzle-orm';
 import { NextResponse } from 'next/server';
 import { TransactionQueryParams, CreateTransactionBody } from '@/lib/schemas/transactions';
-
-function patternToLike(pattern: string): string {
-  return '%' + pattern.replace(/\*/g, '%') + '%';
-}
+import { buildTransactionFilters } from '@/lib/api/transactionFilters';
 
 function mapTransaction(tx: any) {
   return {
@@ -47,41 +42,16 @@ export async function GET(req: Request) {
     const tagIds = parsed.data.tagIds
       ? parsed.data.tagIds.split(',').map(Number).filter(Boolean) : [];
 
-    const filters = [];
-    if (accountIds.length > 0) filters.push(inArray(transactions.accountId, accountIds));
-    if (uncategorized === 'true') filters.push(isNull(transactions.categoryId));
-    if (search) {
-      const likePattern = patternToLike(search);
-      filters.push(or(ilike(transactions.description, likePattern), ilike(transactions.notes, likePattern)));
-    }
-    if (type) filters.push(eq(transactions.type, type));
-    if (from) {
-      const fromDate = new Date(from);
-      if (!isNaN(fromDate.getTime())) filters.push(gte(transactions.date, fromDate));
-    }
-    if (to) {
-      const toDate = new Date(to);
-      if (!isNaN(toDate.getTime())) {
-        toDate.setHours(23, 59, 59, 999);
-        filters.push(lte(transactions.date, toDate));
-      }
-    }
-    if (categoryIds.length > 0 && tagIds.length > 0) {
-      const tagExists = exists(
-        db.select().from(transactionTags).where(
-          and(eq(transactionTags.transactionId, transactions.id), inArray(transactionTags.tagId, tagIds))
-        )
-      );
-      filters.push(or(inArray(transactions.categoryId, categoryIds), tagExists)!);
-    } else if (categoryIds.length > 0) {
-      filters.push(inArray(transactions.categoryId, categoryIds));
-    } else if (tagIds.length > 0) {
-      filters.push(exists(
-        db.select().from(transactionTags).where(
-          and(eq(transactionTags.transactionId, transactions.id), inArray(transactionTags.tagId, tagIds))
-        )
-      ));
-    }
+    const filters = buildTransactionFilters({
+      accountIds,
+      categoryIds,
+      tagIds,
+      search,
+      uncategorized: uncategorized === 'true',
+      type,
+      from: from ? new Date(from) : undefined,
+      to: to ? new Date(to) : undefined,
+    });
 
     const whereClause = filters.length > 0 ? and(...filters) : undefined;
 

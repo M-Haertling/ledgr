@@ -1,12 +1,8 @@
 import { db } from '@/lib/db';
-import { transactions, mappings, categorizationRules, transactionTags, categories } from '@/lib/db/schema';
+import { transactions, mappings, categories } from '@/lib/db/schema';
 import { eq } from 'drizzle-orm';
 import { NextResponse } from 'next/server';
-
-function patternToRegex(pattern: string): RegExp {
-  const escaped = pattern.replace(/[.+?^${}()|[\]\\]/g, '\\$&').replace(/\*/g, '.*');
-  return new RegExp(escaped, 'i');
-}
+import { loadRuleEngine, ruleMatchesTransaction, tagsForApplication, applyTransactionTags } from '@/lib/api/rules';
 
 type FailedRow = { rowNumber: number; row: string[]; reason: string };
 
@@ -30,11 +26,8 @@ export async function POST(req: Request) {
       });
     }
 
-    // Get categorization rules for auto-categorization
-    const rules = await db.query.categorizationRules.findMany({
-      with: { ruleTags: true },
-      orderBy: (rules, { desc, asc }) => [desc(rules.priority), asc(rules.id)],
-    });
+    // Load categorization rules (with tags) for auto-categorization and auto-tagging
+    const engine = await loadRuleEngine();
 
     const rows: string[][] = hasHeader ? csvData.slice(1) : csvData;
     let imported = 0;
@@ -111,17 +104,12 @@ export async function POST(req: Request) {
       if (isNaN(amount) || amount === 0) { fail(rowIndex, row, 'Invalid or zero amount'); continue; }
       amount = Math.abs(amount);
 
-      // Auto-categorize and auto-tag
+      // Auto-categorize from the first matching rule (CSV category wins if present),
+      // then apply both the rule's own tags and the assigned category's linked tags.
       let categoryId = categoryIdFromCsv || null;
-      let matchedTagIds: number[] = [];
-      for (const rule of rules) {
-        if (rule.accountId && rule.accountId !== parseInt(accountId)) continue;
-        const regex = patternToRegex(rule.pattern);
-        if (!regex.test(description)) continue;
-        if (rule.categoryId && !categoryId) categoryId = rule.categoryId;
-        matchedTagIds = rule.ruleTags.map((rt: { tagId: number }) => rt.tagId);
-        break;
-      }
+      const matchedRule = engine.rules.find(rule => ruleMatchesTransaction(rule, description, parseInt(accountId)));
+      if (matchedRule && matchedRule.categoryId && !categoryId) categoryId = matchedRule.categoryId;
+      const tagIds = tagsForApplication(engine, matchedRule ?? null, categoryId);
 
       // Duplicate check enforced by unique constraint — ON CONFLICT DO NOTHING skips duplicates.
       const insertResult = await db.insert(transactions).values({
@@ -136,11 +124,7 @@ export async function POST(req: Request) {
 
       if (insertResult[0]) {
         imported++;
-        for (const tagId of matchedTagIds) {
-          await db.insert(transactionTags)
-            .values({ transactionId: insertResult[0].id, tagId })
-            .onConflictDoNothing();
-        }
+        await applyTransactionTags(insertResult[0].id, tagIds);
       } else {
         skipped++;
       }

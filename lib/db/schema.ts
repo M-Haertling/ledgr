@@ -1,4 +1,4 @@
-import { pgTable, serial, text, decimal, boolean, timestamp, integer, jsonb, unique } from 'drizzle-orm/pg-core';
+import { pgTable, serial, text, decimal, boolean, timestamp, integer, jsonb, unique, primaryKey } from 'drizzle-orm/pg-core';
 import { relations } from 'drizzle-orm';
 import type { AnyPgColumn } from 'drizzle-orm/pg-core';
 
@@ -82,7 +82,7 @@ export const transactionTags = pgTable('transaction_tags', {
   transactionId: integer('transaction_id').references(() => transactions.id).notNull(),
   tagId: integer('tag_id').references(() => tags.id).notNull(),
 }, (table) => [
-  { pk: [table.transactionId, table.tagId] }
+  primaryKey({ columns: [table.transactionId, table.tagId] }),
 ]);
 
 export const transactionTagsRelations = relations(transactionTags, ({ one }) => ({
@@ -100,7 +100,7 @@ export const categoryTags = pgTable('category_tags', {
   categoryId: integer('category_id').references(() => categories.id, { onDelete: 'cascade' }).notNull(),
   tagId: integer('tag_id').references(() => tags.id, { onDelete: 'cascade' }).notNull(),
 }, (table) => [
-  { pk: [table.categoryId, table.tagId] }
+  primaryKey({ columns: [table.categoryId, table.tagId] }),
 ]);
 
 export const categoryTagsRelations = relations(categoryTags, ({ one }) => ({
@@ -140,7 +140,7 @@ export const ruleTags = pgTable('rule_tags', {
   ruleId: integer('rule_id').references(() => categorizationRules.id, { onDelete: 'cascade' }).notNull(),
   tagId: integer('tag_id').references(() => tags.id, { onDelete: 'cascade' }).notNull(),
 }, (table) => [
-  { pk: [table.ruleId, table.tagId] }
+  primaryKey({ columns: [table.ruleId, table.tagId] }),
 ]);
 
 export const ruleTagsRelations = relations(ruleTags, ({ one }) => ({
@@ -206,7 +206,7 @@ export const activityUpdateTransactions = pgTable('activity_update_transactions'
   updateId: integer('update_id').references(() => activityUpdates.id, { onDelete: 'cascade' }).notNull(),
   transactionId: integer('transaction_id').references(() => transactions.id, { onDelete: 'cascade' }).notNull(),
 }, (table) => [
-  { pk: [table.updateId, table.transactionId] }
+  primaryKey({ columns: [table.updateId, table.transactionId] }),
 ]);
 
 export const activityUpdateTransactionsRelations = relations(activityUpdateTransactions, ({ one }) => ({
