@@ -31,12 +31,17 @@ export async function GET() {
 
   const categoryRows = await db.query.categories.findMany();
   zip.file('categories.csv', toCsv(categoryRows.map(r => ({
-    id: r.id, name: r.name, color: r.color, created_at: r.createdAt.toISOString(),
+    id: r.id, name: r.name, color: r.color, parent_id: r.parentId, created_at: r.createdAt.toISOString(),
   }))));
 
   const tagRows = await db.query.tags.findMany();
   zip.file('tags.csv', toCsv(tagRows.map(r => ({
     id: r.id, name: r.name, created_at: r.createdAt.toISOString(),
+  }))));
+
+  const categoryTagRows = await db.query.categoryTags.findMany();
+  zip.file('category_tags.csv', toCsv(categoryTagRows.map(r => ({
+    category_id: r.categoryId, tag_id: r.tagId,
   }))));
 
   const txRows = await db.query.transactions.findMany();

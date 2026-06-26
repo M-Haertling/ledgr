@@ -1,41 +1,71 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Spending Tracker
+
+A self-hosted application for managing and tracking personal spending. Import transactions
+from bank/credit-card CSV exports, auto-categorize them with rules, organize with categories
+and tags, track budgeted activities, and visualize spending with reports.
+
+## Tech Stack
+
+- **Framework:** Next.js (App Router) + React, TypeScript
+- **Styling:** Vanilla CSS
+- **Database:** PostgreSQL via Drizzle ORM
+- **Charts:** Recharts
+- **API docs:** OpenAPI 3.0.3 (Swagger UI at `/api-docs`)
+- **Tests:** Vitest
+- **Runtime:** Docker & Docker Compose
 
 ## Getting Started
 
-First, run the development server:
+### With Docker (recommended)
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
-```
-
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
-
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
-
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
-
-**Docker Compose**
-```
 docker compose up -d --build
 ```
 
-## Learn More
+This starts PostgreSQL and the app. Migrations run automatically on startup via
+`start.sh` (which calls `scripts/migrate.mjs`), so the schema is always up to date.
 
-To learn more about Next.js, take a look at the following resources:
+The app is served at [http://localhost:3000](http://localhost:3000).
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+### Local development
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+1. Start a PostgreSQL instance and set `DATABASE_URL` in `.env`.
+2. Install dependencies and run migrations:
+   ```bash
+   npm install
+   npm run migrate
+   ```
+3. Start the dev server:
+   ```bash
+   npm run dev
+   ```
 
-## Deploy on Vercel
+## Common Scripts
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+| Command | Description |
+| --- | --- |
+| `npm run dev` | Start the Next.js dev server |
+| `npm run build` | Production build |
+| `npm run migrate` | Apply pending Drizzle migrations |
+| `npm test` | Run the Vitest suite |
+| `npm run test:coverage` | Run tests with coverage |
+| `npm run lint` | Lint the project |
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+## Key Features
+
+- **Transactions:** CSV upload with per-account column-mapping templates, dedup on
+  `(account, date, description, amount)`, inline category/tag/note/type editing, filtering,
+  sorting, and pagination.
+- **Categorization:** Rule-based auto-categorization (wildcard patterns, account scoping,
+  priority) and a tagging system, including tags auto-applied per category.
+- **Activities:** Budgeted activity tracking (vacations, home projects, etc.) with an
+  updates feed and linked transactions, comparing budget vs. actual spend.
+- **Reports:** Income vs. expenses over time, spending by category/group and by account,
+  with preset date ranges and filters.
+- **Admin & Backup:** Raw SQL editor and full CSV backup/restore (per-table or bulk ZIP).
+- **REST API:** Documented via auto-generated OpenAPI spec; Swagger UI at `/api-docs`.
+
+## Project Documentation
+
+`CLAUDE.md` is the source of truth for project structure and conventions. See `features.md`
+for the feature/requirements overview.

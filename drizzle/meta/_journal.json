@@ -92,6 +92,13 @@
       "when": 1776304169728,
       "tag": "0012_rename_projects_to_activities",
       "breakpoints": true
+    },
+    {
+      "idx": 13,
+      "version": "7",
+      "when": 1776390569728,
+      "tag": "0013_rule_tags_pk",
+      "breakpoints": true
     }
   ]
 }

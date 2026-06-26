@@ -6,6 +6,7 @@ export const TABLES = [
   { key: 'accounts', label: 'Accounts', description: 'Account names and types' },
   { key: 'categories', label: 'Categories', description: 'Category names and colors' },
   { key: 'tags', label: 'Tags', description: 'Tag definitions' },
+  { key: 'category_tags', label: 'Category Tags', description: 'Tags auto-applied per category' },
   { key: 'transactions', label: 'Transactions', description: 'All transactions (largest file)' },
   { key: 'transaction_tags', label: 'Transaction Tags', description: 'Tag assignments per transaction' },
   { key: 'rules', label: 'Rules', description: 'Automation rules with tag associations' },

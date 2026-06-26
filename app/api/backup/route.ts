@@ -47,6 +47,12 @@ export async function GET(req: Request) {
       filename = 'tags.csv';
       break;
     }
+    case 'category_tags': {
+      const rows = await db.query.categoryTags.findMany();
+      csv = toCsv(rows.map(r => ({ category_id: r.categoryId, tag_id: r.tagId })));
+      filename = 'category_tags.csv';
+      break;
+    }
     case 'transactions': {
       const rows = await db.query.transactions.findMany({ with: { account: true, category: true } });
       csv = toCsv(rows.map(r => ({
