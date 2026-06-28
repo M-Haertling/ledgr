@@ -14,6 +14,7 @@ export const TABLES = [
   { key: 'activities', label: 'Activities', description: 'Activity records (vacations, home projects, events, etc.)' },
   { key: 'activity_updates', label: 'Activity Updates', description: 'Updates and notes per activity' },
   { key: 'activity_update_transactions', label: 'Activity Update Transactions', description: 'Transaction links per activity update' },
+  { key: 'activity_transactions', label: 'Activity Transactions', description: 'Transactions linked directly to an activity' },
 ];
 
 export default function BackupRestorePage() {

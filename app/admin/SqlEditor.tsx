@@ -22,6 +22,7 @@ const QUICK_TABLES = [
   'activities',
   'activity_updates',
   'activity_update_transactions',
+  'activity_transactions',
   'drizzle.__drizzle_migrations',
 ];
 

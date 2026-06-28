@@ -30,12 +30,12 @@ See `features.md`.
         - `ActivitiesTable.tsx`: Client component — sortable/filterable table with budget vs. actual columns.
         - `EditActivityForm.tsx`: Client component — inline edit toggle for name, description, status, type, and budget.
         - `/[id]`: Activity detail page.
-            - `page.tsx`: Activity header (with budget vs. actual summary), updates feed (sorted by date), all linked transactions table.
+            - `page.tsx`: Activity header (with budget vs. actual summary), updates feed (sorted by date), all linked transactions table. Budget actual = deduplicated union of update-linked and directly-linked transactions; the table marks each row's source (Direct/Update) and offers unlink for direct links.
             - `AddUpdateForm.tsx`: Client component — add update with date (defaults today), content, optional status change.
             - `UpdateCard.tsx`: Client component — per-update card with inline edit, delete, linked transactions, and transaction picker trigger.
             - `TransactionPicker.tsx`: Client component — modal dialog with live search to link/unlink transactions to an update.
     - `/transactions`: Transaction table with sorting, filtering, pagination, and inline category/tag editing.
-        - `TransactionsTable.tsx`: Client component — sortable table, pagination.
+        - `TransactionsTable.tsx`: Client component — sortable table, pagination, and per-page multi-select (row checkboxes + sticky action bar to bulk-link selected transactions directly to an activity via `addTransactionsToActivity`).
         - `CategoryPicker.tsx`: Inline category select per transaction row.
         - `TagPicker.tsx`: Inline tag attachment/detachment dropdown (fixed-position to escape table overflow).
         - `NotePicker.tsx`: Inline notes editor per transaction row.
@@ -78,6 +78,7 @@ See `features.md`.
     - `/api`: Pure business logic helpers shared between Server Actions and REST routes. No `'use server'` directive.
         - `rules.ts`: `patternToRegex`, `ruleMatchesTransaction` (shared account-scope + pattern matcher), `loadRuleEngine`/`tagsForApplication`/`applyTransactionTags` (rule + category-tag application), `applyRulesToUncategorized`, `applyRulesToAll`, `applySingleRule`. Applying a rule sets the category and applies both the rule's own tags and the assigned category's linked tags (consistent across bulk apply, single-rule apply, and CSV upload).
         - `transactions.ts`: `deduplicateTransactions`, `deleteTransaction`, `updateTransactionCategory`.
+        - `activities.ts`: `mergeActivityTransactions` — builds the deduplicated, newest-first union of an activity's update-linked and directly-linked transactions plus the total cost; shared by the activity list and detail pages so their budget totals can't drift.
         - `transactionFilters.ts`: `patternToLike` and `buildTransactionFilters` — shared WHERE-clause builder used by both the Transactions page and the REST transactions route.
         - `backup.ts`: `toCsv` and `tableExports` — single source of truth for table serialization, consumed by both the per-table and bulk ZIP backup routes.
         - `categories.ts`: `deleteCategoryWithCascade`.
@@ -89,7 +90,7 @@ See `features.md`.
         - `transactions.ts`: `updateTransactionCategory`, `updateTransactionNotes`, `addTransaction`, `deduplicateTransactions`, `findTransferCandidates`.
         - `rules.ts`: Rule management and `applyRulesToUncategorized` (wildcard, tag, account-scoped).
         - `mappings.ts`: CSV upload template CRUD (save, load, delete named column-mapping templates).
-        - `activities.ts`: Activity CRUD (including type/budget), update CRUD, transaction link/unlink, and `getTransactionsForPicker` for the modal search.
+        - `activities.ts`: Activity CRUD (including type/budget), update CRUD, transaction link/unlink (update-level), direct activity↔transaction links (`addTransactionsToActivity`, `removeTransactionFromActivity`), `getActivitiesForSelect` for the transactions-page bulk dropdown, and `getTransactionsForPicker` for the modal search.
     - `openapi.ts`: Builds the OpenAPI 3.0.3 spec from all Zod schemas using `@asteasolutions/zod-to-openapi`.
 - `/__tests__`: Vitest unit tests mirroring the `lib/` structure.
     - `lib/api/rules.test.ts`: `patternToRegex` (pure) and `applyRulesToUncategorized` (DB mocked).

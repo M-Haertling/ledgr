@@ -2,7 +2,7 @@ import { db } from '@/lib/db';
 import { eq } from 'drizzle-orm';
 import {
   accounts, categories, categoryTags, tags, transactions, transactionTags, categorizationRules, ruleTags,
-  mappings, activities, activityUpdates, activityUpdateTransactions,
+  mappings, activities, activityUpdates, activityUpdateTransactions, activityTransactions,
 } from '@/lib/db/schema';
 import { NextResponse } from 'next/server';
 
@@ -219,6 +219,16 @@ export async function POST(req: Request) {
       for (const r of rows) {
         await db.insert(activityUpdateTransactions).values({
           updateId: parseInt(r.update_id),
+          transactionId: parseInt(r.transaction_id),
+        }).onConflictDoNothing();
+        inserted++;
+      }
+      break;
+
+    case 'activity_transactions':
+      for (const r of rows) {
+        await db.insert(activityTransactions).values({
+          activityId: parseInt(r.activity_id),
           transactionId: parseInt(r.transaction_id),
         }).onConflictDoNothing();
         inserted++;

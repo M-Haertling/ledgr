@@ -1,13 +1,16 @@
 export const dynamic = 'force-dynamic';
 
 import { db } from '@/lib/db';
-import { activities, activityUpdates } from '@/lib/db/schema';
+import { activities, activityUpdates, activityTransactions } from '@/lib/db/schema';
 import { eq, desc } from 'drizzle-orm';
 import { notFound } from 'next/navigation';
 import Link from 'next/link';
 import EditActivityForm from '../EditActivityForm';
 import AddUpdateForm from './AddUpdateForm';
 import UpdateCard from './UpdateCard';
+import { removeTransactionFromActivity } from '@/lib/actions/activities';
+import ConfirmDeleteButton from '@/app/components/ConfirmDeleteButton';
+import { mergeActivityTransactions } from '@/lib/api/activities';
 
 const STATUS_COLORS: Record<string, string> = {
   TODO: '#94a3b8',
@@ -40,23 +43,21 @@ export default async function ActivityDetailPage({ params }: { params: Promise<{
     },
   });
 
-  // Calculate total cost across all updates
-  let totalCost = 0;
-  const allLinkedTransactions: { updateId: number; transaction: typeof updates[0]['updateTransactions'][0]['transaction'] }[] = [];
-  for (const update of updates) {
-    for (const ut of update.updateTransactions) {
-      totalCost += parseFloat(ut.transaction.amount);
-      allLinkedTransactions.push({ updateId: update.id, transaction: ut.transaction });
-    }
-  }
-
-  // Deduplicate transactions for the "all transactions" view
-  const seenTxIds = new Set<number>();
-  const uniqueTransactions = allLinkedTransactions.filter(({ transaction }) => {
-    if (seenTxIds.has(transaction.id)) return false;
-    seenTxIds.add(transaction.id);
-    return true;
+  const directLinks = await db.query.activityTransactions.findMany({
+    where: eq(activityTransactions.activityId, activityId),
+    with: {
+      transaction: {
+        with: { account: true },
+      },
+    },
   });
+
+  // Deduplicated union of update-linked and directly-linked transactions.
+  // `direct` rows can be unlinked here; update-only links are managed in their card.
+  const { transactions: uniqueTransactions, totalCost } = mergeActivityTransactions(
+    updates.flatMap((u) => u.updateTransactions.map((ut) => ut.transaction)),
+    directLinks.map((dl) => dl.transaction),
+  );
 
   // Derive start/end dates from status-change updates (earliest per status)
   const startedDates = updates.filter(u => u.newStatus === 'Started').map(u => new Date(u.date));
@@ -135,29 +136,48 @@ export default async function ActivityDetailPage({ params }: { params: Promise<{
                 <th>Date</th>
                 <th>Description</th>
                 <th>Account</th>
+                <th>Source</th>
                 <th style={{ textAlign: 'right' }}>Amount</th>
+                <th></th>
               </tr>
             </thead>
             <tbody>
-              {uniqueTransactions.map(({ transaction }) => (
+              {uniqueTransactions.map(({ transaction, direct }) => (
                 <tr key={transaction.id}>
                   <td style={{ whiteSpace: 'nowrap' }}>
                     {new Date(transaction.date).toLocaleDateString()}
                   </td>
                   <td>{transaction.description}</td>
                   <td className="text-muted">{transaction.account.name}</td>
+                  <td>
+                    <span className="badge" style={{ fontSize: '0.7rem' }}>
+                      {direct ? 'Direct' : 'Update'}
+                    </span>
+                  </td>
                   <td style={{ textAlign: 'right', fontWeight: 500 }}>
                     ${parseFloat(transaction.amount).toFixed(2)}
+                  </td>
+                  <td style={{ textAlign: 'right', whiteSpace: 'nowrap' }}>
+                    {direct && (
+                      <ConfirmDeleteButton
+                        action={removeTransactionFromActivity.bind(null, activityId, transaction.id)}
+                        label="✕"
+                        confirmLabel="✕"
+                        style={{ padding: '0.1rem 0.4rem', fontSize: '0.75rem' }}
+                        title="Remove from activity"
+                      />
+                    )}
                   </td>
                 </tr>
               ))}
             </tbody>
             <tfoot>
               <tr>
-                <td colSpan={3} style={{ fontWeight: 600, paddingTop: '0.75rem' }}>Total</td>
+                <td colSpan={4} style={{ fontWeight: 600, paddingTop: '0.75rem' }}>Total</td>
                 <td style={{ textAlign: 'right', fontWeight: 700, paddingTop: '0.75rem' }}>
                   ${totalCost.toFixed(2)}
                 </td>
+                <td></td>
               </tr>
             </tfoot>
           </table>

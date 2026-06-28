@@ -99,6 +99,13 @@
       "when": 1776390569728,
       "tag": "0013_rule_tags_pk",
       "breakpoints": true
+    },
+    {
+      "idx": 14,
+      "version": "7",
+      "when": 1776476969728,
+      "tag": "0014_add_activity_transactions",
+      "breakpoints": true
     }
   ]
 }

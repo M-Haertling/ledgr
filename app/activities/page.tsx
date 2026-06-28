@@ -5,6 +5,7 @@ import { activities } from '@/lib/db/schema';
 import { createActivity } from '@/lib/actions/activities';
 import { desc } from 'drizzle-orm';
 import ActivitiesTable from './ActivitiesTable';
+import { mergeActivityTransactions } from '@/lib/api/activities';
 
 export default async function ActivitiesPage() {
   const allActivities = await db.query.activities.findMany({
@@ -17,16 +18,18 @@ export default async function ActivitiesPage() {
           },
         },
       },
+      activityTransactions: {
+        with: { transaction: true },
+      },
     },
   });
 
   const activityRows = allActivities.map((activity) => {
-    let totalCost = 0;
-    for (const update of activity.updates) {
-      for (const ut of update.updateTransactions) {
-        totalCost += parseFloat(ut.transaction.amount);
-      }
-    }
+    // Total = deduplicated union of update-linked and directly-linked transactions
+    const { totalCost } = mergeActivityTransactions(
+      activity.updates.flatMap((u) => u.updateTransactions.map((ut) => ut.transaction)),
+      activity.activityTransactions.map((at) => at.transaction),
+    );
 
     const startedDates = activity.updates
       .filter(u => u.newStatus === 'Started')

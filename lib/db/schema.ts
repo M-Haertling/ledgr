@@ -183,6 +183,7 @@ export const activities = pgTable('activities', {
 
 export const activitiesRelations = relations(activities, ({ many }) => ({
   updates: many(activityUpdates),
+  activityTransactions: many(activityTransactions),
 }));
 
 export const activityUpdates = pgTable('activity_updates', {
@@ -216,6 +217,27 @@ export const activityUpdateTransactionsRelations = relations(activityUpdateTrans
   }),
   transaction: one(transactions, {
     fields: [activityUpdateTransactions.transactionId],
+    references: [transactions.id],
+  }),
+}));
+
+// Direct activity <-> transaction association (no update required), used for
+// bulk-tagging everyday expenses to an activity. Coexists with the
+// update-level links above; the budget total is the dedup'd union of both.
+export const activityTransactions = pgTable('activity_transactions', {
+  activityId: integer('activity_id').references(() => activities.id, { onDelete: 'cascade' }).notNull(),
+  transactionId: integer('transaction_id').references(() => transactions.id, { onDelete: 'cascade' }).notNull(),
+}, (table) => [
+  primaryKey({ columns: [table.activityId, table.transactionId] }),
+]);
+
+export const activityTransactionsRelations = relations(activityTransactions, ({ one }) => ({
+  activity: one(activities, {
+    fields: [activityTransactions.activityId],
+    references: [activities.id],
+  }),
+  transaction: one(transactions, {
+    fields: [activityTransactions.transactionId],
     references: [transactions.id],
   }),
 }));

@@ -1,11 +1,12 @@
 'use client';
 
-import { useMemo } from 'react';
+import { useMemo, useState, useTransition } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import CategoryPicker from './CategoryPicker';
 import TagPicker from './TagPicker';
 import TypePicker from './TypePicker';
 import NotePicker from './NotePicker';
+import { addTransactionsToActivity } from '@/lib/actions/activities';
 
 function normalizeDesc(desc: string): string {
   return desc
@@ -61,6 +62,7 @@ function getSuggestions(
 }
 
 type Category = { id: number; name: string; color: string | null };
+type Activity = { id: number; name: string; status: string };
 type Transaction = {
   id: number;
   date: Date;
@@ -82,6 +84,7 @@ export default function TransactionsTable({
   transactions,
   categories,
   allTags,
+  activities,
   categorizedHistory,
   currentPage,
   totalPages,
@@ -91,6 +94,7 @@ export default function TransactionsTable({
   transactions: Transaction[];
   categories: Category[];
   allTags: any[];
+  activities: Activity[];
   categorizedHistory: { description: string; categoryId: number }[];
   currentPage: number;
   totalPages: number;
@@ -101,6 +105,45 @@ export default function TransactionsTable({
   const searchParams = useSearchParams();
 
   const { freqMap, tokenIndex } = useMemo(() => buildMaps(categorizedHistory), [categorizedHistory]);
+
+  // Multi-select state (resets per page render — selection is scoped to the current page)
+  const [selected, setSelected] = useState<Set<number>>(new Set());
+  const [activityId, setActivityId] = useState<string>('');
+  const [isAdding, startAdding] = useTransition();
+
+  const allOnPageSelected = transactions.length > 0 && transactions.every((tx) => selected.has(tx.id));
+
+  const toggleOne = (id: number) => {
+    setSelected((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
+
+  const toggleAllOnPage = () => {
+    setSelected((prev) => {
+      if (transactions.every((tx) => prev.has(tx.id))) {
+        const next = new Set(prev);
+        for (const tx of transactions) next.delete(tx.id);
+        return next;
+      }
+      const next = new Set(prev);
+      for (const tx of transactions) next.add(tx.id);
+      return next;
+    });
+  };
+
+  const handleAddToActivity = () => {
+    const id = parseInt(activityId);
+    if (!id || selected.size === 0) return;
+    startAdding(async () => {
+      await addTransactionsToActivity(id, [...selected]);
+      setSelected(new Set());
+      setActivityId('');
+    });
+  };
 
   const setSort = (col: string) => {
     const params = new URLSearchParams(searchParams.toString());
@@ -131,10 +174,67 @@ export default function TransactionsTable({
 
   return (
     <>
+      {selected.size > 0 && (
+        <div
+          className="flex gap-2"
+          style={{
+            position: 'sticky',
+            top: 0,
+            zIndex: 5,
+            alignItems: 'center',
+            flexWrap: 'wrap',
+            padding: '0.625rem 0.875rem',
+            marginBottom: '0.75rem',
+            background: 'var(--bg-elevated, var(--bg))',
+            border: '1px solid var(--border)',
+            borderRadius: '0.5rem',
+          }}
+        >
+          <span style={{ fontWeight: 600 }}>
+            {selected.size} selected <span className="text-muted" style={{ fontWeight: 400, fontSize: '0.8rem' }}>(this page)</span>
+          </span>
+          <span style={{ flex: 1 }} />
+          <select
+            className="form-select"
+            value={activityId}
+            onChange={(e) => setActivityId(e.target.value)}
+            style={{ maxWidth: '240px' }}
+            disabled={isAdding}
+          >
+            <option value="">Select activity…</option>
+            {activities.map((a) => (
+              <option key={a.id} value={a.id}>{a.name}</option>
+            ))}
+          </select>
+          <button
+            className="btn btn-primary btn-sm"
+            onClick={handleAddToActivity}
+            disabled={!activityId || isAdding}
+          >
+            {isAdding ? 'Adding…' : 'Add to activity'}
+          </button>
+          <button
+            className="btn btn-sm"
+            style={{ border: '1px solid var(--border)' }}
+            onClick={() => setSelected(new Set())}
+            disabled={isAdding}
+          >
+            Clear
+          </button>
+        </div>
+      )}
       <div className="table-container">
         <table className="table">
           <thead>
             <tr>
+              <th style={{ width: '1%', textAlign: 'center' }}>
+                <input
+                  type="checkbox"
+                  checked={allOnPageSelected}
+                  onChange={toggleAllOnPage}
+                  title="Select all on this page"
+                />
+              </th>
               <th className="sortable" onClick={() => setSort('date')}>
                 Date {sortIndicator('date')}
               </th>
@@ -156,7 +256,14 @@ export default function TransactionsTable({
           </thead>
           <tbody>
             {transactions.map((tx) => (
-              <tr key={tx.id}>
+              <tr key={tx.id} style={selected.has(tx.id) ? { background: 'var(--bg-hover, rgba(59,130,246,0.08))' } : undefined}>
+                <td style={{ textAlign: 'center' }}>
+                  <input
+                    type="checkbox"
+                    checked={selected.has(tx.id)}
+                    onChange={() => toggleOne(tx.id)}
+                  />
+                </td>
                 <td style={{ whiteSpace: 'nowrap', color: 'var(--text-muted)', fontSize: '0.875rem' }}>
                   {tx.date.toLocaleDateString()}
                 </td>

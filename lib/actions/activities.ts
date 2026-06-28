@@ -1,8 +1,8 @@
 'use server';
 
 import { db } from '@/lib/db';
-import { activities, activityUpdates, activityUpdateTransactions } from '@/lib/db/schema';
-import { eq, and } from 'drizzle-orm';
+import { activities, activityUpdates, activityUpdateTransactions, activityTransactions } from '@/lib/db/schema';
+import { eq, and, asc } from 'drizzle-orm';
 import { revalidatePath } from 'next/cache';
 
 export async function createActivity(formData: FormData) {
@@ -115,6 +115,40 @@ export async function unlinkTransaction(updateId: number, transactionId: number)
     where: eq(activityUpdates.id, updateId),
   });
   if (update) revalidatePath(`/activities/${update.activityId}`);
+}
+
+// --- Direct activity <-> transaction links (no update required) ---
+
+export async function addTransactionsToActivity(activityId: number, transactionIds: number[]) {
+  if (!activityId) throw new Error('Activity is required');
+  const ids = [...new Set(transactionIds)].filter((id) => Number.isInteger(id) && id > 0);
+  if (ids.length === 0) return;
+
+  await db.insert(activityTransactions)
+    .values(ids.map((transactionId) => ({ activityId, transactionId })))
+    .onConflictDoNothing();
+
+  revalidatePath('/activities');
+  revalidatePath(`/activities/${activityId}`);
+  revalidatePath('/transactions');
+}
+
+export async function removeTransactionFromActivity(activityId: number, transactionId: number) {
+  await db.delete(activityTransactions).where(
+    and(
+      eq(activityTransactions.activityId, activityId),
+      eq(activityTransactions.transactionId, transactionId),
+    )
+  );
+  revalidatePath('/activities');
+  revalidatePath(`/activities/${activityId}`);
+}
+
+export async function getActivitiesForSelect() {
+  return db.query.activities.findMany({
+    columns: { id: true, name: true, status: true },
+    orderBy: [asc(activities.name)],
+  });
 }
 
 export async function getTransactionsForPicker(search: string) {

@@ -129,4 +129,11 @@ export const tableExports: TableExport[] = [
       transaction_id: r.transactionId,
     })),
   },
+  {
+    key: 'activity_transactions',
+    rows: async () => (await db.query.activityTransactions.findMany()).map(r => ({
+      activity_id: r.activityId,
+      transaction_id: r.transactionId,
+    })),
+  },
 ];

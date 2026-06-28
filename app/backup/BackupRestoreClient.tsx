@@ -6,7 +6,7 @@ type TableDef = { key: string; label: string; description: string };
 
 const TABLE_ORDER = [
   'accounts', 'categories', 'tags', 'category_tags', 'transactions', 'transaction_tags', 'rules',
-  'mappings', 'activities', 'activity_updates', 'activity_update_transactions',
+  'mappings', 'activities', 'activity_updates', 'activity_update_transactions', 'activity_transactions',
 ];
 
 export default function BackupRestoreClient({ tables }: { tables: TableDef[] }) {

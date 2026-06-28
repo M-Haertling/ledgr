@@ -12,6 +12,7 @@ import { deduplicateTransactions } from '@/lib/actions/transactions';
 import { expandCategoryIds } from '@/lib/utils/categories';
 import { buildCategoryOptions } from '@/lib/utils/categoryOptions';
 import { buildTransactionFilters } from '@/lib/api/transactionFilters';
+import { getActivitiesForSelect } from '@/lib/actions/activities';
 
 const PAGE_SIZE = 50;
 
@@ -102,6 +103,7 @@ export default async function TransactionsPage({
 
   const allAccounts = await db.query.accounts.findMany();
   const allTags = await db.query.tags.findMany();
+  const allActivities = await getActivitiesForSelect();
 
   const categorizedHistory = await db
     .select({ description: transactions.description, categoryId: transactions.categoryId })
@@ -149,6 +151,7 @@ export default async function TransactionsPage({
         transactions={allTransactions as any}
         categories={enrichedCategories}
         allTags={allTags}
+        activities={allActivities}
         categorizedHistory={categorizedHistory as { description: string; categoryId: number }[]}
         currentPage={safePage}
         totalPages={totalPages}
