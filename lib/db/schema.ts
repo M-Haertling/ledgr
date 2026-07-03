@@ -1,5 +1,5 @@
-import { pgTable, serial, text, decimal, boolean, timestamp, integer, jsonb, unique, primaryKey } from 'drizzle-orm/pg-core';
-import { relations } from 'drizzle-orm';
+import { pgTable, serial, text, decimal, boolean, timestamp, integer, jsonb, unique, uniqueIndex, primaryKey } from 'drizzle-orm/pg-core';
+import { relations, sql } from 'drizzle-orm';
 import type { AnyPgColumn } from 'drizzle-orm/pg-core';
 
 export const accounts = pgTable('accounts', {
@@ -44,9 +44,17 @@ export const transactions = pgTable('transactions', {
   transferPairId: integer('transfer_pair_id').references((): AnyPgColumn => transactions.id),
   categoryId: integer('category_id').references(() => categories.id),
   notes: text('notes'),
+  // Split/itemize: children point at their parent via parentTransactionId; the
+  // parent is flagged isSplit so reports exclude it and count the children instead.
+  parentTransactionId: integer('parent_transaction_id').references((): AnyPgColumn => transactions.id, { onDelete: 'cascade' }),
+  isSplit: boolean('is_split').notNull().default(false),
   createdAt: timestamp('created_at').defaultNow().notNull(),
 }, (table) => [
-  unique('transactions_dedup').on(table.accountId, table.date, table.description, table.amount),
+  // Only top-level transactions participate in dedup; split line items are exempt
+  // (multiple items can share the same amount/description/date).
+  uniqueIndex('transactions_dedup')
+    .on(table.accountId, table.date, table.description, table.amount)
+    .where(sql`${table.parentTransactionId} IS NULL`),
 ]);
 
 export const transactionsRelations = relations(transactions, ({ one, many }) => ({
@@ -64,6 +72,12 @@ export const transactionsRelations = relations(transactions, ({ one, many }) => 
     references: [transactions.id],
     relationName: 'transfer_pair',
   }),
+  splitParent: one(transactions, {
+    fields: [transactions.parentTransactionId],
+    references: [transactions.id],
+    relationName: 'split_parent',
+  }),
+  splitChildren: many(transactions, { relationName: 'split_parent' }),
 }));
 
 export const tags = pgTable('tags', {

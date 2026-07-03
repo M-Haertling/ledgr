@@ -26,17 +26,27 @@ export default function CategoryPicker({
   categories,
   suggestedCategoryIds = [],
   transactionType,
+  isSplit = false,
 }: {
   transactionId: number;
   currentCategoryId: number | null;
   categories: Category[];
   suggestedCategoryIds?: number[];
   transactionType: string;
+  isSplit?: boolean;
 }) {
   if (transactionType === 'transfer') {
     return (
       <span style={{ color: 'var(--text-muted)', fontSize: '0.8rem', fontStyle: 'italic' }}>
         — N/A (transfer) —
+      </span>
+    );
+  }
+
+  if (isSplit) {
+    return (
+      <span style={{ color: 'var(--text-muted)', fontSize: '0.8rem', fontStyle: 'italic' }}>
+        — Split —
       </span>
     );
   }

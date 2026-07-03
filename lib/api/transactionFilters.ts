@@ -18,6 +18,8 @@ export type TransactionFilterOptions = {
   type?: string;
   from?: Date;
   to?: Date;
+  /** Include split line items (children). Defaults to false so only top-level rows show. */
+  includeChildren?: boolean;
 };
 
 /**
@@ -26,8 +28,11 @@ export type TransactionFilterOptions = {
  * together when both are present.
  */
 export function buildTransactionFilters(opts: TransactionFilterOptions): SQL[] {
-  const { accountIds = [], categoryIds = [], tagIds = [], search, uncategorized, type, from, to } = opts;
+  const { accountIds = [], categoryIds = [], tagIds = [], search, uncategorized, type, from, to, includeChildren } = opts;
   const filters: SQL[] = [];
+
+  // Hide split line items from the list by default; the parent row represents them.
+  if (!includeChildren) filters.push(isNull(transactions.parentTransactionId));
 
   if (accountIds.length > 0) filters.push(inArray(transactions.accountId, accountIds));
   if (uncategorized) {

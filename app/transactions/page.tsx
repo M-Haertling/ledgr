@@ -93,7 +93,8 @@ export default async function TransactionsPage({
       category: true,
       transactionTags: {
         with: { tag: true }
-      }
+      },
+      splitChildren: { columns: { id: true } },
     },
     where: whereClause,
     orderBy: [orderBy],

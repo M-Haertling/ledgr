@@ -34,12 +34,14 @@ See `features.md`.
             - `AddUpdateForm.tsx`: Client component — add update with date (defaults today), content, optional status change.
             - `UpdateCard.tsx`: Client component — per-update card with inline edit, delete, linked transactions, and transaction picker trigger.
             - `TransactionPicker.tsx`: Client component — modal dialog with live search to link/unlink transactions to an update.
-    - `/transactions`: Transaction table with sorting, filtering, pagination, and inline category/tag editing.
-        - `TransactionsTable.tsx`: Client component — sortable table, pagination, and per-page multi-select (row checkboxes + sticky action bar to bulk-link selected transactions directly to an activity via `addTransactionsToActivity`).
-        - `CategoryPicker.tsx`: Inline category select per transaction row.
+    - `/transactions`: Transaction table with sorting, filtering, pagination, and inline category/tag editing. Split line items (children) are hidden from the list; their parent shows a `Split (N)` badge and expands to reveal the items.
+        - `TransactionsTable.tsx`: Client component — sortable table, pagination, per-page multi-select (row checkboxes + sticky action bar to bulk-link selected transactions directly to an activity via `addTransactionsToActivity`), and expandable split-parent rows (lazy-load line items via `getTransactionSplits`).
+        - `CategoryPicker.tsx`: Inline category select per transaction row. Renders a non-editable `— Split —` label for split parents (like `— N/A (transfer) —`).
         - `TagPicker.tsx`: Inline tag attachment/detachment dropdown (fixed-position to escape table overflow).
         - `NotePicker.tsx`: Inline notes editor per transaction row.
         - `TypePicker.tsx`: Inline transfer/type picker per transaction row.
+        - `SplitPicker.tsx`: Inline per-row `Split`/`Split (N)` button that opens the split dialog (hidden for transfers).
+        - `SplitTransactionDialog.tsx`: Modal to itemize a transaction into line items (amount + category + note each), with a live remaining-balance indicator; preloads existing items and offers Unsplit for an already-split transaction.
         - `AddTransactionDialog.tsx`: Dialog for manually adding a transaction.
         - `MultiSelect.tsx`: Reusable multi-select dropdown that updates URL params.
         - `/upload`: CSV upload and column mapping interface.
@@ -79,7 +81,7 @@ See `features.md`.
         - `rules.ts`: `patternToRegex`, `ruleMatchesTransaction` (shared account-scope + pattern matcher), `loadRuleEngine`/`tagsForApplication`/`applyTransactionTags` (rule + category-tag application), `applyRulesToUncategorized`, `applyRulesToAll`, `applySingleRule`. Applying a rule sets the category and applies both the rule's own tags and the assigned category's linked tags (consistent across bulk apply, single-rule apply, and CSV upload).
         - `transactions.ts`: `deduplicateTransactions`, `deleteTransaction`, `updateTransactionCategory`.
         - `activities.ts`: `mergeActivityTransactions` — builds the deduplicated, newest-first union of an activity's update-linked and directly-linked transactions plus the total cost; shared by the activity list and detail pages so their budget totals can't drift.
-        - `transactionFilters.ts`: `patternToLike` and `buildTransactionFilters` — shared WHERE-clause builder used by both the Transactions page and the REST transactions route.
+        - `transactionFilters.ts`: `patternToLike` and `buildTransactionFilters` — shared WHERE-clause builder used by both the Transactions page and the REST transactions route. Excludes split line items (`parentTransactionId IS NULL`) by default unless `includeChildren` is set.
         - `backup.ts`: `toCsv` and `tableExports` — single source of truth for table serialization, consumed by both the per-table and bulk ZIP backup routes.
         - `categories.ts`: `deleteCategoryWithCascade`.
         - `tags.ts`: `deleteTagWithCascade`.
@@ -87,7 +89,7 @@ See `features.md`.
         - `accounts.ts`: Account CRUD (create, update, delete).
         - `categories.ts`: Category CRUD. Delete clears transaction mappings and orphaned rules.
         - `tags.ts`: Tag CRUD including rename. Delete cleans up transaction_tags.
-        - `transactions.ts`: `updateTransactionCategory`, `updateTransactionNotes`, `addTransaction`, `deduplicateTransactions`, `findTransferCandidates`.
+        - `transactions.ts`: `updateTransactionCategory`, `updateTransactionNotes`, `addTransaction`, `deduplicateTransactions`, `findTransferCandidates`, and split/itemize (`splitTransaction`, `unsplitTransaction`, `getTransactionSplits`). Splitting keeps the parent row (flagged `isSplit`, category cleared) and inserts child transactions carrying `parentTransactionId` + their own amount/category/notes; re-splitting replaces existing children.
         - `rules.ts`: Rule management and `applyRulesToUncategorized` (wildcard, tag, account-scoped).
         - `mappings.ts`: CSV upload template CRUD (save, load, delete named column-mapping templates).
         - `activities.ts`: Activity CRUD (including type/budget), update CRUD, transaction link/unlink (update-level), direct activity↔transaction links (`addTransactionsToActivity`, `removeTransactionFromActivity`), `getActivitiesForSelect` for the transactions-page bulk dropdown, and `getTransactionsForPicker` for the modal search.
@@ -95,6 +97,7 @@ See `features.md`.
 - `/__tests__`: Vitest unit tests mirroring the `lib/` structure.
     - `lib/api/rules.test.ts`: `patternToRegex` (pure) and `applyRulesToUncategorized` (DB mocked).
     - `lib/api/transactions.test.ts`: `updateTransactionCategory` and `deleteTransaction` (DB mocked).
+    - `lib/actions/transactions.test.ts`: `splitTransaction` validation + happy path (DB mocked).
     - `lib/schemas/rules.test.ts`, `lib/schemas/transactions.test.ts`: Zod schema validation tests.
 - `vitest.config.ts`: Vitest configuration with native tsconfig path resolution.
 - `/drizzle`: SQL migration files and metadata.
@@ -107,7 +110,8 @@ See `features.md`.
 # Database Notes
 - Migrations are tracked in `/drizzle`. Drizzle maintains a `__drizzle_migrations` table and only runs migrations that haven't been applied yet.
 - On Docker deploy, `start.sh` runs `node scripts/migrate.mjs` automatically before the app starts — no manual migration step needed.
-- `transactions` has a composite unique constraint on `(account_id, date, description, amount)` to enforce deduplication. Upload uses `ON CONFLICT DO NOTHING`.
+- `transactions` deduplicates on `(account_id, date, description, amount)` via a **partial unique index** `transactions_dedup` scoped to `parent_transaction_id IS NULL`, so split line items (children) are exempt and can share a key. Upload uses `ON CONFLICT DO NOTHING` (untargeted, so it still catches the partial-index violation).
+- Split/itemize: `transactions.parent_transaction_id` (self-FK, `ON DELETE CASCADE`) links a line item to its parent; `transactions.is_split` flags the parent. Reports/dashboard aggregation excludes parents (`is_split = false`) and counts the children, which sum to the parent amount — so nothing is double-counted.
 - **Every `.sql` file in `/drizzle` must have a matching entry in `/drizzle/meta/_journal.json`.** `migrate.mjs` uses Drizzle's journal-driven `migrator`, so any migration missing from the journal is silently skipped and will never run on a fresh database. When hand-writing a migration, add a journal entry with the next `idx` and a `when` timestamp greater than the prior entry. Prefer idempotent DDL (`ADD COLUMN IF NOT EXISTS`, `CREATE TABLE IF NOT EXISTS`, `IF NOT EXISTS` indexes) so re-runs and partially-migrated databases stay safe.
 
 **Important** When adding or removing tables, be sure to update the "Backup" and "Admin" pages, which have references to relevant application tables.

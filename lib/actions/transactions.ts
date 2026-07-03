@@ -2,7 +2,7 @@
 
 import { db } from '@/lib/db';
 import { transactions, transactionTags } from '@/lib/db/schema';
-import { eq, inArray, sql, and, isNull, or } from 'drizzle-orm';
+import { eq, inArray, sql, and, isNull, or, asc } from 'drizzle-orm';
 import { revalidatePath } from 'next/cache';
 import {
   deduplicateTransactions as deduplicateHelper,
@@ -127,6 +127,98 @@ export async function deduplicateTransactions(): Promise<number> {
   const count = await deduplicateHelper();
   revalidatePath('/transactions');
   return count;
+}
+
+export type SplitItemInput = {
+  amount: number;
+  description: string;
+  categoryId?: number | null;
+  notes?: string | null;
+};
+
+export type SplitItem = {
+  id: number;
+  description: string;
+  amount: string;
+  categoryId: number | null;
+  notes: string | null;
+  category: { id: number; name: string; color: string | null } | null;
+};
+
+const toCents = (n: number) => Math.round(n * 100);
+
+/**
+ * Itemize a transaction into child line items. The parent row is kept (marked
+ * isSplit, category cleared) so CSV dedup and history stay intact; the children
+ * carry their own amount/category/notes and are what reports count. Re-splitting
+ * an already-split transaction replaces its existing line items.
+ */
+export async function splitTransaction(parentId: number, items: SplitItemInput[]): Promise<void> {
+  const [parent] = await db.select().from(transactions).where(eq(transactions.id, parentId));
+  if (!parent) throw new Error('Transaction not found');
+  if (parent.parentTransactionId) throw new Error('A split line item cannot itself be split');
+  if (parent.type === 'transfer') throw new Error('Transfers cannot be split');
+  if (items.length < 2) throw new Error('A split needs at least two line items');
+  if (items.some(it => toCents(it.amount) <= 0)) throw new Error('Each line item must be greater than zero');
+
+  const sumCents = items.reduce((acc, it) => acc + toCents(it.amount), 0);
+  if (sumCents !== toCents(Number(parent.amount))) {
+    throw new Error('Split amounts must add up to the transaction total');
+  }
+
+  await deleteSplitChildren(parentId);
+  await db.insert(transactions).values(items.map(it => ({
+    accountId: parent.accountId,
+    date: parent.date,
+    description: it.description?.trim() || parent.description,
+    amount: Math.abs(it.amount).toFixed(2),
+    isCredit: parent.isCredit,
+    type: parent.type,
+    categoryId: it.categoryId ?? null,
+    notes: it.notes?.trim() || null,
+    parentTransactionId: parentId,
+  })));
+  await db.update(transactions)
+    .set({ isSplit: true, categoryId: null })
+    .where(eq(transactions.id, parentId));
+
+  revalidatePath('/transactions');
+  revalidatePath('/reports');
+}
+
+/** Remove a transaction's line items and return it to a normal, categorizable row. */
+export async function unsplitTransaction(parentId: number): Promise<void> {
+  await deleteSplitChildren(parentId);
+  await db.update(transactions).set({ isSplit: false }).where(eq(transactions.id, parentId));
+  revalidatePath('/transactions');
+  revalidatePath('/reports');
+}
+
+export async function getTransactionSplits(parentId: number): Promise<SplitItem[]> {
+  const rows = await db.query.transactions.findMany({
+    where: eq(transactions.parentTransactionId, parentId),
+    with: { category: true },
+    orderBy: [asc(transactions.id)],
+  });
+  return rows.map(r => ({
+    id: r.id,
+    description: r.description,
+    amount: r.amount,
+    categoryId: r.categoryId,
+    notes: r.notes,
+    category: r.category ? { id: r.category.id, name: r.category.name, color: r.category.color } : null,
+  }));
+}
+
+/** Delete the child line items of a split parent, clearing their tag links first. */
+async function deleteSplitChildren(parentId: number): Promise<void> {
+  const children = await db.select({ id: transactions.id })
+    .from(transactions)
+    .where(eq(transactions.parentTransactionId, parentId));
+  if (children.length === 0) return;
+  const ids = children.map(r => r.id);
+  await db.delete(transactionTags).where(inArray(transactionTags.transactionId, ids));
+  await db.delete(transactions).where(inArray(transactions.id, ids));
 }
 
 export async function getUploadDates(accountId: number): Promise<string[]> {

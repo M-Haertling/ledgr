@@ -1,17 +1,20 @@
 import { db } from '@/lib/db';
 import { transactions, transactionTags, categoryTags } from '@/lib/db/schema';
-import { eq, sql, notInArray, inArray, and } from 'drizzle-orm';
+import { eq, sql, notInArray, inArray, and, isNull } from 'drizzle-orm';
 
 export async function deduplicateTransactions(): Promise<number> {
+  // Only dedup top-level transactions; split line items are exempt from the
+  // dedup key and must never be merged/deleted here.
   const keepers = db
     .select({ id: sql<number>`MIN(id)` })
     .from(transactions)
+    .where(isNull(transactions.parentTransactionId))
     .groupBy(transactions.accountId, transactions.date, transactions.description, transactions.amount);
 
   const duplicates = await db
     .select({ id: transactions.id })
     .from(transactions)
-    .where(notInArray(transactions.id, keepers));
+    .where(and(notInArray(transactions.id, keepers), isNull(transactions.parentTransactionId)));
 
   if (duplicates.length === 0) return 0;
 

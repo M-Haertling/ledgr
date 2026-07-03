@@ -2,7 +2,7 @@ export const dynamic = 'force-dynamic';
 
 import { db } from '@/lib/db';
 import { transactions } from '@/lib/db/schema';
-import { sql, and, eq, gte, lte } from 'drizzle-orm';
+import { sql, and, eq, ne, gte, lte } from 'drizzle-orm';
 import Link from 'next/link';
 
 export default async function Home() {
@@ -18,14 +18,16 @@ export default async function Home() {
   .where(and(
     gte(transactions.date, startOfMonth),
     lte(transactions.date, endOfMonth),
-    eq(transactions.isCredit, false)
+    eq(transactions.isCredit, false),
+    ne(transactions.isSplit, true)
   ));
 
-  // Total Balance (Income - Expenses)
+  // Total Balance (Income - Expenses) — exclude split parents; children carry the amounts
   const netBalance = await db.select({
     sum: sql<string>`sum(CASE WHEN is_credit THEN amount ELSE -amount END)`
   })
-  .from(transactions);
+  .from(transactions)
+  .where(ne(transactions.isSplit, true));
 
   const spent = Math.abs(parseFloat(monthSpending[0]?.sum || '0'));
   const balance = parseFloat(netBalance[0]?.sum || '0');

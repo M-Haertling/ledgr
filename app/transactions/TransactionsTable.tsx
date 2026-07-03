@@ -1,12 +1,14 @@
 'use client';
 
-import { useMemo, useState, useTransition } from 'react';
+import { Fragment, useMemo, useState, useTransition } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import CategoryPicker from './CategoryPicker';
 import TagPicker from './TagPicker';
 import TypePicker from './TypePicker';
 import NotePicker from './NotePicker';
+import SplitPicker from './SplitPicker';
 import { addTransactionsToActivity } from '@/lib/actions/activities';
+import { getTransactionSplits, type SplitItem } from '@/lib/actions/transactions';
 
 function normalizeDesc(desc: string): string {
   return desc
@@ -61,7 +63,7 @@ function getSuggestions(
     .map(([id]) => id);
 }
 
-type Category = { id: number; name: string; color: string | null };
+type Category = { id: number; name: string; color: string | null; parentId?: number | null; parentName?: string | null };
 type Activity = { id: number; name: string; status: string };
 type Transaction = {
   id: number;
@@ -75,9 +77,11 @@ type Transaction = {
   accountId: number;
   categoryId: number | null;
   notes: string | null;
+  isSplit: boolean;
   account: { id: number; name: string };
   category: { id: number; name: string; color: string | null } | null;
   transactionTags: { tagId: number; tag: { id: number; name: string } }[];
+  splitChildren?: { id: number }[];
 };
 
 export default function TransactionsTable({
@@ -110,6 +114,27 @@ export default function TransactionsTable({
   const [selected, setSelected] = useState<Set<number>>(new Set());
   const [activityId, setActivityId] = useState<string>('');
   const [isAdding, startAdding] = useTransition();
+
+  // Expand/collapse of split parents to reveal their line items (lazy-loaded).
+  const [expanded, setExpanded] = useState<Set<number>>(new Set());
+  const [splitsCache, setSplitsCache] = useState<Record<number, SplitItem[]>>({});
+
+  const toggleExpand = (txId: number) => {
+    setExpanded((prev) => {
+      const next = new Set(prev);
+      if (next.has(txId)) {
+        next.delete(txId);
+      } else {
+        next.add(txId);
+        if (!splitsCache[txId]) {
+          getTransactionSplits(txId).then((items) =>
+            setSplitsCache((c) => ({ ...c, [txId]: items }))
+          );
+        }
+      }
+      return next;
+    });
+  };
 
   const allOnPageSelected = transactions.length > 0 && transactions.every((tx) => selected.has(tx.id));
 
@@ -250,13 +275,18 @@ export default function TransactionsTable({
               <th className="sortable" onClick={() => setSort('amount')} style={{ textAlign: 'right' }}>
                 Amount {sortIndicator('amount')}
               </th>
+              <th style={{ textAlign: 'center' }}>Split</th>
               <th style={{ textAlign: 'center' }}>Notes</th>
               <th style={{ textAlign: 'center' }}>Tags</th>
             </tr>
           </thead>
           <tbody>
-            {transactions.map((tx) => (
-              <tr key={tx.id} style={selected.has(tx.id) ? { background: 'var(--bg-hover, rgba(59,130,246,0.08))' } : undefined}>
+            {transactions.map((tx) => {
+              const splitCount = tx.splitChildren?.length ?? 0;
+              const isExpanded = expanded.has(tx.id);
+              return (
+              <Fragment key={tx.id}>
+              <tr style={selected.has(tx.id) ? { background: 'var(--bg-hover, rgba(59,130,246,0.08))' } : undefined}>
                 <td style={{ textAlign: 'center' }}>
                   <input
                     type="checkbox"
@@ -271,6 +301,15 @@ export default function TransactionsTable({
                   {tx.createdAt.toLocaleDateString()}
                 </td>
                 <td style={{ maxWidth: '300px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={tx.description}>
+                  {tx.isSplit && (
+                    <button
+                      onClick={() => toggleExpand(tx.id)}
+                      title={isExpanded ? 'Hide line items' : 'Show line items'}
+                      style={{ border: 'none', background: 'none', cursor: 'pointer', padding: '0 0.35rem 0 0', color: 'var(--text-muted)' }}
+                    >
+                      {isExpanded ? '▾' : '▸'}
+                    </button>
+                  )}
                   {tx.description}
                 </td>
                 <td>
@@ -283,6 +322,7 @@ export default function TransactionsTable({
                     categories={categories}
                     suggestedCategoryIds={getSuggestions(tx.description, freqMap, tokenIndex)}
                     transactionType={tx.type}
+                    isSplit={tx.isSplit}
                   />
                 </td>
                 <td>
@@ -303,6 +343,17 @@ export default function TransactionsTable({
                   </span>
                 </td>
                 <td style={{ textAlign: 'center' }}>
+                  <SplitPicker
+                    transactionId={tx.id}
+                    description={tx.description}
+                    amount={tx.amount}
+                    type={tx.type}
+                    isSplit={tx.isSplit}
+                    splitCount={splitCount}
+                    categories={categories}
+                  />
+                </td>
+                <td style={{ textAlign: 'center' }}>
                   <NotePicker
                     transactionId={tx.id}
                     currentNotes={tx.notes}
@@ -316,7 +367,39 @@ export default function TransactionsTable({
                   />
                 </td>
               </tr>
-            ))}
+              {tx.isSplit && isExpanded && (
+                splitsCache[tx.id]
+                  ? splitsCache[tx.id].map((item) => (
+                      <tr key={`split-${item.id}`} style={{ background: 'var(--bg-elevated, rgba(0,0,0,0.02))', fontSize: '0.85rem' }}>
+                        <td />
+                        <td colSpan={2} />
+                        <td style={{ color: 'var(--text-muted)', paddingLeft: '1.5rem' }} title={item.description}>
+                          ↳ {item.description}
+                        </td>
+                        <td />
+                        <td style={{ color: 'var(--text-muted)' }}>
+                          {item.category?.name ?? 'Uncategorized'}
+                        </td>
+                        <td />
+                        <td style={{ textAlign: 'right', whiteSpace: 'nowrap' }}>
+                          {tx.isCredit ? '+' : '-'}${Math.abs(Number(item.amount)).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                        </td>
+                        <td />
+                        <td style={{ textAlign: 'center', color: 'var(--text-muted)' }} title={item.notes ?? ''}>
+                          {item.notes ? '📝' : ''}
+                        </td>
+                        <td />
+                      </tr>
+                    ))
+                  : (
+                    <tr style={{ background: 'var(--bg-elevated, rgba(0,0,0,0.02))', fontSize: '0.85rem' }}>
+                      <td colSpan={11} style={{ color: 'var(--text-muted)', paddingLeft: '1.5rem' }}>Loading line items…</td>
+                    </tr>
+                  )
+              )}
+              </Fragment>
+              );
+            })}
           </tbody>
         </table>
       </div>

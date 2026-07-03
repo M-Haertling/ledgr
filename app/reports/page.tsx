@@ -71,11 +71,13 @@ export default async function ReportsPage({
   // Expand parent IDs to children for DB filtering
   const categoryIds = expandCategoryIds(rawCategoryIds, allCategories);
 
-  // Base filters — always exclude transfers
+  // Base filters — always exclude transfers and split parents (their child line
+  // items carry the real, per-category amounts and are counted instead).
   const baseFilters = [
     gte(transactions.date, from),
     lte(transactions.date, to),
     ne(transactions.type, 'transfer'),
+    ne(transactions.isSplit, true),
   ];
 
   if (!includeUncategorized) baseFilters.push(isNotNull(transactions.categoryId));
