@@ -40,7 +40,7 @@ See `features.md`.
         - `TagPicker.tsx`: Inline tag attachment/detachment dropdown (fixed-position to escape table overflow).
         - `NotePicker.tsx`: Inline notes editor per transaction row.
         - `TypePicker.tsx`: Inline transfer/type picker per transaction row.
-        - `SplitPicker.tsx`: Inline per-row `Split`/`Split (N)` button that opens the split dialog (hidden for transfers).
+        - `SplitPicker.tsx`: Inline per-row scissors (`✂`) button — grouped with the Notes and Tags icons in a single `Actions` column — that opens the split dialog; shows the item count for a split parent and is hidden for transfers.
         - `SplitTransactionDialog.tsx`: Modal to itemize a transaction into line items (amount + category + note each), with a live remaining-balance indicator; preloads existing items and offers Unsplit for an already-split transaction.
         - `AddTransactionDialog.tsx`: Dialog for manually adding a transaction.
         - `MultiSelect.tsx`: Reusable multi-select dropdown that updates URL params.

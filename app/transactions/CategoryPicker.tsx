@@ -69,7 +69,7 @@ export default function CategoryPicker({
   return (
     <select
       className="form-select"
-      style={{ padding: '0.2rem 0.4rem', fontSize: '0.8rem', minWidth: '130px' }}
+      style={{ padding: '0.2rem 0.4rem', fontSize: '0.8rem', minWidth: '112px' }}
       value={currentCategoryId ?? ''}
       onChange={async (e) => {
         const val = e.target.value;

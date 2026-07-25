@@ -249,7 +249,7 @@ export default function TransactionsTable({
         </div>
       )}
       <div className="table-container">
-        <table className="table">
+        <table className="table table-transactions">
           <thead>
             <tr>
               <th style={{ width: '1%', textAlign: 'center' }}>
@@ -275,9 +275,7 @@ export default function TransactionsTable({
               <th className="sortable" onClick={() => setSort('amount')} style={{ textAlign: 'right' }}>
                 Amount {sortIndicator('amount')}
               </th>
-              <th style={{ textAlign: 'center' }}>Split</th>
-              <th style={{ textAlign: 'center' }}>Notes</th>
-              <th style={{ textAlign: 'center' }}>Tags</th>
+              <th style={{ textAlign: 'center' }}>Actions</th>
             </tr>
           </thead>
           <tbody>
@@ -300,7 +298,7 @@ export default function TransactionsTable({
                 <td style={{ whiteSpace: 'nowrap', color: 'var(--text-muted)', fontSize: '0.875rem' }}>
                   {tx.createdAt.toLocaleDateString()}
                 </td>
-                <td style={{ maxWidth: '300px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={tx.description}>
+                <td style={{ maxWidth: '220px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={tx.description}>
                   {tx.isSplit && (
                     <button
                       onClick={() => toggleExpand(tx.id)}
@@ -313,7 +311,13 @@ export default function TransactionsTable({
                   {tx.description}
                 </td>
                 <td>
-                  <span className="badge">{tx.account.name}</span>
+                  <span
+                    className="badge"
+                    title={tx.account.name}
+                    style={{ display: 'inline-block', maxWidth: '130px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', verticalAlign: 'middle' }}
+                  >
+                    {tx.account.name}
+                  </span>
                 </td>
                 <td>
                   <CategoryPicker
@@ -342,29 +346,27 @@ export default function TransactionsTable({
                     {tx.isCredit ? '+' : '-'}${Math.abs(Number(tx.amount)).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                   </span>
                 </td>
-                <td style={{ textAlign: 'center' }}>
-                  <SplitPicker
-                    transactionId={tx.id}
-                    description={tx.description}
-                    amount={tx.amount}
-                    type={tx.type}
-                    isSplit={tx.isSplit}
-                    splitCount={splitCount}
-                    categories={categories}
-                  />
-                </td>
-                <td style={{ textAlign: 'center' }}>
-                  <NotePicker
-                    transactionId={tx.id}
-                    currentNotes={tx.notes}
-                  />
-                </td>
-                <td style={{ textAlign: 'center' }}>
-                  <TagPicker
-                    transactionId={tx.id}
-                    allTags={allTags}
-                    currentTags={tx.transactionTags}
-                  />
+                <td>
+                  <div className="flex" style={{ gap: '0.25rem', alignItems: 'center', justifyContent: 'center' }}>
+                    <NotePicker
+                      transactionId={tx.id}
+                      currentNotes={tx.notes}
+                    />
+                    <TagPicker
+                      transactionId={tx.id}
+                      allTags={allTags}
+                      currentTags={tx.transactionTags}
+                    />
+                    <SplitPicker
+                      transactionId={tx.id}
+                      description={tx.description}
+                      amount={tx.amount}
+                      type={tx.type}
+                      isSplit={tx.isSplit}
+                      splitCount={splitCount}
+                      categories={categories}
+                    />
+                  </div>
                 </td>
               </tr>
               {tx.isSplit && isExpanded && (
@@ -384,16 +386,14 @@ export default function TransactionsTable({
                         <td style={{ textAlign: 'right', whiteSpace: 'nowrap' }}>
                           {tx.isCredit ? '+' : '-'}${Math.abs(Number(item.amount)).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                         </td>
-                        <td />
                         <td style={{ textAlign: 'center', color: 'var(--text-muted)' }} title={item.notes ?? ''}>
                           {item.notes ? '📝' : ''}
                         </td>
-                        <td />
                       </tr>
                     ))
                   : (
                     <tr style={{ background: 'var(--bg-elevated, rgba(0,0,0,0.02))', fontSize: '0.85rem' }}>
-                      <td colSpan={11} style={{ color: 'var(--text-muted)', paddingLeft: '1.5rem' }}>Loading line items…</td>
+                      <td colSpan={9} style={{ color: 'var(--text-muted)', paddingLeft: '1.5rem' }}>Loading line items…</td>
                     </tr>
                   )
               )}

@@ -31,20 +31,20 @@ export default function SplitPicker({
     <>
       <button
         onClick={() => setOpen(true)}
-        title={isSplit ? 'Edit split' : 'Split into line items'}
+        title={isSplit ? `Edit split (${splitCount} items)` : 'Split into line items'}
         style={{
-          fontSize: '0.8rem',
+          fontSize: '1rem',
           color: isSplit ? 'var(--primary)' : 'var(--text-muted)',
-          border: '1px solid var(--border)',
+          fontWeight: isSplit ? 600 : 400,
+          border: 'none',
           background: 'none',
-          padding: '0.15rem 0.4rem',
-          borderRadius: '4px',
+          padding: '0 0.25rem',
           cursor: 'pointer',
-          lineHeight: 1.2,
+          lineHeight: 1,
           whiteSpace: 'nowrap',
         }}
       >
-        {isSplit ? `✂ Split (${splitCount})` : '✂ Split'}
+        ✂{isSplit ? <sup style={{ fontSize: '0.65rem' }}>{splitCount}</sup> : ''}
       </button>
 
       {open && (

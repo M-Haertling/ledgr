@@ -332,6 +332,16 @@ a:hover {
   border-bottom: none;
 }
 
+/* Compact padding for the dense, many-column transactions table so a full row
+   fits without horizontal scrolling. */
+.table-transactions th,
+.table-transactions td {
+  padding: 0.45rem 0.5rem;
+}
+.table-transactions .form-select {
+  padding: 0.2rem 0.3rem;
+}
+
 /* Sortable table headers */
 .table th.sortable {
   cursor: pointer;
