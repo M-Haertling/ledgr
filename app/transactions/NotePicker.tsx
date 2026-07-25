@@ -26,17 +26,10 @@ export default function NotePicker({
   return (
     <>
       <button
+        className="tx-icon-btn"
         onClick={() => setDialogOpen(true)}
         disabled={isPending}
-        style={{
-          fontSize: '1rem',
-          color: hasNotes ? 'var(--primary)' : 'var(--text-muted)',
-          border: 'none',
-          background: 'none',
-          padding: '0 0.25rem',
-          cursor: 'pointer',
-          lineHeight: 1,
-        }}
+        style={{ color: hasNotes ? 'var(--primary)' : 'var(--text-muted)' }}
         title={hasNotes ? 'Edit note' : 'Add note'}
       >
         {hasNotes ? '📝' : '📄'}

@@ -30,17 +30,12 @@ export default function SplitPicker({
   return (
     <>
       <button
+        className="tx-icon-btn"
         onClick={() => setOpen(true)}
         title={isSplit ? `Edit split (${splitCount} items)` : 'Split into line items'}
         style={{
-          fontSize: '1rem',
           color: isSplit ? 'var(--primary)' : 'var(--text-muted)',
           fontWeight: isSplit ? 600 : 400,
-          border: 'none',
-          background: 'none',
-          padding: '0 0.25rem',
-          cursor: 'pointer',
-          lineHeight: 1,
           whiteSpace: 'nowrap',
         }}
       >

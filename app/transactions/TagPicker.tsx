@@ -69,16 +69,9 @@ export default function TagPicker({
   return (
     <>
       <button
+        className="tx-icon-btn"
         onClick={() => setDialogOpen(true)}
-        style={{
-          fontSize: '1rem',
-          border: 'none',
-          background: 'none',
-          padding: '0 0.25rem',
-          cursor: 'pointer',
-          lineHeight: 1,
-          filter: hasTags ? 'none' : 'grayscale(1) opacity(0.4)',
-        }}
+        style={{ filter: hasTags ? 'none' : 'grayscale(1) opacity(0.4)' }}
         title={hasTags ? `Tags: ${tags.map(ct => ct.tag.name).join(', ')}` : 'Add tags'}
       >
         🏷️

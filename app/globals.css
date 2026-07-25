@@ -337,9 +337,30 @@ a:hover {
 .table-transactions th,
 .table-transactions td {
   padding: 0.45rem 0.5rem;
+  /* Center every cell's content so dates, badges, selects, italic transfer/split
+     labels, and icon buttons sit on one line instead of aligning to differing
+     baselines (which made rows look jagged). */
+  vertical-align: middle;
 }
 .table-transactions .form-select {
   padding: 0.2rem 0.3rem;
+}
+
+/* Uniform square icon buttons for the Actions column. The note/tag/scissors
+   emoji have differing intrinsic widths, so fixing a square footprint keeps them
+   aligned across rows. Colour/state styling stays inline on each button. */
+.tx-icon-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.6rem;
+  height: 1.6rem;
+  padding: 0;
+  border: none;
+  background: none;
+  cursor: pointer;
+  font-size: 1rem;
+  line-height: 1;
 }
 
 /* Sortable table headers */
