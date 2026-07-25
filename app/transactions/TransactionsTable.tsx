@@ -1,13 +1,14 @@
 'use client';
 
-import { Fragment, useMemo, useState, useTransition } from 'react';
+import { Fragment, useMemo, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import CategoryPicker from './CategoryPicker';
 import TagPicker from './TagPicker';
 import TypePicker from './TypePicker';
 import NotePicker from './NotePicker';
 import SplitPicker from './SplitPicker';
-import { addTransactionsToActivity } from '@/lib/actions/activities';
+import TransferLinkPicker from './TransferLinkPicker';
+import ActivityPickerDialog from './ActivityPickerDialog';
 import { getTransactionSplits, type SplitItem } from '@/lib/actions/transactions';
 
 function normalizeDesc(desc: string): string {
@@ -64,7 +65,7 @@ function getSuggestions(
 }
 
 type Category = { id: number; name: string; color: string | null; parentId?: number | null; parentName?: string | null };
-type Activity = { id: number; name: string; status: string };
+type Activity = { id: number; name: string; status: string; type: string | null };
 type Transaction = {
   id: number;
   date: Date;
@@ -112,8 +113,7 @@ export default function TransactionsTable({
 
   // Multi-select state (resets per page render — selection is scoped to the current page)
   const [selected, setSelected] = useState<Set<number>>(new Set());
-  const [activityId, setActivityId] = useState<string>('');
-  const [isAdding, startAdding] = useTransition();
+  const [showActivityDialog, setShowActivityDialog] = useState(false);
 
   // Expand/collapse of split parents to reveal their line items (lazy-loaded).
   const [expanded, setExpanded] = useState<Set<number>>(new Set());
@@ -157,16 +157,6 @@ export default function TransactionsTable({
       const next = new Set(prev);
       for (const tx of transactions) next.add(tx.id);
       return next;
-    });
-  };
-
-  const handleAddToActivity = () => {
-    const id = parseInt(activityId);
-    if (!id || selected.size === 0) return;
-    startAdding(async () => {
-      await addTransactionsToActivity(id, [...selected]);
-      setSelected(new Set());
-      setActivityId('');
     });
   };
 
@@ -219,34 +209,32 @@ export default function TransactionsTable({
             {selected.size} selected <span className="text-muted" style={{ fontWeight: 400, fontSize: '0.8rem' }}>(this page)</span>
           </span>
           <span style={{ flex: 1 }} />
-          <select
-            className="form-select"
-            value={activityId}
-            onChange={(e) => setActivityId(e.target.value)}
-            style={{ maxWidth: '240px' }}
-            disabled={isAdding}
-          >
-            <option value="">Select activity…</option>
-            {activities.map((a) => (
-              <option key={a.id} value={a.id}>{a.name}</option>
-            ))}
-          </select>
           <button
             className="btn btn-primary btn-sm"
-            onClick={handleAddToActivity}
-            disabled={!activityId || isAdding}
+            onClick={() => setShowActivityDialog(true)}
           >
-            {isAdding ? 'Adding…' : 'Add to activity'}
+            Add to activity…
           </button>
           <button
             className="btn btn-sm"
             style={{ border: '1px solid var(--border)' }}
             onClick={() => setSelected(new Set())}
-            disabled={isAdding}
           >
             Clear
           </button>
         </div>
+      )}
+
+      {showActivityDialog && (
+        <ActivityPickerDialog
+          activities={activities}
+          transactionIds={[...selected]}
+          onClose={() => setShowActivityDialog(false)}
+          onDone={() => {
+            setSelected(new Set());
+            setShowActivityDialog(false);
+          }}
+        />
       )}
       <div className="table-container">
         <table className="table table-transactions">
@@ -334,11 +322,7 @@ export default function TransactionsTable({
                     transactionId={tx.id}
                     currentType={tx.type}
                     isCredit={tx.isCredit}
-                    transferPairId={tx.transferPairId}
                     date={tx.date}
-                    description={tx.description}
-                    amount={tx.amount}
-                    accountName={tx.account.name}
                   />
                 </td>
                 <td style={{ textAlign: 'right', fontWeight: 600, whiteSpace: 'nowrap' }}>
@@ -357,15 +341,29 @@ export default function TransactionsTable({
                       allTags={allTags}
                       currentTags={tx.transactionTags}
                     />
-                    <SplitPicker
-                      transactionId={tx.id}
-                      description={tx.description}
-                      amount={tx.amount}
-                      type={tx.type}
-                      isSplit={tx.isSplit}
-                      splitCount={splitCount}
-                      categories={categories}
-                    />
+                    {tx.type === 'transfer' ? (
+                      // Transfers can't be split — the scissors slot instead views
+                      // the linked transfer pair, keeping three aligned actions.
+                      <TransferLinkPicker
+                        transactionId={tx.id}
+                        transferPairId={tx.transferPairId}
+                        date={tx.date}
+                        description={tx.description}
+                        amount={tx.amount}
+                        isCredit={tx.isCredit}
+                        accountName={tx.account.name}
+                      />
+                    ) : (
+                      <SplitPicker
+                        transactionId={tx.id}
+                        description={tx.description}
+                        amount={tx.amount}
+                        type={tx.type}
+                        isSplit={tx.isSplit}
+                        splitCount={splitCount}
+                        categories={categories}
+                      />
+                    )}
                   </div>
                 </td>
               </tr>

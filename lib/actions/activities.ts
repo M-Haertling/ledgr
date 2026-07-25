@@ -2,7 +2,7 @@
 
 import { db } from '@/lib/db';
 import { activities, activityUpdates, activityUpdateTransactions, activityTransactions } from '@/lib/db/schema';
-import { eq, and, asc } from 'drizzle-orm';
+import { eq, and, asc, desc } from 'drizzle-orm';
 import { revalidatePath } from 'next/cache';
 
 export async function createActivity(formData: FormData) {
@@ -133,6 +133,23 @@ export async function addTransactionsToActivity(activityId: number, transactionI
   revalidatePath('/transactions');
 }
 
+export async function addTransactionsToUpdate(updateId: number, transactionIds: number[]) {
+  if (!updateId) throw new Error('Update is required');
+  const ids = [...new Set(transactionIds)].filter((id) => Number.isInteger(id) && id > 0);
+  if (ids.length === 0) return;
+
+  await db.insert(activityUpdateTransactions)
+    .values(ids.map((transactionId) => ({ updateId, transactionId })))
+    .onConflictDoNothing();
+
+  const update = await db.query.activityUpdates.findFirst({
+    where: eq(activityUpdates.id, updateId),
+  });
+  revalidatePath('/activities');
+  if (update) revalidatePath(`/activities/${update.activityId}`);
+  revalidatePath('/transactions');
+}
+
 export async function removeTransactionFromActivity(activityId: number, transactionId: number) {
   await db.delete(activityTransactions).where(
     and(
@@ -146,8 +163,16 @@ export async function removeTransactionFromActivity(activityId: number, transact
 
 export async function getActivitiesForSelect() {
   return db.query.activities.findMany({
-    columns: { id: true, name: true, status: true },
+    columns: { id: true, name: true, status: true, type: true },
     orderBy: [asc(activities.name)],
+  });
+}
+
+export async function getActivityUpdatesForSelect(activityId: number) {
+  return db.query.activityUpdates.findMany({
+    where: eq(activityUpdates.activityId, activityId),
+    columns: { id: true, content: true, newStatus: true, date: true },
+    orderBy: [desc(activityUpdates.date)],
   });
 }
 

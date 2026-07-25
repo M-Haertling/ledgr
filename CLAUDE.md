@@ -35,12 +35,14 @@ See `features.md`.
             - `UpdateCard.tsx`: Client component — per-update card with inline edit, delete, linked transactions, and transaction picker trigger.
             - `TransactionPicker.tsx`: Client component — modal dialog with live search to link/unlink transactions to an update.
     - `/transactions`: Transaction table with sorting, filtering, pagination, and inline category/tag editing. Split line items (children) are hidden from the list; their parent shows a `Split (N)` badge and expands to reveal the items.
-        - `TransactionsTable.tsx`: Client component — sortable table, pagination, per-page multi-select (row checkboxes + sticky action bar to bulk-link selected transactions directly to an activity via `addTransactionsToActivity`), and expandable split-parent rows (lazy-load line items via `getTransactionSplits`).
+        - `TransactionsTable.tsx`: Client component — sortable table, pagination, per-page multi-select (row checkboxes + sticky action bar with an "Add to activity…" button that opens `ActivityPickerDialog`), and expandable split-parent rows (lazy-load line items via `getTransactionSplits`).
+        - `ActivityPickerDialog.tsx`: Modal dialog for bulk-linking selected transactions to an activity — first pick the activity (filterable list), then optionally pick one of its events (updates) to link to instead of linking directly to the activity. Links via `addTransactionsToUpdate` (event chosen) or `addTransactionsToActivity` (no event chosen).
         - `CategoryPicker.tsx`: Inline category select per transaction row. Renders a non-editable `— Split —` label for split parents (like `— N/A (transfer) —`).
         - `TagPicker.tsx`: Inline tag attachment/detachment dropdown (fixed-position to escape table overflow).
         - `NotePicker.tsx`: Inline notes editor per transaction row.
-        - `TypePicker.tsx`: Inline transfer/type picker per transaction row.
-        - `SplitPicker.tsx`: Inline per-row scissors (`✂`) button — grouped with the Notes and Tags icons in a single `Actions` column — that opens the split dialog; shows the item count for a split parent and is hidden for transfers.
+        - `TypePicker.tsx`: Inline transfer/type picker per transaction row (Debit/Credit ↔ Transfer). Converting to transfer opens the link-candidate dialog; viewing an existing transfer's linked pair now lives in `TransferLinkPicker` (Actions column), not here.
+        - `SplitPicker.tsx`: Inline per-row scissors (`✂`) button — grouped with the Notes and Tags icons in a single `Actions` column — that opens the split dialog; shows the item count for a split parent and is hidden for transfers. Uses the shared `.tx-icon-btn` square-button class so the Actions icons align across rows.
+        - `TransferLinkPicker.tsx`: Third `Actions`-column slot for transfer rows (where scissors isn't valid) — a `🔗` button opening the linked-transfer-pair dialog; renders an empty same-size placeholder for unlinked transfers so every row keeps three aligned action slots.
         - `SplitTransactionDialog.tsx`: Modal to itemize a transaction into line items (amount + category + note each), with a live remaining-balance indicator; preloads existing items and offers Unsplit for an already-split transaction.
         - `AddTransactionDialog.tsx`: Dialog for manually adding a transaction.
         - `MultiSelect.tsx`: Reusable multi-select dropdown that updates URL params.
@@ -92,7 +94,7 @@ See `features.md`.
         - `transactions.ts`: `updateTransactionCategory`, `updateTransactionNotes`, `addTransaction`, `deduplicateTransactions`, `findTransferCandidates`, and split/itemize (`splitTransaction`, `unsplitTransaction`, `getTransactionSplits`). Splitting keeps the parent row (flagged `isSplit`, category cleared) and inserts child transactions carrying `parentTransactionId` + their own amount/category/notes; re-splitting replaces existing children.
         - `rules.ts`: Rule management and `applyRulesToUncategorized` (wildcard, tag, account-scoped).
         - `mappings.ts`: CSV upload template CRUD (save, load, delete named column-mapping templates).
-        - `activities.ts`: Activity CRUD (including type/budget), update CRUD, transaction link/unlink (update-level), direct activity↔transaction links (`addTransactionsToActivity`, `removeTransactionFromActivity`), `getActivitiesForSelect` for the transactions-page bulk dropdown, and `getTransactionsForPicker` for the modal search.
+        - `activities.ts`: Activity CRUD (including type/budget), update CRUD, transaction link/unlink (update-level, including bulk `addTransactionsToUpdate`), direct activity↔transaction links (`addTransactionsToActivity`, `removeTransactionFromActivity`), `getActivitiesForSelect`/`getActivityUpdatesForSelect` for the transactions-page `ActivityPickerDialog`, and `getTransactionsForPicker` for the modal search.
     - `openapi.ts`: Builds the OpenAPI 3.0.3 spec from all Zod schemas using `@asteasolutions/zod-to-openapi`.
 - `/__tests__`: Vitest unit tests mirroring the `lib/` structure.
     - `lib/api/rules.test.ts`: `patternToRegex` (pure) and `applyRulesToUncategorized` (DB mocked).
