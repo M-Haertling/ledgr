@@ -20,7 +20,7 @@ export async function createTag(formData: FormData) {
   revalidatePath('/tags');
 }
 
-export async function deleteTag(id: number, formData: FormData) {
+export async function deleteTag(id: number, _formData: FormData) {
   await deleteTagWithCascade(id);
   revalidatePath('/tags');
   revalidatePath('/transactions');

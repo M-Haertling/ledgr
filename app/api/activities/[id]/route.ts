@@ -3,6 +3,7 @@ import { activities, activityUpdates, activityUpdateTransactions, transactions, 
 import { eq, desc, inArray } from 'drizzle-orm';
 import { NextResponse } from 'next/server';
 import { UpdateActivityBody } from '@/lib/schemas/activities';
+import { errorMessage, errorStack } from '@/lib/utils/errors';
 
 type Params = { params: Promise<{ id: string }> };
 
@@ -122,8 +123,8 @@ export async function GET(_req: Request, { params }: Params) {
         }),
       })),
     });
-  } catch (e: any) {
-    console.error('Activity GET error:', e?.message, e?.stack);
+  } catch (e: unknown) {
+    console.error('Activity GET error:', errorMessage(e, 'unknown'), errorStack(e));
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }

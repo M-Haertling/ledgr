@@ -32,7 +32,7 @@ export default function EditRuleForm({
   if (!editing) {
     return (
       <div>
-        <div className="list-item-title">Matches "{rule.pattern}"</div>
+        <div className="list-item-title">Matches &ldquo;{rule.pattern}&rdquo;</div>
         <div className="flex gap-2 items-center mt-1" style={{ flexWrap: 'wrap' }}>
           {rule.ruleType && (
             <span className="badge" style={{ borderColor: 'var(--primary)', color: 'var(--primary)', fontWeight: 600 }}>

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useTransition, useRef } from 'react';
+import { useTransition, useRef } from 'react';
 import { addActivityUpdate } from '@/lib/actions/activities';
 
 const STATUS_OPTIONS = ['', 'TODO', 'Planning', 'Started', 'Finished'];

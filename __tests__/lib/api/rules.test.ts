@@ -29,7 +29,10 @@ vi.mock('drizzle-orm', () => ({
 import { patternToRegex, applyRulesToUncategorized, applySingleRule } from '@/lib/api/rules';
 import { db } from '@/lib/db';
 
-const mockDb = db as any;
+import type { MockDb } from '../../helpers/mockDb';
+
+// The db module is fully mocked above; this alias exposes the vi.fn() chains.
+const mockDb = db as unknown as MockDb;
 
 describe('patternToRegex', () => {
   it('converts * to regex .*', () => {

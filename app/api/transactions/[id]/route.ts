@@ -3,7 +3,12 @@ import { transactions } from '@/lib/db/schema';
 import { eq } from 'drizzle-orm';
 import { NextResponse } from 'next/server';
 import { UpdateTransactionBody } from '@/lib/schemas/transactions';
-import { deleteTransaction, updateTransactionCategory } from '@/lib/api/transactions';
+import {
+  deleteTransaction,
+  updateTransactionCategory,
+  type TransactionWithRelations,
+  type TransactionTagRow,
+} from '@/lib/api/transactions';
 
 type Params = { params: Promise<{ id: string }> };
 
@@ -12,7 +17,7 @@ function parseId(id: string) {
   return isNaN(n) ? null : n;
 }
 
-function mapTransaction(tx: any) {
+function mapTransaction(tx: TransactionWithRelations) {
   return {
     id: tx.id,
     accountId: tx.accountId,
@@ -29,7 +34,7 @@ function mapTransaction(tx: any) {
       : null,
     notes: tx.notes,
     createdAt: tx.createdAt,
-    tags: (tx.transactionTags ?? []).map((tt: any) => ({ id: tt.tag.id, name: tt.tag.name })),
+    tags: (tx.transactionTags ?? []).map((tt: TransactionTagRow) => ({ id: tt.tag.id, name: tt.tag.name })),
   };
 }
 
@@ -49,7 +54,7 @@ export async function GET(_req: Request, { params }: Params) {
     if (!result) return NextResponse.json({ error: 'Transaction not found' }, { status: 404 });
 
     return NextResponse.json(mapTransaction(result));
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Error fetching transaction:', error);
     return NextResponse.json({ error: 'Failed to fetch transaction' }, { status: 500 });
   }

@@ -1,11 +1,13 @@
 import { db } from '@/lib/db';
 import { transactions } from '@/lib/db/schema';
-import { desc, asc, eq, and, sql, count } from 'drizzle-orm';
+import { desc, asc, eq, and, sql, count, type SQL } from 'drizzle-orm';
+import type { PgColumn } from 'drizzle-orm/pg-core';
 import { NextResponse } from 'next/server';
 import { TransactionQueryParams, CreateTransactionBody } from '@/lib/schemas/transactions';
 import { buildTransactionFilters } from '@/lib/api/transactionFilters';
+import type { TransactionWithRelations, TransactionTagRow } from '@/lib/api/transactions';
 
-function mapTransaction(tx: any) {
+function mapTransaction(tx: TransactionWithRelations) {
   return {
     id: tx.id,
     accountId: tx.accountId,
@@ -22,7 +24,7 @@ function mapTransaction(tx: any) {
       : null,
     notes: tx.notes,
     createdAt: tx.createdAt,
-    tags: (tx.transactionTags ?? []).map((tt: any) => ({ id: tt.tag.id, name: tt.tag.name })),
+    tags: (tx.transactionTags ?? []).map((tt: TransactionTagRow) => ({ id: tt.tag.id, name: tt.tag.name })),
     // Non-null on split line items. Callers that also hold the parent must not add
     // the two together — the children already sum to the parent's amount.
     parentTransactionId: tx.parentTransactionId ?? null,
@@ -30,7 +32,7 @@ function mapTransaction(tx: any) {
     // Tags on the parent, which a line item effectively inherits for filtering.
     // Kept separate from `tags` so it stays clear which are attached to this row.
     inheritedTags: (tx.splitParent?.transactionTags ?? []).map(
-      (tt: any) => ({ id: tt.tag.id, name: tt.tag.name }),
+      (tt: TransactionTagRow) => ({ id: tt.tag.id, name: tt.tag.name }),
     ),
   };
 }
@@ -68,7 +70,7 @@ export async function GET(req: Request) {
 
     const whereClause = filters.length > 0 ? and(...filters) : undefined;
 
-    const sortMap: Record<string, any> = {
+    const sortMap: Record<string, PgColumn | SQL> = {
       date: transactions.date,
       entryDate: transactions.createdAt,
       description: transactions.description,
@@ -130,7 +132,9 @@ export async function POST(req: Request) {
       with: { account: true, category: true, transactionTags: { with: { tag: true } } },
     });
 
-    return NextResponse.json(mapTransaction(full), { status: 201 });
+    // The row was just inserted, so a miss here means it vanished underneath us.
+    // Fall back to the insert's own RETURNING row rather than throwing on undefined.
+    return NextResponse.json(mapTransaction(full ?? created), { status: 201 });
   } catch {
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }

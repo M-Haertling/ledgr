@@ -1,10 +1,14 @@
 'use client';
 
 import { useState } from 'react';
+import { errorMessage } from '@/lib/utils/errors';
+
+/** An ad-hoc SQL result row — columns depend entirely on the query. */
+type SqlRow = Record<string, unknown>;
 
 type ExecutionResult = {
   success: boolean;
-  rows?: any[];
+  rows?: SqlRow[];
   rowCount?: number;
   error?: string;
 };
@@ -42,10 +46,10 @@ export default function SqlEditor() {
 
       const data = await response.json();
       setResult(data);
-    } catch (error: any) {
+    } catch (error: unknown) {
       setResult({
         success: false,
-        error: error.message || 'Network error',
+        error: errorMessage(error, 'Network error'),
       });
     } finally {
       setLoading(false);

@@ -21,7 +21,10 @@ vi.mock('drizzle-orm', () => ({
 import { deleteCategoryWithCascade } from '@/lib/api/categories';
 import { db } from '@/lib/db';
 
-const mockDb = db as any;
+import type { MockDb } from '../../helpers/mockDb';
+
+// The db module is fully mocked above; this alias exposes the vi.fn() chains.
+const mockDb = db as unknown as MockDb;
 
 function makeUpdateChain() {
   const whereMock = vi.fn().mockResolvedValue(undefined);
@@ -64,11 +67,11 @@ describe('deleteCategoryWithCascade', () => {
 
   it('runs operations in the correct order (clear children → clear transactions → delete rules → delete tags → delete category)', async () => {
     const calls: string[] = [];
-    mockDb.update.mockImplementation((table: any) => {
+    mockDb.update.mockImplementation((table: unknown) => {
       calls.push(`update:${JSON.stringify(table)}`);
       return makeUpdateChain().chain;
     });
-    mockDb.delete.mockImplementation((table: any) => {
+    mockDb.delete.mockImplementation((table: unknown) => {
       calls.push(`delete:${JSON.stringify(table)}`);
       return makeDeleteChain().chain;
     });

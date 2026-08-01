@@ -40,7 +40,7 @@ export async function updateCategory(id: number, formData: FormData) {
   revalidatePath('/categories');
 }
 
-export async function deleteCategory(id: number, formData: FormData) {
+export async function deleteCategory(id: number, _formData: FormData) {
   await deleteCategoryWithCascade(id);
   revalidatePath('/categories');
   revalidatePath('/transactions');

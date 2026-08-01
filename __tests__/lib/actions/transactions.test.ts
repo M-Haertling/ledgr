@@ -36,7 +36,10 @@ vi.mock('next/cache', () => ({ revalidatePath: vi.fn() }));
 import { splitTransaction } from '@/lib/actions/transactions';
 import { db } from '@/lib/db';
 
-const mockDb = db as any;
+import type { MockDb } from '../../helpers/mockDb';
+
+// The db module is fully mocked above; this alias exposes the vi.fn() chains.
+const mockDb = db as unknown as MockDb;
 
 /** select() returns [parent] first (the parent lookup), then [] (child lookup). */
 function mockSelect(parent: unknown | null) {

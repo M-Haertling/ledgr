@@ -107,7 +107,7 @@ export default function TransactionsTable({
 }: {
   transactions: Transaction[];
   categories: Category[];
-  allTags: any[];
+  allTags: { id: number; name: string }[];
   activities: Activity[];
   categorizedHistory: { description: string; categoryId: number }[];
   currentPage: number;

@@ -64,7 +64,7 @@ export default function SpendingIncomeChart({
             fill="#10b981"
             radius={[3, 3, 0, 0]}
             style={{ cursor: 'pointer' }}
-            onClick={(d) => openMonth((d as any).month, 'credit')}
+            onClick={(d) => openMonth((d as unknown as { month: string }).month, 'credit')}
           />
           <Bar
             dataKey="expenses"
@@ -72,7 +72,7 @@ export default function SpendingIncomeChart({
             fill="#ef4444"
             radius={[3, 3, 0, 0]}
             style={{ cursor: 'pointer' }}
-            onClick={(d) => openMonth((d as any).month, 'debit')}
+            onClick={(d) => openMonth((d as unknown as { month: string }).month, 'debit')}
           />
         </BarChart>
       </ResponsiveContainer>

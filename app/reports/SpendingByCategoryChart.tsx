@@ -19,35 +19,27 @@ function parseMonthRange(monthStr: string): { from: string; to: string } {
   };
 }
 
+/** A month's row: the label plus one numeric total per category key. */
+export type MonthlyCategoryRow = { month: string } & Record<string, string | number>;
+
 export default function SpendingByCategoryChart({
   data,
   categories,
   accountIds = '',
   tagIds = '',
 }: {
-  data: any[];
+  data: MonthlyCategoryRow[];
   categories: Array<{ id: number | null; name: string; color: string | null }>;
   accountIds?: string;
   tagIds?: string;
 }) {
   const [hiddenKeys, setHiddenKeys] = useState<Set<string>>(new Set());
 
-  if (data.length === 0) {
-    return <p style={{ color: 'var(--text-muted)' }}>No data for this period.</p>;
-  }
-
-  const toggleCategory = (dataKey: string) => {
-    setHiddenKeys((prev) => {
-      const next = new Set(prev);
-      if (next.has(dataKey)) next.delete(dataKey);
-      else next.add(dataKey);
-      return next;
-    });
-  };
-
+  // Every hook must run before the empty-data early return below, or the hook
+  // count changes between renders once data arrives and React throws.
   const visibleData = useMemo(() =>
     data.map(row => {
-      const filtered: Record<string, any> = { month: row.month };
+      const filtered: Record<string, string | number> = { month: row.month };
       categories.forEach(cat => {
         const key = categoryKey(cat);
         // Fill missing months with 0 so sparse categories (e.g. one-off
@@ -59,6 +51,19 @@ export default function SpendingByCategoryChart({
     }),
     [data, categories, hiddenKeys]
   );
+
+  const toggleCategory = (dataKey: string) => {
+    setHiddenKeys((prev) => {
+      const next = new Set(prev);
+      if (next.has(dataKey)) next.delete(dataKey);
+      else next.add(dataKey);
+      return next;
+    });
+  };
+
+  if (data.length === 0) {
+    return <p style={{ color: 'var(--text-muted)' }}>No data for this period.</p>;
+  }
 
   const openCategoryMonth = (month: string, categoryId: number | null) => {
     const { from, to } = parseMonthRange(month);
@@ -101,7 +106,7 @@ export default function SpendingByCategoryChart({
                 name={cat.name}
                 dot={false}
                 activeDot={{ r: 5, style: { cursor: 'pointer' } }}
-                onClick={(d) => openCategoryMonth((d as any).month, cat.id)}
+                onClick={(d) => openCategoryMonth((d as unknown as { month: string }).month, cat.id)}
               />
             );
           })}

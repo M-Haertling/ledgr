@@ -2,6 +2,34 @@ import { db } from '@/lib/db';
 import { transactions, transactionTags, categoryTags } from '@/lib/db/schema';
 import { eq, sql, notInArray, inArray, and, isNull } from 'drizzle-orm';
 
+/** A tag join row as loaded by `with: { transactionTags: { with: { tag: true } } }`. */
+export type TransactionTagRow = { tag: { id: number; name: string } };
+
+/**
+ * A transaction row loaded with its account, category and tag relations — the
+ * input shape the REST routes' `mapTransaction` helpers serialize. Optional
+ * relations reflect which `with` clauses a given query actually requested.
+ */
+export type TransactionWithRelations = {
+  id: number;
+  accountId: number;
+  date: Date;
+  description: string;
+  amount: string;
+  isCredit: boolean;
+  type: string;
+  transferPairId: number | null;
+  categoryId: number | null;
+  notes: string | null;
+  createdAt: Date;
+  parentTransactionId?: number | null;
+  isSplit?: boolean;
+  account?: { id: number; name: string } | null;
+  category?: { id: number; name: string; color: string | null } | null;
+  transactionTags?: TransactionTagRow[];
+  splitParent?: { transactionTags?: TransactionTagRow[] } | null;
+};
+
 export async function deduplicateTransactions(): Promise<number> {
   // Only dedup top-level transactions; split line items are exempt from the
   // dedup key and must never be merged/deleted here.

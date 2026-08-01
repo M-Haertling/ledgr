@@ -3,6 +3,10 @@
 import { useState } from 'react';
 import { attachTag, detachTag, createTagDirect } from '@/lib/actions/tags';
 
+type Tag = { id: number; name: string };
+/** A tag as attached to a transaction, via the join row. */
+type AttachedTag = { tagId: number; tag: Tag };
+
 export default function TagPicker({
   transactionId,
   allTags,
@@ -10,17 +14,17 @@ export default function TagPicker({
   inheritedTags = [],
 }: {
   transactionId: number;
-  allTags: any[];
-  currentTags: any[];
+  allTags: Tag[];
+  currentTags: AttachedTag[];
   /**
    * Tags on this row's split parent. A line item effectively inherits them for
    * filtering, so they're shown here read-only — they're edited on the parent.
    */
-  inheritedTags?: any[];
+  inheritedTags?: AttachedTag[];
 }) {
   const [dialogOpen, setDialogOpen] = useState(false);
-  const [tags, setTags] = useState<any[]>(currentTags);
-  const [knownTags, setKnownTags] = useState<any[]>(allTags);
+  const [tags, setTags] = useState<AttachedTag[]>(currentTags);
+  const [knownTags, setKnownTags] = useState<Tag[]>(allTags);
   const [search, setSearch] = useState('');
   const [pending, setPending] = useState(false);
 
@@ -40,7 +44,7 @@ export default function TagPicker({
     tag => tag.name.toLowerCase() === search.trim().toLowerCase()
   );
 
-  const handleAttach = async (tag: any) => {
+  const handleAttach = async (tag: Tag) => {
     setPending(true);
     try {
       await attachTag(transactionId, tag.id);

@@ -64,7 +64,8 @@ function FilterDropdown({
   const toggle = (v: string) => {
     setPending(prev => {
       const next = new Set(prev);
-      next.has(v) ? next.delete(v) : next.add(v);
+      if (next.has(v)) next.delete(v);
+      else next.add(v);
       return next;
     });
   };

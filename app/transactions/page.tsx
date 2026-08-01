@@ -2,7 +2,8 @@ export const dynamic = 'force-dynamic';
 
 import { db } from '@/lib/db';
 import { transactions, categories } from '@/lib/db/schema';
-import { desc, asc, and, isNotNull, sql, count } from 'drizzle-orm';
+import { desc, asc, and, isNotNull, sql, count, type SQL } from 'drizzle-orm';
+import type { PgColumn } from 'drizzle-orm/pg-core';
 import Link from 'next/link';
 import TransactionsTable from './TransactionsTable';
 import FiltersClient from './FiltersClient';
@@ -73,7 +74,7 @@ export default async function TransactionsPage({
   const whereClause = filters.length > 0 ? and(...filters) : undefined;
 
   // Sort order
-  const sortMap: Record<string, any> = {
+  const sortMap: Record<string, PgColumn | SQL> = {
     date: transactions.date,
     entryDate: transactions.createdAt,
     description: transactions.description,
@@ -158,7 +159,7 @@ export default async function TransactionsPage({
       />
 
       <TransactionsTable
-        transactions={allTransactions as any}
+        transactions={allTransactions}
         categories={enrichedCategories}
         allTags={allTags}
         activities={allActivities}
