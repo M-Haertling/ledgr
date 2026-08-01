@@ -1,5 +1,6 @@
 import { db } from '@/lib/db';
 import { transactions, transactionTags } from '@/lib/db/schema';
+import { alias } from 'drizzle-orm/pg-core';
 import {
   eq, ne, ilike, and, or, exists, isNull, inArray, gte, lte, type SQL,
 } from 'drizzle-orm';
@@ -38,6 +39,17 @@ export function buildTransactionFilters(opts: TransactionFilterOptions): SQL[] {
   if (uncategorized) {
     filters.push(isNull(transactions.categoryId));
     filters.push(ne(transactions.type, 'transfer'));
+    // A split parent has its own category cleared, but its children carry the real
+    // categories. Only treat the parent as uncategorized if at least one child is
+    // itself uncategorized; otherwise the split is fully categorized.
+    const child = alias(transactions, 'uncat_child');
+    const uncatChildExists = exists(
+      db.select().from(child).where(
+        and(eq(child.parentTransactionId, transactions.id), isNull(child.categoryId)),
+      ),
+    );
+    const splitCondition = or(eq(transactions.isSplit, false), uncatChildExists);
+    if (splitCondition) filters.push(splitCondition);
   }
 
   if (search) {
