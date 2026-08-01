@@ -80,10 +80,18 @@ type Transaction = {
   categoryId: number | null;
   notes: string | null;
   isSplit: boolean;
+  parentTransactionId: number | null;
   account: { id: number; name: string };
   category: { id: number; name: string; color: string | null } | null;
   transactionTags: { tagId: number; tag: { id: number; name: string } }[];
   splitChildren?: { id: number }[];
+  /** Set only on split line items surfaced directly by a category/tag filter. */
+  splitParent?: {
+    id: number;
+    description: string;
+    amount: string;
+    transactionTags?: { tagId: number; tag: { id: number; name: string } }[];
+  } | null;
 };
 
 export default function TransactionsTable({
@@ -271,6 +279,9 @@ export default function TransactionsTable({
             {transactions.map((tx) => {
               const splitCount = tx.splitChildren?.length ?? 0;
               const isExpanded = expanded.has(tx.id);
+              // A split line item pulled in directly by a category/tag filter. It
+              // carries its own amount and category, so it stands as its own row.
+              const isLineItem = tx.parentTransactionId !== null;
               return (
               <Fragment key={tx.id}>
               <tr style={selected.has(tx.id) ? { background: 'var(--bg-hover, rgba(59,130,246,0.08))' } : undefined}>
@@ -287,17 +298,28 @@ export default function TransactionsTable({
                 <td style={{ whiteSpace: 'nowrap', color: 'var(--text-muted)', fontSize: '0.875rem' }}>
                   {formatDate(tx.createdAt)}
                 </td>
-                <td style={{ maxWidth: '220px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={tx.description}>
-                  {tx.isSplit && (
-                    <button
-                      onClick={() => toggleExpand(tx.id)}
-                      title={isExpanded ? 'Hide line items' : 'Show line items'}
-                      style={{ border: 'none', background: 'none', cursor: 'pointer', padding: '0 0.35rem 0 0', color: 'var(--text-muted)' }}
+                <td style={{ maxWidth: '220px', overflow: 'hidden' }} title={tx.description}>
+                  <div style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                    {tx.isSplit && (
+                      <button
+                        onClick={() => toggleExpand(tx.id)}
+                        title={isExpanded ? 'Hide line items' : 'Show line items'}
+                        style={{ border: 'none', background: 'none', cursor: 'pointer', padding: '0 0.35rem 0 0', color: 'var(--text-muted)' }}
+                      >
+                        {isExpanded ? '▾' : '▸'}
+                      </button>
+                    )}
+                    {isLineItem && <span style={{ color: 'var(--text-muted)', paddingRight: '0.25rem' }}>↳</span>}
+                    {tx.description}
+                  </div>
+                  {isLineItem && tx.splitParent && (
+                    <div
+                      style={{ fontSize: '0.7rem', color: 'var(--text-muted)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}
+                      title={`Line item of ${tx.splitParent.description} ($${Math.abs(Number(tx.splitParent.amount)).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })})`}
                     >
-                      {isExpanded ? '▾' : '▸'}
-                    </button>
+                      part of {tx.splitParent.description}
+                    </div>
                   )}
-                  {tx.description}
                 </td>
                 <td>
                   <span
@@ -341,8 +363,13 @@ export default function TransactionsTable({
                       transactionId={tx.id}
                       allTags={allTags}
                       currentTags={tx.transactionTags}
+                      inheritedTags={isLineItem ? tx.splitParent?.transactionTags ?? [] : []}
                     />
-                    {tx.type === 'transfer' ? (
+                    {isLineItem ? (
+                      // A line item can't itself be split; reserve the slot so the
+                      // note/tag icons stay aligned with every other row.
+                      <span className="tx-icon-btn" aria-hidden="true" />
+                    ) : tx.type === 'transfer' ? (
                       // Transfers can't be split — the scissors slot instead views
                       // the linked transfer pair, keeping three aligned actions.
                       <TransferLinkPicker

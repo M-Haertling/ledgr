@@ -65,6 +65,9 @@ export default async function TransactionsPage({
     type: typeFilter,
     from,
     to,
+    // Filtering by category/tag should surface split line items, since a split
+    // parent's own category is cleared and only its children carry the category.
+    matchChildrenWhenFiltered: true,
   });
 
   const whereClause = filters.length > 0 ? and(...filters) : undefined;
@@ -95,6 +98,12 @@ export default async function TransactionsPage({
         with: { tag: true }
       },
       splitChildren: { columns: { id: true } },
+      // Present only on split line items; lets the row show which parent it came
+      // from and the parent tags it effectively inherits.
+      splitParent: {
+        columns: { id: true, description: true, amount: true },
+        with: { transactionTags: { with: { tag: true } } },
+      },
     },
     where: whereClause,
     orderBy: [orderBy],

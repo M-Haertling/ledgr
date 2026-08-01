@@ -23,6 +23,15 @@ function mapTransaction(tx: any) {
     notes: tx.notes,
     createdAt: tx.createdAt,
     tags: (tx.transactionTags ?? []).map((tt: any) => ({ id: tt.tag.id, name: tt.tag.name })),
+    // Non-null on split line items. Callers that also hold the parent must not add
+    // the two together — the children already sum to the parent's amount.
+    parentTransactionId: tx.parentTransactionId ?? null,
+    isSplit: tx.isSplit ?? false,
+    // Tags on the parent, which a line item effectively inherits for filtering.
+    // Kept separate from `tags` so it stays clear which are attached to this row.
+    inheritedTags: (tx.splitParent?.transactionTags ?? []).map(
+      (tt: any) => ({ id: tt.tag.id, name: tt.tag.name }),
+    ),
   };
 }
 
@@ -51,6 +60,10 @@ export async function GET(req: Request) {
       type,
       from: from ? new Date(from) : undefined,
       to: to ? new Date(to) : undefined,
+      // A split parent's category is cleared, so a category/tag filter can only be
+      // satisfied by its line items. Surface them or the filter silently misses the
+      // spend entirely; `parentTransactionId` on each row marks what came through.
+      matchChildrenWhenFiltered: true,
     });
 
     const whereClause = filters.length > 0 ? and(...filters) : undefined;
@@ -69,7 +82,12 @@ export async function GET(req: Request) {
     const safePage = Math.min(page, totalPages - 1);
 
     const rows = await db.query.transactions.findMany({
-      with: { account: true, category: true, transactionTags: { with: { tag: true } } },
+      with: {
+        account: true,
+        category: true,
+        transactionTags: { with: { tag: true } },
+        splitParent: { with: { transactionTags: { with: { tag: true } } } },
+      },
       where: whereClause,
       orderBy: [orderBy],
       limit: pageSize,

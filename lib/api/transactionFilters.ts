@@ -21,6 +21,13 @@ export type TransactionFilterOptions = {
   to?: Date;
   /** Include split line items (children). Defaults to false so only top-level rows show. */
   includeChildren?: boolean;
+  /**
+   * When a category or tag filter is active, let split line items match too. A
+   * split parent's own category is cleared, so the category lives only on its
+   * children — without this, filtering by a category that exists only inside a
+   * split returns nothing and the list can't reconcile with the reports totals.
+   */
+  matchChildrenWhenFiltered?: boolean;
 };
 
 /**
@@ -29,11 +36,27 @@ export type TransactionFilterOptions = {
  * together when both are present.
  */
 export function buildTransactionFilters(opts: TransactionFilterOptions): SQL[] {
-  const { accountIds = [], categoryIds = [], tagIds = [], search, uncategorized, type, from, to, includeChildren } = opts;
+  const {
+    accountIds = [], categoryIds = [], tagIds = [], search, uncategorized, type, from, to,
+    includeChildren, matchChildrenWhenFiltered,
+  } = opts;
   const filters: SQL[] = [];
 
   // Hide split line items from the list by default; the parent row represents them.
-  if (!includeChildren) filters.push(isNull(transactions.parentTransactionId));
+  // A category/tag filter is the exception: the parent's category is cleared when
+  // it is split, so only the children can match and they must be allowed through.
+  const narrowedByCategoryOrTag = categoryIds.length > 0 || tagIds.length > 0;
+  const showChildren = includeChildren || (matchChildrenWhenFiltered && narrowedByCategoryOrTag);
+  if (!showChildren) {
+    filters.push(isNull(transactions.parentTransactionId));
+  } else {
+    // Once line items are visible, drop their parent or the same spend is counted
+    // twice — the children already sum to the parent's amount. This matters for tag
+    // filters in particular: tags live on the parent, so it matches right alongside
+    // the children it contains. (A category filter never matched the parent anyway,
+    // since splitting clears its category, so this is a no-op there.)
+    filters.push(ne(transactions.isSplit, true));
+  }
 
   if (accountIds.length > 0) filters.push(inArray(transactions.accountId, accountIds));
   if (uncategorized) {
@@ -71,9 +94,21 @@ export function buildTransactionFilters(opts: TransactionFilterOptions): SQL[] {
     filters.push(lte(transactions.date, toEnd));
   }
 
+  // A split line item effectively inherits its parent's tags: tags are attached to
+  // the top-level row, but the children carry the real per-category amounts, so a
+  // tag filter has to reach them. Matching at query time (rather than copying tag
+  // rows onto children at split time) keeps children in sync when the parent's tags
+  // change later. Top-level rows have a NULL parentTransactionId, so the inherited
+  // leg never matches for them and their behavior is unchanged.
   const tagExists = () => exists(
     db.select().from(transactionTags).where(
-      and(eq(transactionTags.transactionId, transactions.id), inArray(transactionTags.tagId, tagIds))
+      and(
+        or(
+          eq(transactionTags.transactionId, transactions.id),
+          eq(transactionTags.transactionId, transactions.parentTransactionId),
+        ),
+        inArray(transactionTags.tagId, tagIds),
+      )
     )
   );
 

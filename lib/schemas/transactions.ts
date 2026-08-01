@@ -31,6 +31,22 @@ export const TransactionSummarySchema = z.object({
   notes: z.string().nullable().openapi({ example: null }),
   createdAt: z.string().datetime(),
   tags: z.array(TagRefSchema),
+  parentTransactionId: z.number().int().nullable().openapi({
+    example: null,
+    description:
+      'Non-null when this row is a split line item. A category or tag filter matches line items ' +
+      'directly, because a split parent has its own category cleared. Line items already sum to ' +
+      'their parent amount, so never total a parent together with its children.',
+  }),
+  isSplit: z.boolean().openapi({
+    example: false,
+    description: 'True when this row is a split parent whose line items carry the real amounts.',
+  }),
+  inheritedTags: z.array(TagRefSchema).openapi({
+    description:
+      'Tags attached to this line item\'s split parent, which it effectively inherits for tag ' +
+      'filtering. Empty for top-level rows. Edit these on the parent, not here.',
+  }),
 }).openapi('TransactionSummary');
 
 export const CreateTransactionBody = z.object({

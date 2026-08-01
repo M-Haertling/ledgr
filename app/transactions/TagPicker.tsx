@@ -6,11 +6,17 @@ import { attachTag, detachTag, createTagDirect } from '@/lib/actions/tags';
 export default function TagPicker({
   transactionId,
   allTags,
-  currentTags
+  currentTags,
+  inheritedTags = [],
 }: {
   transactionId: number;
   allTags: any[];
-  currentTags: any[]
+  currentTags: any[];
+  /**
+   * Tags on this row's split parent. A line item effectively inherits them for
+   * filtering, so they're shown here read-only — they're edited on the parent.
+   */
+  inheritedTags?: any[];
 }) {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [tags, setTags] = useState<any[]>(currentTags);
@@ -18,7 +24,11 @@ export default function TagPicker({
   const [search, setSearch] = useState('');
   const [pending, setPending] = useState(false);
 
-  const hasTags = tags.length > 0;
+  // Inherited tags already applied directly would render twice.
+  const inheritedOnly = inheritedTags.filter(
+    it => !tags.some(ct => ct.tagId === it.tagId),
+  );
+  const hasTags = tags.length > 0 || inheritedOnly.length > 0;
 
   const availableTags = knownTags.filter(
     tag =>
@@ -72,7 +82,14 @@ export default function TagPicker({
         className="tx-icon-btn"
         onClick={() => setDialogOpen(true)}
         style={{ filter: hasTags ? 'none' : 'grayscale(1) opacity(0.4)' }}
-        title={hasTags ? `Tags: ${tags.map(ct => ct.tag.name).join(', ')}` : 'Add tags'}
+        title={
+          hasTags
+            ? `Tags: ${[
+                ...tags.map(ct => ct.tag.name),
+                ...inheritedOnly.map(it => `${it.tag.name} (inherited)`),
+              ].join(', ')}`
+            : 'Add tags'
+        }
       >
         🏷️
       </button>
@@ -122,6 +139,26 @@ export default function TagPicker({
                 </div>
               )}
             </div>
+
+            {inheritedOnly.length > 0 && (
+              <div style={{ marginBottom: '1rem' }}>
+                <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginBottom: '0.5rem' }}>
+                  Inherited from split parent
+                </p>
+                <div className="flex gap-1 flex-wrap">
+                  {inheritedOnly.map(it => (
+                    <span
+                      key={`inherited-${it.tagId}`}
+                      className="badge"
+                      title="Applied to the parent transaction — edit it there"
+                      style={{ borderStyle: 'dashed', color: 'var(--text-muted)' }}
+                    >
+                      #{it.tag.name}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            )}
 
             {/* Search + add/create */}
             <div style={{ marginBottom: '1rem' }}>

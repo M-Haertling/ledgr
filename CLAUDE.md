@@ -35,10 +35,10 @@ See `features.md`.
             - `UpdateCard.tsx`: Client component — per-update card with inline edit, delete, linked transactions, and transaction picker trigger.
             - `TransactionPicker.tsx`: Client component — modal dialog with live search to link/unlink transactions to an update.
     - `/transactions`: Transaction table with sorting, filtering, pagination, and inline category/tag editing. Split line items (children) are hidden from the list; their parent shows a `Split (N)` badge and expands to reveal the items.
-        - `TransactionsTable.tsx`: Client component — sortable table, pagination, per-page multi-select (row checkboxes + sticky action bar with an "Add to activity…" button that opens `ActivityPickerDialog`), and expandable split-parent rows (lazy-load line items via `getTransactionSplits`).
+        - `TransactionsTable.tsx`: Client component — sortable table, pagination, per-page multi-select (row checkboxes + sticky action bar with an "Add to activity…" button that opens `ActivityPickerDialog`), and expandable split-parent rows (lazy-load line items via `getTransactionSplits`). Under a category/tag filter, split line items surface as their own rows (marked `↳` with a `part of <parent>` subtitle) carrying their own amount and category, so the filtered list reconciles with the Reports totals; their scissors slot is an empty placeholder since a line item can't itself be split.
         - `ActivityPickerDialog.tsx`: Modal dialog for bulk-linking selected transactions to an activity — first pick the activity (filterable list), then optionally pick one of its events (updates) to link to instead of linking directly to the activity. Links via `addTransactionsToUpdate` (event chosen) or `addTransactionsToActivity` (no event chosen).
         - `CategoryPicker.tsx`: Inline category select per transaction row. Renders a non-editable `— Split —` label for split parents (like `— N/A (transfer) —`).
-        - `TagPicker.tsx`: Inline tag attachment/detachment dropdown (fixed-position to escape table overflow).
+        - `TagPicker.tsx`: Inline tag attachment/detachment dropdown (fixed-position to escape table overflow). Split line items also list their parent's tags read-only under "Inherited from split parent" (dashed badge, no detach) — they're inherited for filtering but edited on the parent.
         - `NotePicker.tsx`: Inline notes editor per transaction row.
         - `TypePicker.tsx`: Inline transfer/type picker per transaction row (Debit/Credit ↔ Transfer). Converting to transfer opens the link-candidate dialog; viewing an existing transfer's linked pair now lives in `TransferLinkPicker` (Actions column), not here.
         - `SplitPicker.tsx`: Inline per-row scissors (`✂`) button — grouped with the Notes and Tags icons in a single `Actions` column — that opens the split dialog; shows the item count for a split parent and is hidden for transfers. Uses the shared `.tx-icon-btn` square-button class so the Actions icons align across rows.
@@ -58,7 +58,7 @@ See `features.md`.
     - `/api-docs`: Swagger UI page (rendered client-side via `next/dynamic`).
     - `/api`: Backend API routes.
         - `/transactions/upload`: Server-side CSV processing. Returns imported/skipped/failed counts.
-        - `/transactions/route.ts`, `/transactions/[id]/route.ts`: REST CRUD + filtering/pagination for transactions.
+        - `/transactions/route.ts`, `/transactions/[id]/route.ts`: REST CRUD + filtering/pagination for transactions. A category/tag filter surfaces split line items (and drops their parent) the same way the Transactions page does; each row carries `parentTransactionId`, `isSplit`, and `inheritedTags` so callers can tell a line item from a top-level row and must not total a parent together with its children.
         - `/transactions/deduplicate/route.ts`: Triggers deduplication.
         - `/accounts/route.ts`, `/accounts/[id]/route.ts`: REST CRUD for accounts.
         - `/categories/route.ts`, `/categories/[id]/route.ts`: REST CRUD for categories.
@@ -83,7 +83,7 @@ See `features.md`.
         - `rules.ts`: `patternToRegex`, `ruleMatchesTransaction` (shared account-scope + pattern matcher), `loadRuleEngine`/`tagsForApplication`/`applyTransactionTags` (rule + category-tag application), `applyRulesToUncategorized`, `applyRulesToAll`, `applySingleRule`. Applying a rule sets the category and applies both the rule's own tags and the assigned category's linked tags (consistent across bulk apply, single-rule apply, and CSV upload).
         - `transactions.ts`: `deduplicateTransactions`, `deleteTransaction`, `updateTransactionCategory`.
         - `activities.ts`: `mergeActivityTransactions` — builds the deduplicated, newest-first union of an activity's update-linked and directly-linked transactions plus the total cost; shared by the activity list and detail pages so their budget totals can't drift.
-        - `transactionFilters.ts`: `patternToLike` and `buildTransactionFilters` — shared WHERE-clause builder used by both the Transactions page and the REST transactions route. Excludes split line items (`parentTransactionId IS NULL`) by default unless `includeChildren` is set.
+        - `transactionFilters.ts`: `patternToLike` and `buildTransactionFilters` — shared WHERE-clause builder used by both the Transactions page and the REST transactions route. Excludes split line items (`parentTransactionId IS NULL`) by default unless `includeChildren` is set. `matchChildrenWhenFiltered` (passed by both the Transactions page and the REST route) additionally lets line items match whenever a category or tag filter is active: a split parent's own category is cleared, so the category lives only on its children and filtering by it would otherwise return nothing. **Whenever line items are surfaced, split parents are excluded (`is_split != true`) so the same spend isn't counted twice** — this is load-bearing for tag filters, where tags live on the parent and it would otherwise match right alongside the children it contains. Tag filters also match a line item when its *parent* carries the tag, so children effectively inherit parent tags; matching at query time (rather than copying tag rows down at split time) keeps them in sync when the parent's tags change later.
         - `backup.ts`: `toCsv` and `tableExports` — single source of truth for table serialization, consumed by both the per-table and bulk ZIP backup routes.
         - `categories.ts`: `deleteCategoryWithCascade`.
         - `tags.ts`: `deleteTagWithCascade`.
@@ -103,6 +103,7 @@ See `features.md`.
     - `lib/utils/date.test.ts`: `parseDateOnly` / `formatDate` UTC-normalization tests.
     - `lib/api/rules.test.ts`: `patternToRegex` (pure) and `applyRulesToUncategorized` (DB mocked).
     - `lib/api/transactions.test.ts`: `updateTransactionCategory` and `deleteTransaction` (DB mocked).
+    - `lib/api/transactionFilters.test.ts`: `patternToLike` and `buildTransactionFilters` split-child visibility rules (drizzle mocked).
     - `lib/actions/transactions.test.ts`: `splitTransaction` validation + happy path (DB mocked).
     - `lib/schemas/rules.test.ts`, `lib/schemas/transactions.test.ts`: Zod schema validation tests.
 - `vitest.config.ts`: Vitest configuration with native tsconfig path resolution.
