@@ -44,7 +44,7 @@ export async function updateRule(id: number, formData: FormData) {
   revalidatePath('/automation');
 }
 
-export async function deleteRule(id: number, formData: FormData) {
+export async function deleteRule(id: number, _formData: FormData) {
   await db.delete(categorizationRules).where(eq(categorizationRules.id, id));
   revalidatePath('/automation');
 }

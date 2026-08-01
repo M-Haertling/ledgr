@@ -2,7 +2,8 @@ export const dynamic = 'force-dynamic';
 
 import { db } from '@/lib/db';
 import { transactions, categories } from '@/lib/db/schema';
-import { desc, asc, and, isNotNull, sql, count } from 'drizzle-orm';
+import { desc, asc, and, isNotNull, sql, count, type SQL } from 'drizzle-orm';
+import type { PgColumn } from 'drizzle-orm/pg-core';
 import Link from 'next/link';
 import TransactionsTable from './TransactionsTable';
 import FiltersClient from './FiltersClient';
@@ -65,12 +66,15 @@ export default async function TransactionsPage({
     type: typeFilter,
     from,
     to,
+    // Filtering by category/tag should surface split line items, since a split
+    // parent's own category is cleared and only its children carry the category.
+    matchChildrenWhenFiltered: true,
   });
 
   const whereClause = filters.length > 0 ? and(...filters) : undefined;
 
   // Sort order
-  const sortMap: Record<string, any> = {
+  const sortMap: Record<string, PgColumn | SQL> = {
     date: transactions.date,
     entryDate: transactions.createdAt,
     description: transactions.description,
@@ -95,6 +99,12 @@ export default async function TransactionsPage({
         with: { tag: true }
       },
       splitChildren: { columns: { id: true } },
+      // Present only on split line items; lets the row show which parent it came
+      // from and the parent tags it effectively inherits.
+      splitParent: {
+        columns: { id: true, description: true, amount: true },
+        with: { transactionTags: { with: { tag: true } } },
+      },
     },
     where: whereClause,
     orderBy: [orderBy],
@@ -149,7 +159,7 @@ export default async function TransactionsPage({
       />
 
       <TransactionsTable
-        transactions={allTransactions as any}
+        transactions={allTransactions}
         categories={enrichedCategories}
         allTags={allTags}
         activities={allActivities}

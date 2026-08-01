@@ -1,5 +1,6 @@
 import { Pool } from 'pg';
 import { NextResponse } from 'next/server';
+import { errorMessage } from '@/lib/utils/errors';
 
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
@@ -22,12 +23,12 @@ export async function POST(req: Request) {
       rows: result.rows,
       rowCount: result.rows.length,
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('SQL execution error:', error);
     return NextResponse.json(
       {
         success: false,
-        error: error.message || 'Query execution failed',
+        error: errorMessage(error, 'Query execution failed'),
       },
       { status: 400 }
     );

@@ -3,7 +3,7 @@ import { transactions } from '@/lib/db/schema';
 import { eq } from 'drizzle-orm';
 import { NextResponse } from 'next/server';
 import { UpdateTransactionBody } from '@/lib/schemas/transactions';
-import { deleteTransaction, updateTransactionCategory } from '@/lib/api/transactions';
+import { deleteTransaction, updateTransactionCategory, mapTransaction } from '@/lib/api/transactions';
 
 type Params = { params: Promise<{ id: string }> };
 
@@ -12,31 +12,16 @@ function parseId(id: string) {
   return isNaN(n) ? null : n;
 }
 
-function mapTransaction(tx: any) {
-  return {
-    id: tx.id,
-    accountId: tx.accountId,
-    account: tx.account ? { id: tx.account.id, name: tx.account.name } : null,
-    date: tx.date,
-    description: tx.description,
-    amount: tx.amount,
-    isCredit: tx.isCredit,
-    type: tx.type,
-    transferPairId: tx.transferPairId,
-    categoryId: tx.categoryId,
-    category: tx.category
-      ? { id: tx.category.id, name: tx.category.name, color: tx.category.color }
-      : null,
-    notes: tx.notes,
-    createdAt: tx.createdAt,
-    tags: (tx.transactionTags ?? []).map((tt: any) => ({ id: tt.tag.id, name: tt.tag.name })),
-  };
-}
-
 async function fetchFull(id: number) {
   return db.query.transactions.findFirst({
     where: eq(transactions.id, id),
-    with: { account: true, category: true, transactionTags: { with: { tag: true } } },
+    with: {
+      account: true,
+      category: true,
+      transactionTags: { with: { tag: true } },
+      // Required for `inheritedTags`; without it the field is silently empty.
+      splitParent: { with: { transactionTags: { with: { tag: true } } } },
+    },
   });
 }
 
@@ -49,7 +34,7 @@ export async function GET(_req: Request, { params }: Params) {
     if (!result) return NextResponse.json({ error: 'Transaction not found' }, { status: 404 });
 
     return NextResponse.json(mapTransaction(result));
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Error fetching transaction:', error);
     return NextResponse.json({ error: 'Failed to fetch transaction' }, { status: 500 });
   }

@@ -8,7 +8,11 @@ type AmountMode = 'single' | 'split';
 type FailedRow = { rowNumber: number; row: string[]; reason: string };
 type UploadResult = { imported: number; skipped: number; failed: number; failedRows: FailedRow[] };
 
-export default function UploadForm({ accounts, templates: initialTemplates }: { accounts: any[], templates: any[] }) {
+type Account = { id: number; name: string };
+/** A saved column-mapping template; `config` maps column name → CSV index. */
+type Template = { id: number; accountId: number; name: string; config: unknown };
+
+export default function UploadForm({ accounts, templates: initialTemplates }: { accounts: Account[], templates: Template[] }) {
   const [templates, setTemplates] = useState(initialTemplates);
   const [file, setFile] = useState<File | null>(null);
   const [accountId, setAccountId] = useState<string>(accounts[0]?.id.toString() || '');
@@ -33,7 +37,7 @@ export default function UploadForm({ accounts, templates: initialTemplates }: { 
         setAmountMode(state.amountMode || 'single');
         setTemplateName(state.templateName || '');
         setHasHeader(state.hasHeader !== undefined ? state.hasHeader : true);
-      } catch (e) {
+      } catch {
         // Ignore JSON parse errors
       }
     }

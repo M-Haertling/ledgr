@@ -36,7 +36,7 @@ export async function updateAccount(id: number, formData: FormData) {
   revalidatePath('/accounts');
 }
 
-export async function deleteAccount(id: number, formData: FormData) {
+export async function deleteAccount(id: number, _formData: FormData) {
   await db.delete(accounts).where(eq(accounts.id, id));
   revalidatePath('/accounts');
 }

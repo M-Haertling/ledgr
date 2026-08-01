@@ -26,7 +26,10 @@ vi.mock('drizzle-orm', () => ({
 import { updateTransactionCategory, deleteTransaction } from '@/lib/api/transactions';
 import { db } from '@/lib/db';
 
-const mockDb = db as any;
+import type { MockDb } from '../../helpers/mockDb';
+
+// The db module is fully mocked above; this alias exposes the vi.fn() chains.
+const mockDb = db as unknown as MockDb;
 
 function makeSelectChain(resolvedValue: unknown[]) {
   const whereMock = vi.fn().mockResolvedValue(resolvedValue);

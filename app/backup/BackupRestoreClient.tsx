@@ -130,7 +130,7 @@ export default function BackupRestoreClient({ tables }: { tables: TableDef[] }) 
               accept=".csv"
               style={{ display: 'none' }}
               disabled={bulkLoading}
-              {...{ webkitdirectory: '', multiple: true } as any}
+              {...({ webkitdirectory: '', multiple: true } as React.InputHTMLAttributes<HTMLInputElement>)}
               onChange={e => {
                 if (e.target.files && e.target.files.length > 0) {
                   handleBulkRestore(e.target.files);

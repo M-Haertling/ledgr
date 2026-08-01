@@ -3,22 +3,36 @@
 import { useState } from 'react';
 import { attachTag, detachTag, createTagDirect } from '@/lib/actions/tags';
 
+type Tag = { id: number; name: string };
+/** A tag as attached to a transaction, via the join row. */
+type AttachedTag = { tagId: number; tag: Tag };
+
 export default function TagPicker({
   transactionId,
   allTags,
-  currentTags
+  currentTags,
+  inheritedTags = [],
 }: {
   transactionId: number;
-  allTags: any[];
-  currentTags: any[]
+  allTags: Tag[];
+  currentTags: AttachedTag[];
+  /**
+   * Tags on this row's split parent. A line item effectively inherits them for
+   * filtering, so they're shown here read-only — they're edited on the parent.
+   */
+  inheritedTags?: AttachedTag[];
 }) {
   const [dialogOpen, setDialogOpen] = useState(false);
-  const [tags, setTags] = useState<any[]>(currentTags);
-  const [knownTags, setKnownTags] = useState<any[]>(allTags);
+  const [tags, setTags] = useState<AttachedTag[]>(currentTags);
+  const [knownTags, setKnownTags] = useState<Tag[]>(allTags);
   const [search, setSearch] = useState('');
   const [pending, setPending] = useState(false);
 
-  const hasTags = tags.length > 0;
+  // Inherited tags already applied directly would render twice.
+  const inheritedOnly = inheritedTags.filter(
+    it => !tags.some(ct => ct.tagId === it.tagId),
+  );
+  const hasTags = tags.length > 0 || inheritedOnly.length > 0;
 
   const availableTags = knownTags.filter(
     tag =>
@@ -30,7 +44,7 @@ export default function TagPicker({
     tag => tag.name.toLowerCase() === search.trim().toLowerCase()
   );
 
-  const handleAttach = async (tag: any) => {
+  const handleAttach = async (tag: Tag) => {
     setPending(true);
     try {
       await attachTag(transactionId, tag.id);
@@ -72,7 +86,14 @@ export default function TagPicker({
         className="tx-icon-btn"
         onClick={() => setDialogOpen(true)}
         style={{ filter: hasTags ? 'none' : 'grayscale(1) opacity(0.4)' }}
-        title={hasTags ? `Tags: ${tags.map(ct => ct.tag.name).join(', ')}` : 'Add tags'}
+        title={
+          hasTags
+            ? `Tags: ${[
+                ...tags.map(ct => ct.tag.name),
+                ...inheritedOnly.map(it => `${it.tag.name} (inherited)`),
+              ].join(', ')}`
+            : 'Add tags'
+        }
       >
         🏷️
       </button>
@@ -122,6 +143,26 @@ export default function TagPicker({
                 </div>
               )}
             </div>
+
+            {inheritedOnly.length > 0 && (
+              <div style={{ marginBottom: '1rem' }}>
+                <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginBottom: '0.5rem' }}>
+                  Inherited from split parent
+                </p>
+                <div className="flex gap-1 flex-wrap">
+                  {inheritedOnly.map(it => (
+                    <span
+                      key={`inherited-${it.tagId}`}
+                      className="badge"
+                      title="Applied to the parent transaction — edit it there"
+                      style={{ borderStyle: 'dashed', color: 'var(--text-muted)' }}
+                    >
+                      #{it.tag.name}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            )}
 
             {/* Search + add/create */}
             <div style={{ marginBottom: '1rem' }}>

@@ -1,30 +1,11 @@
 import { db } from '@/lib/db';
 import { transactions } from '@/lib/db/schema';
-import { desc, asc, eq, and, sql, count } from 'drizzle-orm';
+import { desc, asc, eq, and, sql, count, type SQL } from 'drizzle-orm';
+import type { PgColumn } from 'drizzle-orm/pg-core';
 import { NextResponse } from 'next/server';
 import { TransactionQueryParams, CreateTransactionBody } from '@/lib/schemas/transactions';
 import { buildTransactionFilters } from '@/lib/api/transactionFilters';
-
-function mapTransaction(tx: any) {
-  return {
-    id: tx.id,
-    accountId: tx.accountId,
-    account: tx.account ? { id: tx.account.id, name: tx.account.name } : null,
-    date: tx.date,
-    description: tx.description,
-    amount: tx.amount,
-    isCredit: tx.isCredit,
-    type: tx.type,
-    transferPairId: tx.transferPairId,
-    categoryId: tx.categoryId,
-    category: tx.category
-      ? { id: tx.category.id, name: tx.category.name, color: tx.category.color }
-      : null,
-    notes: tx.notes,
-    createdAt: tx.createdAt,
-    tags: (tx.transactionTags ?? []).map((tt: any) => ({ id: tt.tag.id, name: tt.tag.name })),
-  };
-}
+import { mapTransaction } from '@/lib/api/transactions';
 
 export async function GET(req: Request) {
   try {
@@ -51,11 +32,15 @@ export async function GET(req: Request) {
       type,
       from: from ? new Date(from) : undefined,
       to: to ? new Date(to) : undefined,
+      // A split parent's category is cleared, so a category/tag filter can only be
+      // satisfied by its line items. Surface them or the filter silently misses the
+      // spend entirely; `parentTransactionId` on each row marks what came through.
+      matchChildrenWhenFiltered: true,
     });
 
     const whereClause = filters.length > 0 ? and(...filters) : undefined;
 
-    const sortMap: Record<string, any> = {
+    const sortMap: Record<string, PgColumn | SQL> = {
       date: transactions.date,
       entryDate: transactions.createdAt,
       description: transactions.description,
@@ -69,7 +54,12 @@ export async function GET(req: Request) {
     const safePage = Math.min(page, totalPages - 1);
 
     const rows = await db.query.transactions.findMany({
-      with: { account: true, category: true, transactionTags: { with: { tag: true } } },
+      with: {
+        account: true,
+        category: true,
+        transactionTags: { with: { tag: true } },
+        splitParent: { with: { transactionTags: { with: { tag: true } } } },
+      },
       where: whereClause,
       orderBy: [orderBy],
       limit: pageSize,
@@ -109,10 +99,19 @@ export async function POST(req: Request) {
 
     const full = await db.query.transactions.findFirst({
       where: eq(transactions.id, created.id),
-      with: { account: true, category: true, transactionTags: { with: { tag: true } } },
+      with: {
+        account: true,
+        category: true,
+        transactionTags: { with: { tag: true } },
+        // Always empty for a row created here (a new transaction can't be a split
+        // line item), but loaded so all three call sites stay in step.
+        splitParent: { with: { transactionTags: { with: { tag: true } } } },
+      },
     });
 
-    return NextResponse.json(mapTransaction(full), { status: 201 });
+    // The row was just inserted, so a miss here means it vanished underneath us.
+    // Fall back to the insert's own RETURNING row rather than throwing on undefined.
+    return NextResponse.json(mapTransaction(full ?? created), { status: 201 });
   } catch {
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }

@@ -7,7 +7,7 @@ import { alias } from 'drizzle-orm/pg-core';
 import Link from 'next/link';
 import SpendingIncomeChart from './SpendingIncomeChart';
 import CategoryPieChart from './CategoryPieChart';
-import SpendingByCategoryChart from './SpendingByCategoryChart';
+import SpendingByCategoryChart, { type MonthlyCategoryRow } from './SpendingByCategoryChart';
 import ReportsFiltersClient from './ReportsFiltersClient';
 import { expandCategoryIds } from '@/lib/utils/categories';
 import { buildCategoryOptions } from '@/lib/utils/categoryOptions';
@@ -204,7 +204,8 @@ export default async function ReportsPage({
         .having(sql`sum(CASE WHEN NOT is_credit THEN amount::numeric ELSE -amount::numeric END) > 0`)
         .orderBy(sql`date_trunc('month', date) ASC`);
 
-  const categorySpendingByMonth: Record<string, any> = {};
+  // Per month: the label plus one accumulated total per category/group key.
+  const categorySpendingByMonth: Record<string, MonthlyCategoryRow> = {};
   monthlyCategoryData.forEach(row => {
     if (!categorySpendingByMonth[row.month]) {
       categorySpendingByMonth[row.month] = { month: row.month };
