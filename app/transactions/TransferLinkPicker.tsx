@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useTransition } from 'react';
+import { formatDate } from '@/lib/utils/date';
 
 type PairedTransaction = {
   id: number;
@@ -104,7 +105,7 @@ export default function TransferLinkPicker({
                 </div>
                 <div style={{ marginBottom: '0.75rem' }}>
                   <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Date</div>
-                  <div style={{ fontWeight: 500 }}>{new Date(date).toLocaleDateString()}</div>
+                  <div style={{ fontWeight: 500 }}>{formatDate(date)}</div>
                 </div>
                 <div style={{ marginBottom: '0.75rem' }}>
                   <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Description</div>
@@ -133,7 +134,7 @@ export default function TransferLinkPicker({
                 </div>
                 <div style={{ marginBottom: '0.75rem' }}>
                   <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Date</div>
-                  <div style={{ fontWeight: 500 }}>{new Date(pairTransaction.date).toLocaleDateString()}</div>
+                  <div style={{ fontWeight: 500 }}>{formatDate(pairTransaction.date)}</div>
                 </div>
                 <div style={{ marginBottom: '0.75rem' }}>
                   <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Description</div>

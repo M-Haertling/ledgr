@@ -10,6 +10,7 @@ import SplitPicker from './SplitPicker';
 import TransferLinkPicker from './TransferLinkPicker';
 import ActivityPickerDialog from './ActivityPickerDialog';
 import { getTransactionSplits, type SplitItem } from '@/lib/actions/transactions';
+import { formatDate } from '@/lib/utils/date';
 
 function normalizeDesc(desc: string): string {
   return desc
@@ -281,10 +282,10 @@ export default function TransactionsTable({
                   />
                 </td>
                 <td style={{ whiteSpace: 'nowrap', color: 'var(--text-muted)', fontSize: '0.875rem' }}>
-                  {tx.date.toLocaleDateString()}
+                  {formatDate(tx.date)}
                 </td>
                 <td style={{ whiteSpace: 'nowrap', color: 'var(--text-muted)', fontSize: '0.875rem' }}>
-                  {tx.createdAt.toLocaleDateString()}
+                  {formatDate(tx.createdAt)}
                 </td>
                 <td style={{ maxWidth: '220px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={tx.description}>
                   {tx.isSplit && (

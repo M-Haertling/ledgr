@@ -4,6 +4,7 @@ import { useState, useMemo, useRef, useEffect } from 'react';
 import Link from 'next/link';
 import { deleteActivity } from '@/lib/actions/activities';
 import ConfirmDeleteButton from '@/app/components/ConfirmDeleteButton';
+import { formatDate } from '@/lib/utils/date';
 
 const STATUS_COLORS: Record<string, string> = {
   TODO: '#94a3b8',
@@ -191,7 +192,7 @@ export default function ActivitiesTable({ activities }: { activities: ActivityRo
   };
 
   const fmt = (iso: string | null) =>
-    iso ? new Date(iso).toLocaleDateString() : <span className="text-muted">—</span>;
+    iso ? formatDate(iso) : <span className="text-muted">—</span>;
 
   const anyActive = statusFilter.length > 0 || typeFilter.length > 0 || search.trim();
 

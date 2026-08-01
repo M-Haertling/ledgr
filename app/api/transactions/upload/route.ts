@@ -3,6 +3,7 @@ import { transactions, mappings, categories } from '@/lib/db/schema';
 import { eq } from 'drizzle-orm';
 import { NextResponse } from 'next/server';
 import { loadRuleEngine, ruleMatchesTransaction, tagsForApplication, applyTransactionTags } from '@/lib/api/rules';
+import { parseDateOnly } from '@/lib/utils/date';
 
 type FailedRow = { rowNumber: number; row: string[]; reason: string };
 
@@ -49,8 +50,8 @@ export async function POST(req: Request) {
 
       if (!dateStr || !description) { fail(rowIndex, row, 'Missing date or description'); continue; }
 
-      const date = new Date(dateStr);
-      if (isNaN(date.getTime())) { fail(rowIndex, row, `Invalid date: "${dateStr}"`); continue; }
+      const date = parseDateOnly(dateStr);
+      if (!date) { fail(rowIndex, row, `Invalid date: "${dateStr}"`); continue; }
 
       // Check for category from CSV if column is mapped
       let categoryIdFromCsv: number | null = null;

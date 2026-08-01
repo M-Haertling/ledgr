@@ -8,6 +8,7 @@ import {
   revertTransactionFromTransfer,
   type TransferCandidate,
 } from '@/lib/actions/transactions';
+import { formatDate } from '@/lib/utils/date';
 
 export default function TypePicker({
   transactionId,
@@ -138,7 +139,7 @@ export default function TypePicker({
                   <tbody>
                     {candidates.map((c) => (
                       <tr key={c.id} style={{ backgroundColor: rowHighlight(c.date) }}>
-                        <td style={{ whiteSpace: 'nowrap' }}>{new Date(c.date).toLocaleDateString()}</td>
+                        <td style={{ whiteSpace: 'nowrap' }}>{formatDate(c.date)}</td>
                         <td style={{ maxWidth: '260px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                           {c.description}
                         </td>

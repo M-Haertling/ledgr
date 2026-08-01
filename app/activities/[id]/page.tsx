@@ -11,6 +11,7 @@ import UpdateCard from './UpdateCard';
 import { removeTransactionFromActivity } from '@/lib/actions/activities';
 import ConfirmDeleteButton from '@/app/components/ConfirmDeleteButton';
 import { mergeActivityTransactions } from '@/lib/api/activities';
+import { formatDate } from '@/lib/utils/date';
 
 const STATUS_COLORS: Record<string, string> = {
   TODO: '#94a3b8',
@@ -117,10 +118,10 @@ export default async function ActivityDetailPage({ params }: { params: Promise<{
             <span style={{ fontWeight: 600, color: 'var(--text)' }}>Total: ${totalCost.toFixed(2)}</span>
           )}
           {startDate && (
-            <span>Started: <span style={{ color: 'var(--text)' }}>{startDate.toLocaleDateString()}</span></span>
+            <span>Started: <span style={{ color: 'var(--text)' }}>{formatDate(startDate)}</span></span>
           )}
           {endDate && (
-            <span>Finished: <span style={{ color: 'var(--text)' }}>{endDate.toLocaleDateString()}</span></span>
+            <span>Finished: <span style={{ color: 'var(--text)' }}>{formatDate(endDate)}</span></span>
           )}
         </div>
         <EditActivityForm activity={activity} />
@@ -145,7 +146,7 @@ export default async function ActivityDetailPage({ params }: { params: Promise<{
               {uniqueTransactions.map(({ transaction, direct }) => (
                 <tr key={transaction.id}>
                   <td style={{ whiteSpace: 'nowrap' }}>
-                    {new Date(transaction.date).toLocaleDateString()}
+                    {formatDate(transaction.date)}
                   </td>
                   <td>{transaction.description}</td>
                   <td className="text-muted">{transaction.account.name}</td>

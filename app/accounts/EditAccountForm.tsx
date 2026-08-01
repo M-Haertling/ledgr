@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import ConfirmDeleteButton from '@/app/components/ConfirmDeleteButton';
+import { formatDate } from '@/lib/utils/date';
 
 type Account = { id: number; name: string; type: string };
 
@@ -83,7 +84,7 @@ export default function EditAccountForm({
         {lastTransactionDate ? (
           <>
             <div style={{ fontWeight: 500, color: 'var(--text-primary)', marginBottom: '0.1rem' }}>
-              {lastTransactionDate.toLocaleDateString()}
+              {formatDate(lastTransactionDate)}
             </div>
             <div>last transaction</div>
           </>

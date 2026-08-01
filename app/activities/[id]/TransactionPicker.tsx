@@ -2,6 +2,7 @@
 
 import { useState, useTransition, useEffect } from 'react';
 import { linkTransaction, unlinkTransaction, getTransactionsForPicker } from '@/lib/actions/activities';
+import { formatDate } from '@/lib/utils/date';
 
 type Transaction = {
   id: number;
@@ -118,7 +119,7 @@ export default function TransactionPicker({
                       {isLinked ? '✓' : '+'}
                     </span>
                     <span style={{ color: 'var(--text-muted)', fontSize: '0.8rem', flexShrink: 0, width: '6rem' }}>
-                      {new Date(tx.date).toLocaleDateString()}
+                      {formatDate(tx.date)}
                     </span>
                     <span style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontSize: '0.875rem' }}>
                       {tx.description}

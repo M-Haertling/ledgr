@@ -6,6 +6,7 @@ import {
   addTransactionsToUpdate,
   getActivityUpdatesForSelect,
 } from '@/lib/actions/activities';
+import { formatDate } from '@/lib/utils/date';
 
 const STATUS_COLORS: Record<string, string> = {
   TODO: '#94a3b8',
@@ -216,7 +217,7 @@ export default function ActivityPickerDialog({
                           {isSelected ? '✓' : ''}
                         </span>
                         <span style={{ color: 'var(--text-muted)', fontSize: '0.8rem', flexShrink: 0, width: '6rem' }}>
-                          {new Date(u.date).toLocaleDateString('en-US', { timeZone: 'UTC' })}
+                          {formatDate(u.date)}
                         </span>
                         <span style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontSize: '0.875rem' }}>
                           {u.content}

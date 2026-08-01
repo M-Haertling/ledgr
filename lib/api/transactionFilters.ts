@@ -65,7 +65,9 @@ export function buildTransactionFilters(opts: TransactionFilterOptions): SQL[] {
   if (from && !isNaN(from.getTime())) filters.push(gte(transactions.date, from));
   if (to && !isNaN(to.getTime())) {
     const toEnd = new Date(to);
-    toEnd.setHours(23, 59, 59, 999);
+    // Dates are stored at UTC midnight; extend the upper bound to the end of the
+    // day in UTC so the filter boundary matches the stored representation.
+    toEnd.setUTCHours(23, 59, 59, 999);
     filters.push(lte(transactions.date, toEnd));
   }
 

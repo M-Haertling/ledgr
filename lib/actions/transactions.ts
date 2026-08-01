@@ -8,6 +8,7 @@ import {
   deduplicateTransactions as deduplicateHelper,
   updateTransactionCategory as updateCategoryHelper,
 } from '@/lib/api/transactions';
+import { parseDateOnly } from '@/lib/utils/date';
 
 export async function updateTransactionCategory(transactionId: number, categoryId: number | null) {
   await updateCategoryHelper(transactionId, categoryId);
@@ -32,7 +33,7 @@ export async function addTransaction(data: {
 }) {
   await db.insert(transactions).values({
     accountId: data.accountId,
-    date: new Date(data.date),
+    date: parseDateOnly(data.date) ?? new Date(data.date),
     description: data.description,
     amount: Math.abs(data.amount).toString(),
     isCredit: data.isCredit,
