@@ -98,9 +98,11 @@ See `features.md`.
     - `/utils`: Framework-agnostic helpers shared across pages and actions.
         - `date.ts`: `parseDateOnly` and `formatDate` — treat transaction/activity dates as pure calendar days. Dates are stored as a `timestamp` at **UTC midnight** of the intended day; `parseDateOnly` normalizes any imported/entered date string to UTC midnight (server-timezone independent) and `formatDate` renders in UTC, so the calendar day entered on import is exactly the day displayed everywhere regardless of server or browser timezone. All date rendering (transactions table, activity pages, transfer/candidate pickers, account "last transaction") and the transaction date filter's upper bound go through these.
         - `categories.ts`, `categoryOptions.ts`: category-tree expansion and select-option building.
+        - `csv.ts`: `parseCsvRows` / `parseCsvRecords` — RFC 4180 CSV parsing (quoted fields containing commas or newlines, `""` escapes, CRLF, BOM). Shared by the upload form's file preview and the `/api/restore` route so neither hand-rolls a naive `split(',')`.
     - `openapi.ts`: Builds the OpenAPI 3.0.3 spec from all Zod schemas using `@asteasolutions/zod-to-openapi`.
 - `/__tests__`: Vitest unit tests mirroring the `lib/` structure.
     - `lib/utils/date.test.ts`: `parseDateOnly` / `formatDate` UTC-normalization tests.
+    - `lib/utils/csv.test.ts`: `parseCsvRows` / `parseCsvRecords` quoting, escaping, and line-ending tests.
     - `lib/api/rules.test.ts`: `patternToRegex` (pure) and `applyRulesToUncategorized` (DB mocked).
     - `lib/api/transactions.test.ts`: `updateTransactionCategory` and `deleteTransaction` (DB mocked).
     - `lib/api/transactionFilters.test.ts`: `patternToLike` and `buildTransactionFilters` split-child visibility rules (drizzle mocked).

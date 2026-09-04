@@ -5,31 +5,7 @@ import {
   mappings, activities, activityUpdates, activityUpdateTransactions, activityTransactions,
 } from '@/lib/db/schema';
 import { NextResponse } from 'next/server';
-
-function parseCsv(text: string): Record<string, string>[] {
-  const lines = text.trim().split('\n');
-  if (lines.length < 2) return [];
-  const headers = lines[0].split(',').map(h => h.trim().replace(/^"|"$/g, ''));
-
-  return lines.slice(1).map(line => {
-    const values: string[] = [];
-    let cur = '';
-    let inQuotes = false;
-    for (let i = 0; i < line.length; i++) {
-      const ch = line[i];
-      if (ch === '"') {
-        if (inQuotes && line[i + 1] === '"') { cur += '"'; i++; }
-        else { inQuotes = !inQuotes; }
-      } else if (ch === ',' && !inQuotes) {
-        values.push(cur); cur = '';
-      } else {
-        cur += ch;
-      }
-    }
-    values.push(cur);
-    return Object.fromEntries(headers.map((h, i) => [h, values[i] ?? '']));
-  });
-}
+import { parseCsvRecords } from '@/lib/utils/csv';
 
 export async function POST(req: Request) {
   const { searchParams } = new URL(req.url);
@@ -40,7 +16,7 @@ export async function POST(req: Request) {
   if (!file) return NextResponse.json({ error: 'No file provided' }, { status: 400 });
 
   const text = await file.text();
-  const rows = parseCsv(text);
+  const rows = parseCsvRecords(text);
   let inserted = 0;
   let skipped = 0;
 
