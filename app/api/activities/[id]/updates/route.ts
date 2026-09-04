@@ -1,8 +1,8 @@
 import { db } from '@/lib/db';
-import { activities, activityUpdates } from '@/lib/db/schema';
-import { eq } from 'drizzle-orm';
+import { activityUpdates } from '@/lib/db/schema';
 import { NextResponse } from 'next/server';
 import { CreateActivityUpdateBody } from '@/lib/schemas/activity-updates';
+import { syncActivityStatus } from '@/lib/api/activities';
 
 type Params = { params: Promise<{ id: string }> };
 
@@ -24,9 +24,7 @@ export async function POST(req: Request, { params }: Params) {
       date: new Date(date),
     }).returning();
 
-    if (newStatus) {
-      await db.update(activities).set({ status: newStatus }).where(eq(activities.id, activityId));
-    }
+    await syncActivityStatus(activityId);
 
     return NextResponse.json(created, { status: 201 });
   } catch {

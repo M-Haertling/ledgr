@@ -1,8 +1,9 @@
 import { db } from '@/lib/db';
-import { activities, activityUpdates } from '@/lib/db/schema';
+import { activityUpdates } from '@/lib/db/schema';
 import { eq } from 'drizzle-orm';
 import { NextResponse } from 'next/server';
 import { UpdateActivityUpdateBody } from '@/lib/schemas/activity-updates';
+import { syncActivityStatus } from '@/lib/api/activities';
 
 type Params = { params: Promise<{ id: string }> };
 
@@ -42,9 +43,7 @@ export async function PUT(req: Request, { params }: Params) {
       .where(eq(activityUpdates.id, updateId))
       .returning();
 
-    if (newStatus) {
-      await db.update(activities).set({ status: newStatus }).where(eq(activities.id, existing.activityId));
-    }
+    await syncActivityStatus(existing.activityId);
 
     return NextResponse.json(updated);
   } catch {
@@ -59,8 +58,10 @@ export async function DELETE(_req: Request, { params }: Params) {
 
     const [deleted] = await db.delete(activityUpdates)
       .where(eq(activityUpdates.id, updateId))
-      .returning({ id: activityUpdates.id });
+      .returning({ id: activityUpdates.id, activityId: activityUpdates.activityId });
     if (!deleted) return NextResponse.json({ error: 'Not found' }, { status: 404 });
+
+    await syncActivityStatus(deleted.activityId);
 
     return NextResponse.json({ success: true });
   } catch {

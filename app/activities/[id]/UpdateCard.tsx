@@ -5,6 +5,7 @@ import { updateActivityUpdate, deleteActivityUpdate, unlinkTransaction } from '@
 import TransactionPicker from './TransactionPicker';
 import ConfirmDeleteButton from '@/app/components/ConfirmDeleteButton';
 import { formatDate } from '@/lib/utils/date';
+import { sumTransactionCost, transactionCost, formatCost } from '@/lib/utils/amount';
 
 const STATUS_OPTIONS = ['', 'TODO', 'Planning', 'Started', 'Finished'];
 
@@ -20,6 +21,7 @@ type Transaction = {
   date: Date;
   description: string;
   amount: string;
+  isCredit: boolean;
   account: { name: string };
 };
 
@@ -39,7 +41,7 @@ export default function UpdateCard({ update, activityId }: { update: Update; act
   const linkedTransactionIds = new Set(update.updateTransactions.map((ut) => ut.transaction.id));
 
   const dateStr = new Date(update.date).toISOString().split('T')[0];
-  const updateCost = update.updateTransactions.reduce((sum, ut) => sum + parseFloat(ut.transaction.amount), 0);
+  const updateCost = sumTransactionCost(update.updateTransactions.map((ut) => ut.transaction));
 
   function handleSave(formData: FormData) {
     startTransition(async () => {
@@ -76,7 +78,7 @@ export default function UpdateCard({ update, activityId }: { update: Update; act
           )}
           {update.updateTransactions.length > 0 && (
             <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>
-              ${updateCost.toFixed(2)}
+              {formatCost(updateCost)}
             </span>
           )}
         </div>
@@ -152,7 +154,7 @@ export default function UpdateCard({ update, activityId }: { update: Update; act
                 <span style={{ color: 'var(--text-muted)' }}>{formatDate(transaction.date)}</span>
                 <span style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{transaction.description}</span>
                 <span style={{ color: 'var(--text-muted)' }}>{transaction.account.name}</span>
-                <span style={{ fontWeight: 600 }}>${parseFloat(transaction.amount).toFixed(2)}</span>
+                <span style={{ fontWeight: 600 }}>{formatCost(transactionCost(transaction))}</span>
                 <ConfirmDeleteButton
                   action={unlinkTransaction.bind(null, update.id, transaction.id)}
                   label="✕"

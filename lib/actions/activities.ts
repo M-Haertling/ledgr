@@ -4,6 +4,7 @@ import { db } from '@/lib/db';
 import { activities, activityUpdates, activityUpdateTransactions, activityTransactions } from '@/lib/db/schema';
 import { eq, and, asc, desc } from 'drizzle-orm';
 import { revalidatePath } from 'next/cache';
+import { syncActivityStatus } from '@/lib/api/activities';
 
 export async function createActivity(formData: FormData) {
   const name = formData.get('name') as string;
@@ -56,9 +57,7 @@ export async function addActivityUpdate(activityId: number, formData: FormData) 
     date,
   });
 
-  if (newStatus) {
-    await db.update(activities).set({ status: newStatus }).where(eq(activities.id, activityId));
-  }
+  await syncActivityStatus(activityId);
 
   revalidatePath('/activities');
   revalidatePath(`/activities/${activityId}`);
@@ -78,9 +77,7 @@ export async function updateActivityUpdate(id: number, activityId: number, formD
     .set({ content, newStatus: newStatus || null, date })
     .where(eq(activityUpdates.id, id));
 
-  if (newStatus) {
-    await db.update(activities).set({ status: newStatus }).where(eq(activities.id, activityId));
-  }
+  await syncActivityStatus(activityId);
 
   revalidatePath('/activities');
   revalidatePath(`/activities/${activityId}`);
@@ -88,6 +85,7 @@ export async function updateActivityUpdate(id: number, activityId: number, formD
 
 export async function deleteActivityUpdate(id: number, activityId: number, _formData: FormData) {
   await db.delete(activityUpdates).where(eq(activityUpdates.id, id));
+  await syncActivityStatus(activityId);
   revalidatePath('/activities');
   revalidatePath(`/activities/${activityId}`);
 }

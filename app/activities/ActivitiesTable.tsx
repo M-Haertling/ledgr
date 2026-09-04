@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { deleteActivity } from '@/lib/actions/activities';
 import ConfirmDeleteButton from '@/app/components/ConfirmDeleteButton';
 import { formatDate } from '@/lib/utils/date';
+import { formatCost } from '@/lib/utils/amount';
 
 const STATUS_COLORS: Record<string, string> = {
   TODO: '#94a3b8',
@@ -281,9 +282,9 @@ export default function ActivitiesTable({ activities }: { activities: ActivityRo
                     <td style={{ textAlign: 'right', fontWeight: 500 }}>
                       {a.budget != null ? (
                         <span style={{ color: a.totalCost > a.budget ? '#ef4444' : '#22c55e' }}>
-                          ${a.totalCost.toFixed(2)}
+                          {formatCost(a.totalCost)}
                         </span>
-                      ) : `$${a.totalCost.toFixed(2)}`}
+                      ) : formatCost(a.totalCost)}
                     </td>
                     <td>
                       <div className="flex gap-2" style={{ justifyContent: 'flex-end' }}>

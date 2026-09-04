@@ -11,6 +11,7 @@ import UpdateCard from './UpdateCard';
 import { removeTransactionFromActivity } from '@/lib/actions/activities';
 import ConfirmDeleteButton from '@/app/components/ConfirmDeleteButton';
 import { mergeActivityTransactions } from '@/lib/api/activities';
+import { transactionCost, formatCost } from '@/lib/utils/amount';
 import { formatDate } from '@/lib/utils/date';
 
 const STATUS_COLORS: Record<string, string> = {
@@ -104,7 +105,7 @@ export default async function ActivityDetailPage({ params }: { params: Promise<{
               <span>
                 Spent:{' '}
                 <span style={{ fontWeight: 600, color: over ? '#ef4444' : '#22c55e' }}>
-                  ${totalCost.toFixed(2)}
+                  {formatCost(totalCost)}
                 </span>
                 {' / '}
                 <span style={{ color: 'var(--text)' }}>${budget.toFixed(2)} budget</span>
@@ -115,7 +116,7 @@ export default async function ActivityDetailPage({ params }: { params: Promise<{
               </span>
             );
           })() : (
-            <span style={{ fontWeight: 600, color: 'var(--text)' }}>Total: ${totalCost.toFixed(2)}</span>
+            <span style={{ fontWeight: 600, color: 'var(--text)' }}>Total: {formatCost(totalCost)}</span>
           )}
           {startDate && (
             <span>Started: <span style={{ color: 'var(--text)' }}>{formatDate(startDate)}</span></span>
@@ -156,7 +157,7 @@ export default async function ActivityDetailPage({ params }: { params: Promise<{
                     </span>
                   </td>
                   <td style={{ textAlign: 'right', fontWeight: 500 }}>
-                    ${parseFloat(transaction.amount).toFixed(2)}
+                    {formatCost(transactionCost(transaction))}
                   </td>
                   <td style={{ textAlign: 'right', whiteSpace: 'nowrap' }}>
                     {direct && (
@@ -176,7 +177,7 @@ export default async function ActivityDetailPage({ params }: { params: Promise<{
               <tr>
                 <td colSpan={4} style={{ fontWeight: 600, paddingTop: '0.75rem' }}>Total</td>
                 <td style={{ textAlign: 'right', fontWeight: 700, paddingTop: '0.75rem' }}>
-                  ${totalCost.toFixed(2)}
+                  {formatCost(totalCost)}
                 </td>
                 <td></td>
               </tr>
