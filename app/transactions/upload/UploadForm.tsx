@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { deleteTemplate } from '@/lib/actions/mappings';
-import { parseCsvRows } from '@/lib/utils/csv';
+import { parseCsvRows, repairSplitAmounts } from '@/lib/utils/csv';
 import ConfirmDeleteButton from '@/app/components/ConfirmDeleteButton';
 
 type AmountMode = 'single' | 'split';
@@ -93,7 +93,7 @@ export default function UploadForm({ accounts, templates: initialTemplates }: { 
       const reader = new FileReader();
       reader.onload = (event) => {
         const text = event.target?.result as string;
-        setCsvData(parseCsvRows(text).filter(row => row.length > 1));
+        setCsvData(repairSplitAmounts(parseCsvRows(text).filter(row => row.length > 1)));
       };
       reader.readAsText(selectedFile);
     }

@@ -64,6 +64,41 @@ export function parseCsvRows(text: string): string[][] {
   return rows;
 }
 
+// A money value cut off right before a thousands separator, e.g. `-$ 2` or `(1,234`.
+const AMOUNT_HEAD = /^[-+(]?\s*[$€£]?\s*[-+]?\s*\d{1,3}(,\d{3})*$/;
+// The continuation group after that separator, e.g. `021.24` or `500)`.
+const AMOUNT_TAIL = /^\d{3}(\.\d+)?\)?$/;
+
+/**
+ * Re-joins money values that were split on an unquoted thousands separator.
+ *
+ * Some bank exports (e.g. Citi) write `-$ 2,021.24` without quotes, which RFC 4180
+ * splits into `-$ 2` and `021.24`, shifting every later column. Only rows wider than
+ * the first row are touched, and only as many merges as there are surplus columns,
+ * so well-formed rows pass through unchanged.
+ */
+export function repairSplitAmounts(rows: string[][]): string[][] {
+  if (rows.length === 0) return rows;
+  const width = rows[0].length;
+
+  return rows.map(row => {
+    let surplus = row.length - width;
+    if (surplus <= 0) return row;
+
+    const fixed: string[] = [];
+    for (const cell of row) {
+      const prev = fixed[fixed.length - 1];
+      if (surplus > 0 && prev !== undefined && AMOUNT_HEAD.test(prev) && AMOUNT_TAIL.test(cell)) {
+        fixed[fixed.length - 1] = `${prev},${cell}`;
+        surplus--;
+      } else {
+        fixed.push(cell);
+      }
+    }
+    return fixed;
+  });
+}
+
 /**
  * Parses CSV text into objects keyed by the header row.
  * Missing trailing columns come back as empty strings.

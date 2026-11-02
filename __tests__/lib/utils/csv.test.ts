@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { parseCsvRows, parseCsvRecords } from '@/lib/utils/csv';
+import { parseCsvRows, parseCsvRecords, repairSplitAmounts } from '@/lib/utils/csv';
 
 describe('parseCsvRows', () => {
   it('keeps a comma inside a quoted field', () => {
@@ -40,5 +40,30 @@ describe('parseCsvRecords', () => {
 
   it('returns nothing for a header-only file', () => {
     expect(parseCsvRecords('id,name')).toEqual([]);
+  });
+});
+
+describe('repairSplitAmounts', () => {
+  const header = 'Status,Date,Description,Debit,Credit,Member Name';
+
+  it('rejoins an unquoted amount split on its thousands separator (Citi export)', () => {
+    const csv = `${header}\nCleared,10/14/2026,"AUTOPAY 250528105008446RAUTOPAY AUTO-PMT",, -$ 2,021.24,MICHAEL HAERTLING`;
+    expect(repairSplitAmounts(parseCsvRows(csv))[1]).toEqual([
+      'Cleared', '10/14/2026', 'AUTOPAY 250528105008446RAUTOPAY AUTO-PMT', '', '-$ 2,021.24', 'MICHAEL HAERTLING',
+    ]);
+  });
+
+  it('handles multiple separators and parenthesized negatives', () => {
+    expect(repairSplitAmounts([['a', 'b'], ['x', '1', '234', '567.89']])[1]).toEqual(['x', '1,234,567.89']);
+    expect(repairSplitAmounts([['a', 'b'], ['x', '($1', '500.00)']])[1]).toEqual(['x', '($1,500.00)']);
+  });
+
+  it('leaves rows of the expected width untouched', () => {
+    const rows = [['a', 'b', 'c'], ['12', '345', 'z']];
+    expect(repairSplitAmounts(rows)).toEqual(rows);
+  });
+
+  it('does not merge a date into a following number', () => {
+    expect(repairSplitAmounts([['a', 'b'], ['10/14/2026', '123', 'x']])[1]).toEqual(['10/14/2026', '123', 'x']);
   });
 });
