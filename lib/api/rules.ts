@@ -192,7 +192,6 @@ export async function loadRuleCandidates() {
   return db.query.transactions.findMany({
     where: ruleTargetFilter(),
     columns: { id: true, description: true, accountId: true, categoryId: true, date: true, amount: true, isCredit: true },
-    with: { category: { columns: { name: true, color: true } } },
     orderBy: (t, { desc }) => [desc(t.date), desc(t.id)],
   });
 }

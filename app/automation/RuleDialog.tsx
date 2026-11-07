@@ -156,7 +156,6 @@ export default function RuleDialog({
                         <span className="rule-preview-date">{formatDate(s.date)}</span>
                         <span className="rule-preview-desc" title={s.description}>{s.description}</span>
                         <span className="rule-preview-amount">{formatCost(transactionCost(s))}</span>
-                        <span className="rule-preview-cat">{s.categoryName ?? 'Uncategorized'}</span>
                       </li>
                     ))}
                   </ul>
@@ -232,7 +231,8 @@ export default function RuleDialog({
         {tags.length > 0 && (
           <div className="form-group" style={{ marginBottom: 0 }}>
             <label className="form-label">Also add tags</label>
-            <div className="rule-tag-picker">
+            <div className="rule-tag-picker" role="group" aria-label="Tags to add">
+              {draft.tagIds.length === 0 && <span className="rule-form-hint" style={{ margin: 0 }}>Click a tag to add it:</span>}
               {tags.map(t => {
                 const on = draft.tagIds.includes(t.id);
                 return (
@@ -242,8 +242,10 @@ export default function RuleDialog({
                     className={`rule-tag-chip${on ? ' is-on' : ''}`}
                     aria-pressed={on}
                     onClick={() => toggleTag(t.id)}
+                    title={on ? `Remove #${t.name}` : `Add #${t.name}`}
                   >
-                    {on ? '✓ ' : ''}#{t.name}
+                    <span className="rule-tag-chip-icon" aria-hidden="true">{on ? '✓' : '+'}</span>
+                    #{t.name}
                   </button>
                 );
               })}

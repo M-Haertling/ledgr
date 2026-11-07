@@ -132,7 +132,6 @@ export type RulePreview = {
     date: string;
     amount: string;
     isCredit: boolean;
-    categoryName: string | null;
   }[];
 };
 
@@ -159,7 +158,6 @@ export async function previewRule(input: {
       date: r.date.toISOString().slice(0, 10),
       amount: r.amount,
       isCredit: r.isCredit,
-      categoryName: r.category?.name ?? null,
     })),
   };
 }
