@@ -23,6 +23,7 @@ const QUICK_TABLES = [
   'categorization_rules',
   'rule_tags',
   'mappings',
+  'uploads',
   'activities',
   'activity_updates',
   'activity_update_transactions',

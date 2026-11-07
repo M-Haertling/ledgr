@@ -19,6 +19,8 @@ export type TransactionFilterOptions = {
   type?: string;
   from?: Date;
   to?: Date;
+  /** Only rows imported by this CSV upload (see the `uploads` table). */
+  uploadId?: number;
   /** Include split line items (children). Defaults to false so only top-level rows show. */
   includeChildren?: boolean;
   /**
@@ -37,7 +39,7 @@ export type TransactionFilterOptions = {
  */
 export function buildTransactionFilters(opts: TransactionFilterOptions): SQL[] {
   const {
-    accountIds = [], categoryIds = [], tagIds = [], search, uncategorized, type, from, to,
+    accountIds = [], categoryIds = [], tagIds = [], search, uncategorized, type, from, to, uploadId,
     includeChildren, matchChildrenWhenFiltered,
   } = opts;
   const filters: SQL[] = [];
@@ -59,6 +61,17 @@ export function buildTransactionFilters(opts: TransactionFilterOptions): SQL[] {
   }
 
   if (accountIds.length > 0) filters.push(inArray(transactions.accountId, accountIds));
+  // Split line items carry no uploadId of their own; they belong to their parent's upload.
+  if (uploadId) {
+    const parent = alias(transactions, 'upload_parent');
+    const condition = or(
+      eq(transactions.uploadId, uploadId),
+      exists(db.select().from(parent).where(
+        and(eq(parent.id, transactions.parentTransactionId), eq(parent.uploadId, uploadId)),
+      )),
+    );
+    if (condition) filters.push(condition);
+  }
   if (uncategorized) {
     filters.push(isNull(transactions.categoryId));
     filters.push(ne(transactions.type, 'transfer'));

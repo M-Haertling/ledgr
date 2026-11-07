@@ -37,6 +37,21 @@ export const tableExports: TableExport[] = [
     })),
   },
   {
+    key: 'uploads',
+    rows: async () => (await db.query.uploads.findMany()).map(r => ({
+      id: r.id,
+      account_id: r.accountId,
+      file_name: r.fileName,
+      template_name: r.templateName,
+      row_count: r.rowCount,
+      imported_count: r.importedCount,
+      skipped_count: r.skippedCount,
+      failed_count: r.failedCount,
+      is_legacy: r.isLegacy,
+      created_at: r.createdAt.toISOString(),
+    })),
+  },
+  {
     key: 'categories',
     rows: async () => (await db.query.categories.findMany()).map(r => ({
       id: r.id, name: r.name, color: r.color, parent_id: r.parentId, created_at: r.createdAt.toISOString(),
@@ -67,6 +82,9 @@ export const tableExports: TableExport[] = [
       transfer_pair_id: r.transferPairId,
       category_id: r.categoryId,
       notes: r.notes,
+      parent_transaction_id: r.parentTransactionId,
+      is_split: r.isSplit,
+      upload_id: r.uploadId,
       created_at: r.createdAt.toISOString(),
     })),
   },

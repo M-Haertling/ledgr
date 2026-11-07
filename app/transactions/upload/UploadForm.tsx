@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import { deleteTemplate } from '@/lib/actions/mappings';
 import { parseCsvRows, repairSplitAmounts } from '@/lib/utils/csv';
 import ConfirmDeleteButton from '@/app/components/ConfirmDeleteButton';
@@ -14,6 +15,7 @@ type Account = { id: number; name: string };
 type Template = { id: number; accountId: number; name: string; config: unknown };
 
 export default function UploadForm({ accounts, templates: initialTemplates }: { accounts: Account[], templates: Template[] }) {
+  const router = useRouter();
   const [templates, setTemplates] = useState(initialTemplates);
   const [file, setFile] = useState<File | null>(null);
   const [accountId, setAccountId] = useState<string>(accounts[0]?.id.toString() || '');
@@ -149,6 +151,7 @@ export default function UploadForm({ accounts, templates: initialTemplates }: { 
           templateName,
           saveTemplate,
           hasHeader,
+          fileName: file.name,
         }),
       });
 
@@ -156,6 +159,7 @@ export default function UploadForm({ accounts, templates: initialTemplates }: { 
         const data = await response.json();
         setResult({ imported: data.imported, skipped: data.skipped, failed: data.failed, failedRows: data.failedRows ?? [] });
         clearFormState();
+        router.refresh(); // refresh the upload history below the form
       } else {
         alert('Upload failed');
       }

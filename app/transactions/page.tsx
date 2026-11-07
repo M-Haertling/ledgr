@@ -1,14 +1,13 @@
 export const dynamic = 'force-dynamic';
 
 import { db } from '@/lib/db';
-import { transactions, categories } from '@/lib/db/schema';
-import { desc, asc, and, isNotNull, sql, count, type SQL } from 'drizzle-orm';
+import { transactions, categories, uploads } from '@/lib/db/schema';
+import { desc, asc, and, eq, isNotNull, sql, count, type SQL } from 'drizzle-orm';
 import type { PgColumn } from 'drizzle-orm/pg-core';
 import Link from 'next/link';
 import TransactionsTable from './TransactionsTable';
 import FiltersClient from './FiltersClient';
 import AddTransactionDialog from './AddTransactionDialog';
-import DeleteUploadDialog from './DeleteUploadDialog';
 import { deduplicateTransactions } from '@/lib/actions/transactions';
 import { expandCategoryIds } from '@/lib/utils/categories';
 import { buildCategoryOptions } from '@/lib/utils/categoryOptions';
@@ -35,6 +34,7 @@ export default async function TransactionsPage({
   const typeFilter = params.type as string | undefined;
   const from = params.from ? new Date(params.from as string) : undefined;
   const to = params.to ? new Date(params.to as string) : undefined;
+  const uploadId = params.uploadId ? parseInt(params.uploadId as string) || undefined : undefined;
 
   // Sorting
   const sortCol = (params.sortCol as string) || 'date';
@@ -66,6 +66,7 @@ export default async function TransactionsPage({
     type: typeFilter,
     from,
     to,
+    uploadId,
     // Filtering by category/tag should surface split line items, since a split
     // parent's own category is cleared and only its children carry the category.
     matchChildrenWhenFiltered: true,
@@ -113,6 +114,10 @@ export default async function TransactionsPage({
   });
 
   const allAccounts = await db.query.accounts.findMany();
+  const uploadInfo = uploadId
+    ? await db.query.uploads.findFirst({ where: eq(uploads.id, uploadId), with: { account: { columns: { name: true } } } })
+        .then(u => u && { fileName: u.fileName, accountName: u.account.name })
+    : undefined;
   const allTags = await db.query.tags.findMany();
   const allActivities = await getActivitiesForSelect();
 
@@ -134,13 +139,32 @@ export default async function TransactionsPage({
           }}>
             <button type="submit" className="btn btn-secondary">Deduplicate</button>
           </form>
-          <DeleteUploadDialog accounts={allAccounts} />
           <AddTransactionDialog accounts={allAccounts} categories={enrichedCategories} />
           <Link href="/transactions/upload" className="btn btn-primary">
             Upload CSV
           </Link>
         </div>
       </div>
+
+      {uploadId && (() => {
+        const clearParams = new URLSearchParams();
+        for (const [k, v] of Object.entries(params)) {
+          if (k !== 'uploadId' && k !== 'page' && typeof v === 'string') clearParams.set(k, v);
+        }
+        const qs = clearParams.toString();
+        return (
+          <div className="card mb-4" style={{ padding: '0.75rem 1rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <span>
+              Showing transactions from upload #{uploadId}
+              {uploadInfo && <> — {uploadInfo.fileName ?? 'legacy upload'} ({uploadInfo.accountName})</>}
+            </span>
+            <span className="flex gap-2">
+              <Link href="/transactions/upload" className="btn btn-secondary btn-sm">Upload history</Link>
+              <Link href={`/transactions${qs ? `?${qs}` : ''}`} className="btn btn-secondary btn-sm">Clear</Link>
+            </span>
+          </div>
+        );
+      })()}
 
       <FiltersClient
         initialSearch={search || ''}
@@ -153,6 +177,7 @@ export default async function TransactionsPage({
         initialTagIds={tagIds.map(String)}
         sortCol={sortCol}
         sortDir={sortDir}
+        uploadId={uploadId}
         accounts={allAccounts.map(a => ({ id: a.id, name: a.name }))}
         categoryOptions={categoryOptions}
         tags={allTags.map(t => ({ id: t.id, name: `#${t.name}` }))}

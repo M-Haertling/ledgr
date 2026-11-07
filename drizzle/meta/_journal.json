@@ -120,6 +120,13 @@
       "when": 1776649769728,
       "tag": "0016_resync_activity_status",
       "breakpoints": true
+    },
+    {
+      "idx": 17,
+      "version": "7",
+      "when": 1776736169728,
+      "tag": "0017_add_uploads",
+      "breakpoints": true
     }
   ]
 }

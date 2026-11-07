@@ -1,5 +1,5 @@
 import { db } from '@/lib/db';
-import { transactions, mappings, categories } from '@/lib/db/schema';
+import { transactions, mappings, categories, uploads } from '@/lib/db/schema';
 import { eq } from 'drizzle-orm';
 import { NextResponse } from 'next/server';
 import { loadRuleEngine, ruleMatchesTransaction, tagsForApplication, applyTransactionTags } from '@/lib/api/rules';
@@ -9,7 +9,7 @@ type FailedRow = { rowNumber: number; row: string[]; reason: string };
 
 export async function POST(req: Request) {
   try {
-    const { accountId, csvData, mapping, templateName, saveTemplate, hasHeader = true } = await req.json();
+    const { accountId, csvData, mapping, templateName, saveTemplate, hasHeader = true, fileName } = await req.json();
 
     if (!accountId || !csvData || !mapping) {
       return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
@@ -31,6 +31,15 @@ export async function POST(req: Request) {
     const engine = await loadRuleEngine();
 
     const rows: string[][] = hasHeader ? csvData.slice(1) : csvData;
+
+    // Record the upload up front so each imported row can point back at it; the
+    // counts are filled in once the rows have been processed.
+    const [upload] = await db.insert(uploads).values({
+      accountId: parseInt(accountId),
+      fileName: typeof fileName === 'string' && fileName.trim() ? fileName.trim() : null,
+      templateName: typeof templateName === 'string' && templateName.trim() ? templateName.trim() : null,
+    }).returning({ id: uploads.id });
+    let rowCount = 0;
     let imported = 0;
     let skipped = 0;
     const failedRows: FailedRow[] = [];
@@ -44,6 +53,7 @@ export async function POST(req: Request) {
 
       // Skip blank rows
       if (row.every((cell: string) => !cell.trim())) continue;
+      rowCount++;
 
       const dateStr = row[mapping.date];
       const description = row[mapping.description];
@@ -121,6 +131,7 @@ export async function POST(req: Request) {
         isCredit,
         type: isCredit ? 'credit' : 'debit',
         categoryId,
+        uploadId: upload.id,
       }).onConflictDoNothing().returning({ id: transactions.id });
 
       if (insertResult[0]) {
@@ -131,7 +142,14 @@ export async function POST(req: Request) {
       }
     }
 
-    return NextResponse.json({ success: true, imported, skipped, failed: failedRows.length, failedRows });
+    await db.update(uploads).set({
+      rowCount,
+      importedCount: imported,
+      skippedCount: skipped,
+      failedCount: failedRows.length,
+    }).where(eq(uploads.id, upload.id));
+
+    return NextResponse.json({ success: true, uploadId: upload.id, imported, skipped, failed: failedRows.length, failedRows });
   } catch (error) {
     console.error('Upload error:', error);
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });

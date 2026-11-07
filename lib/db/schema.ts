@@ -1,4 +1,4 @@
-import { pgTable, serial, text, decimal, boolean, timestamp, integer, jsonb, unique, uniqueIndex, primaryKey } from 'drizzle-orm/pg-core';
+import { pgTable, serial, text, decimal, boolean, timestamp, integer, jsonb, unique, uniqueIndex, index, primaryKey } from 'drizzle-orm/pg-core';
 import { relations, sql } from 'drizzle-orm';
 import type { AnyPgColumn } from 'drizzle-orm/pg-core';
 
@@ -12,6 +12,33 @@ export const accounts = pgTable('accounts', {
 export const accountsRelations = relations(accounts, ({ many }) => ({
   transactions: many(transactions),
   mappings: many(mappings),
+  uploads: many(uploads),
+}));
+
+// One row per CSV upload. Transactions imported by it point back via
+// transactions.upload_id, so an upload can be listed and deleted as a unit.
+// isLegacy marks rows backfilled by migration 0017 from pre-existing data,
+// grouped by (account, created_at::date) — those have no file name or counts
+// beyond what was inferred.
+export const uploads = pgTable('uploads', {
+  id: serial('id').primaryKey(),
+  accountId: integer('account_id').references(() => accounts.id, { onDelete: 'cascade' }).notNull(),
+  fileName: text('file_name'),
+  templateName: text('template_name'),
+  rowCount: integer('row_count').notNull().default(0),
+  importedCount: integer('imported_count').notNull().default(0),
+  skippedCount: integer('skipped_count').notNull().default(0),
+  failedCount: integer('failed_count').notNull().default(0),
+  isLegacy: boolean('is_legacy').notNull().default(false),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+});
+
+export const uploadsRelations = relations(uploads, ({ one, many }) => ({
+  account: one(accounts, {
+    fields: [uploads.accountId],
+    references: [accounts.id],
+  }),
+  transactions: many(transactions),
 }));
 
 export const categories = pgTable('categories', {
@@ -48,6 +75,8 @@ export const transactions = pgTable('transactions', {
   // parent is flagged isSplit so reports exclude it and count the children instead.
   parentTransactionId: integer('parent_transaction_id').references((): AnyPgColumn => transactions.id, { onDelete: 'cascade' }),
   isSplit: boolean('is_split').notNull().default(false),
+  // The CSV upload that imported this row (null for manual entries and split line items).
+  uploadId: integer('upload_id').references((): AnyPgColumn => uploads.id, { onDelete: 'set null' }),
   createdAt: timestamp('created_at').defaultNow().notNull(),
 }, (table) => [
   // Only top-level transactions participate in dedup; split line items are exempt
@@ -55,6 +84,7 @@ export const transactions = pgTable('transactions', {
   uniqueIndex('transactions_dedup')
     .on(table.accountId, table.date, table.description, table.amount)
     .where(sql`${table.parentTransactionId} IS NULL`),
+  index('transactions_upload_id_idx').on(table.uploadId),
 ]);
 
 export const transactionsRelations = relations(transactions, ({ one, many }) => ({
@@ -78,6 +108,10 @@ export const transactionsRelations = relations(transactions, ({ one, many }) => 
     relationName: 'split_parent',
   }),
   splitChildren: many(transactions, { relationName: 'split_parent' }),
+  upload: one(uploads, {
+    fields: [transactions.uploadId],
+    references: [uploads.id],
+  }),
 }));
 
 export const tags = pgTable('tags', {

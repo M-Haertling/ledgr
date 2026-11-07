@@ -1,11 +1,24 @@
 import { db } from '@/lib/db';
-import { eq } from 'drizzle-orm';
+import { eq, sql } from 'drizzle-orm';
 import {
   accounts, categories, categoryTags, tags, transactions, transactionTags, categorizationRules, ruleTags,
-  mappings, activities, activityUpdates, activityUpdateTransactions, activityTransactions,
+  mappings, activities, uploads, activityUpdates, activityUpdateTransactions, activityTransactions,
 } from '@/lib/db/schema';
 import { NextResponse } from 'next/server';
 import { parseCsvRecords } from '@/lib/utils/csv';
+
+/** Restore key → table with a serial `id` whose sequence must be advanced after restore. */
+const SERIAL_TABLES: Record<string, string> = {
+  accounts: 'accounts',
+  uploads: 'uploads',
+  categories: 'categories',
+  tags: 'tags',
+  transactions: 'transactions',
+  rules: 'categorization_rules',
+  mappings: 'mappings',
+  activities: 'activities',
+  activity_updates: 'activity_updates',
+};
 
 export async function POST(req: Request) {
   const { searchParams } = new URL(req.url);
@@ -30,6 +43,24 @@ export async function POST(req: Request) {
           createdAt: r.created_at ? new Date(r.created_at) : new Date(),
         }).onConflictDoNothing();
         inserted++;
+      }
+      break;
+
+    case 'uploads':
+      for (const r of rows) {
+        const result = await db.insert(uploads).values({
+          id: parseInt(r.id),
+          accountId: parseInt(r.account_id),
+          fileName: r.file_name || null,
+          templateName: r.template_name || null,
+          rowCount: parseInt(r.row_count) || 0,
+          importedCount: parseInt(r.imported_count) || 0,
+          skippedCount: parseInt(r.skipped_count) || 0,
+          failedCount: parseInt(r.failed_count) || 0,
+          isLegacy: r.is_legacy === 'true',
+          createdAt: r.created_at ? new Date(r.created_at) : new Date(),
+        }).onConflictDoNothing().returning({ id: uploads.id });
+        if (result.length > 0) inserted++; else skipped++;
       }
       break;
 
@@ -71,8 +102,15 @@ export async function POST(req: Request) {
     case 'transactions': {
       // Insert all transactions without transfer_pair_id first to avoid self-referential FK
       // violations when the paired transaction hasn't been inserted yet.
+      // Split line items are inserted after every top-level row, with parent_transaction_id
+      // set directly: they share their parent's date/description/account, so inserting them
+      // as top-level rows first would collide on the partial dedup index.
       const pairUpdates: { id: number; transferPairId: number }[] = [];
-      for (const r of rows) {
+      const ordered = [
+        ...rows.filter(r => !r.parent_transaction_id),
+        ...rows.filter(r => r.parent_transaction_id),
+      ];
+      for (const r of ordered) {
         const result = await db.insert(transactions).values({
           id: parseInt(r.id),
           accountId: parseInt(r.account_id),
@@ -84,6 +122,9 @@ export async function POST(req: Request) {
           transferPairId: null,
           categoryId: r.category_id ? parseInt(r.category_id) : null,
           notes: r.notes || null,
+          isSplit: r.is_split === 'true',
+          parentTransactionId: r.parent_transaction_id ? parseInt(r.parent_transaction_id) : null,
+          uploadId: r.upload_id ? parseInt(r.upload_id) : null,
           createdAt: r.created_at ? new Date(r.created_at) : new Date(),
         }).onConflictDoNothing().returning({ id: transactions.id });
         if (result.length > 0) {
@@ -213,6 +254,18 @@ export async function POST(req: Request) {
 
     default:
       return NextResponse.json({ error: 'Unknown table' }, { status: 400 });
+  }
+
+  // Rows are restored with their original ids, which bypasses the serial
+  // sequence. Advance it past the highest id so the next app insert doesn't
+  // collide with a restored row.
+  const serialTable = table ? SERIAL_TABLES[table] : undefined;
+  if (serialTable) {
+    await db.execute(sql.raw(
+      `SELECT setval(pg_get_serial_sequence('"${serialTable}"', 'id'), ` +
+      `COALESCE((SELECT MAX(id) FROM "${serialTable}"), 1), ` +
+      `(SELECT MAX(id) FROM "${serialTable}") IS NOT NULL)`
+    ));
   }
 
   return NextResponse.json({ inserted, skipped });

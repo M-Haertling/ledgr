@@ -4,6 +4,7 @@ import BackupRestoreClient from './BackupRestoreClient';
 
 export const TABLES = [
   { key: 'accounts', label: 'Accounts', description: 'Account names and types' },
+  { key: 'uploads', label: 'Uploads', description: 'CSV upload history (restore before Transactions)' },
   { key: 'categories', label: 'Categories', description: 'Category names and colors' },
   { key: 'tags', label: 'Tags', description: 'Tag definitions' },
   { key: 'category_tags', label: 'Category Tags', description: 'Tags auto-applied per category' },

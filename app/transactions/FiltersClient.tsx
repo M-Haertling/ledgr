@@ -17,6 +17,8 @@ type FiltersClientProps = {
   initialTagIds: string[];
   sortCol: string;
   sortDir: string;
+  /** Active upload filter (from the Upload History "View" link); kept by Filter, dropped by Clear. */
+  uploadId?: number;
   accounts: { id: number; name: string }[];
   categoryOptions: CategoryOption[];
   tags: { id: number; name: string }[];
@@ -33,6 +35,7 @@ export default function FiltersClient({
   initialTagIds,
   sortCol,
   sortDir,
+  uploadId,
   accounts,
   categoryOptions,
   tags,
@@ -78,6 +81,7 @@ export default function FiltersClient({
     if (accountIds.length) params.set('accountIds', accountIds.join(','));
     if (categoryIds.length) params.set('categoryIds', categoryIds.join(','));
     if (tagIds.length) params.set('tagIds', tagIds.join(','));
+    if (uploadId) params.set('uploadId', String(uploadId));
     if (sortCol !== 'date') params.set('sortCol', sortCol);
     if (sortDir !== 'desc') params.set('sortDir', sortDir);
     router.push(`/transactions?${params.toString()}`);
