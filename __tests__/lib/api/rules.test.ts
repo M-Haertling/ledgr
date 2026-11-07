@@ -13,7 +13,7 @@ vi.mock('@/lib/db', () => ({
 }));
 
 vi.mock('@/lib/db/schema', () => ({
-  transactions: { id: {}, categoryId: {}, type: {} },
+  transactions: { id: {}, categoryId: {}, type: {}, isSplit: {}, parentTransactionId: {} },
   categorizationRules: {},
   transactionTags: {},
   categoryTags: {},
@@ -26,7 +26,9 @@ vi.mock('drizzle-orm', () => ({
   isNull: vi.fn(() => ({})),
 }));
 
-import { patternToRegex, applyRulesToUncategorized, applySingleRule } from '@/lib/api/rules';
+import { patternToRegex, applyRulesToUncategorized, applySingleRule, summarizeRuleMatches } from '@/lib/api/rules';
+import { eq, isNull } from 'drizzle-orm';
+import { transactions } from '@/lib/db/schema';
 import { db } from '@/lib/db';
 
 import type { MockDb } from '../../helpers/mockDb';
@@ -252,5 +254,84 @@ describe('applySingleRule', () => {
     // Only the non-transfer transaction is categorized and tagged.
     expect(mockDb.update).toHaveBeenCalledTimes(1);
     expect(setMock).toHaveBeenCalledWith({ categoryId: 5 });
+  });
+});
+
+describe('applySingleRule split handling and count', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    const whereMock = vi.fn().mockResolvedValue(undefined);
+    mockDb.update.mockReturnValue({ set: vi.fn(() => ({ where: whereMock })) });
+    mockDb.insert.mockReturnValue({
+      values: vi.fn(() => ({ onConflictDoNothing: vi.fn().mockResolvedValue(undefined) })),
+    });
+    mockDb.query.categoryTags.findMany.mockResolvedValue([]);
+    mockDb.query.categorizationRules.findMany.mockResolvedValue([
+      { id: 1, pattern: 'COSTCO*', categoryId: 5, accountId: null, priority: 0, ruleTags: [] },
+    ]);
+  });
+
+  it('excludes split parents and line items in the query', async () => {
+    mockDb.query.transactions.findMany.mockResolvedValue([]);
+    await applySingleRule(1);
+    expect(eq).toHaveBeenCalledWith(transactions.isSplit, false);
+    expect(isNull).toHaveBeenCalledWith(transactions.parentTransactionId);
+  });
+
+  it('never recategorizes split rows even if the query returns them', async () => {
+    mockDb.query.transactions.findMany.mockResolvedValue([
+      { id: 1, description: 'COSTCO #12', categoryId: null, accountId: 1, type: 'debit', isSplit: true, parentTransactionId: null },
+      { id: 2, description: 'COSTCO #12', categoryId: 7, accountId: 1, type: 'debit', isSplit: false, parentTransactionId: 1 },
+    ]);
+    expect(await applySingleRule(1)).toBe(0);
+    expect(mockDb.update).not.toHaveBeenCalled();
+  });
+
+  it('counts only transactions whose category actually changes', async () => {
+    mockDb.query.transactions.findMany.mockResolvedValue([
+      { id: 10, description: 'COSTCO GAS', categoryId: 5, accountId: 1, type: 'debit', isSplit: false, parentTransactionId: null },
+      { id: 11, description: 'COSTCO WHSE', categoryId: null, accountId: 1, type: 'debit', isSplit: false, parentTransactionId: null },
+      { id: 12, description: 'COSTCO WHSE', categoryId: 9, accountId: 1, type: 'debit', isSplit: false, parentTransactionId: null },
+    ]);
+    expect(await applySingleRule(1)).toBe(2);
+    expect(mockDb.update).toHaveBeenCalledTimes(2);
+  });
+
+  it('returns 0 for an unknown rule', async () => {
+    expect(await applySingleRule(999)).toBe(0);
+  });
+});
+
+describe('summarizeRuleMatches', () => {
+  const rows = [
+    { id: 1, description: 'AMAZON MKTP US', accountId: 1, categoryId: 5 },
+    { id: 2, description: 'AMAZON PRIME', accountId: 2, categoryId: null },
+    { id: 3, description: 'amazon.com', accountId: 1, categoryId: 3 },
+    { id: 4, description: 'WHOLE FOODS', accountId: 1, categoryId: null },
+  ];
+
+  it('uses the engine matcher (case-insensitive, wildcard, substring)', () => {
+    const s = summarizeRuleMatches({ pattern: 'amazon*', accountId: null, categoryId: 5 }, rows);
+    expect(s.matchCount).toBe(3);
+    expect(s.samples.map(r => r.id)).toEqual([1, 2, 3]);
+  });
+
+  it('counts matches whose category differs from the rule as wouldChange', () => {
+    expect(summarizeRuleMatches({ pattern: 'AMAZON', accountId: null, categoryId: 5 }, rows).wouldChange).toBe(2);
+  });
+
+  it('respects account scope', () => {
+    expect(summarizeRuleMatches({ pattern: 'AMAZON', accountId: 2, categoryId: 5 }, rows).matchCount).toBe(1);
+  });
+
+  it('caps samples but not the count', () => {
+    const s = summarizeRuleMatches({ pattern: 'A', accountId: null, categoryId: null }, rows, 2);
+    expect(s.matchCount).toBe(3);
+    expect(s.samples).toHaveLength(2);
+    expect(s.wouldChange).toBe(0);
+  });
+
+  it('matches nothing for a blank pattern', () => {
+    expect(summarizeRuleMatches({ pattern: '  ', accountId: null, categoryId: 5 }, rows).matchCount).toBe(0);
   });
 });

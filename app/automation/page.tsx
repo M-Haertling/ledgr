@@ -1,189 +1,54 @@
 export const dynamic = 'force-dynamic';
 
 import { db } from '@/lib/db';
-import { categorizationRules } from '@/lib/db/schema';
-import { createRule, createAndRunRule, updateRule, deleteRule, applyRulesToUncategorized, applyRulesToAll, applySingleRule } from '@/lib/actions/rules';
-import ConfirmDeleteButton from '@/app/components/ConfirmDeleteButton';
-import { desc, asc, ilike, and, eq, isNull } from 'drizzle-orm';
-import EditRuleForm from './EditRuleForm';
-import AddRuleForm from './AddRuleForm';
-import CollapsibleRuleGroup from './CollapsibleRuleGroup';
-import Link from 'next/link';
+import { categorizationRules, categories, tags } from '@/lib/db/schema';
+import { asc, desc } from 'drizzle-orm';
+import { buildCategoryOptions } from '@/lib/utils/categoryOptions';
+import RulesClient, { type RuleRow } from './RulesClient';
 
-export default async function AutomationPage({
-  searchParams,
-}: {
-  searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
-}) {
-  const params = await searchParams;
-  const search = (params.search as string) || '';
-  const filterType = (params.ruleType as string) || '';
-  const filterCategoryId = params.categoryId ? parseInt(params.categoryId as string) : null;
-
-  const whereConditions = [];
-  if (search) whereConditions.push(ilike(categorizationRules.pattern, `%${search}%`));
-  if (filterType === '__none__') whereConditions.push(isNull(categorizationRules.ruleType));
-  else if (filterType) whereConditions.push(eq(categorizationRules.ruleType, filterType));
-  if (filterCategoryId) whereConditions.push(eq(categorizationRules.categoryId, filterCategoryId));
-
+export default async function AutomationPage() {
   const allRules = await db.query.categorizationRules.findMany({
     with: {
-      category: true,
-      account: true,
+      category: { columns: { name: true, color: true } },
+      account: { columns: { name: true } },
+      ruleTags: { with: { tag: { columns: { id: true, name: true } } } },
     },
-    where: whereConditions.length > 0 ? and(...whereConditions) : undefined,
     orderBy: [desc(categorizationRules.priority), asc(categorizationRules.id)],
   });
 
-  const allCategories = await db.query.categories.findMany();
-  const allAccounts = await db.query.accounts.findMany();
-
-  // Collect distinct rule types for filter and autocomplete
-  const ruleTypeRows = await db
-    .selectDistinct({ ruleType: categorizationRules.ruleType })
-    .from(categorizationRules)
-    .where(isNull(categorizationRules.ruleType) ? undefined : undefined);
-  const allRuleTypes = ruleTypeRows
-    .map(r => r.ruleType)
-    .filter((t): t is string => !!t)
-    .sort();
-
-  // Group rules by type for display
-  const rulesByType: Record<string, typeof allRules> = {};
-  for (const rule of allRules) {
-    const key = rule.ruleType || '';
-    if (!rulesByType[key]) rulesByType[key] = [];
-    rulesByType[key].push(rule);
-  }
-
-  // Sort groups: named types alphabetically, then ungrouped last
-  const sortedTypes = Object.keys(rulesByType).sort((a, b) => {
-    if (!a && b) return 1;
-    if (a && !b) return -1;
-    return a.localeCompare(b);
+  const allCategories = await db.query.categories.findMany({
+    orderBy: [asc(categories.name)],
+    with: { parent: { columns: { name: true } } },
   });
+  const categoryOptions = buildCategoryOptions(
+    allCategories.map(({ parent, ...c }) => ({ ...c, parentName: parent?.name ?? null })),
+  );
 
-  const hasFilters = search || filterType || filterCategoryId;
+  const allAccounts = await db.query.accounts.findMany({ columns: { id: true, name: true } });
+  const allTags = await db.query.tags.findMany({ columns: { id: true, name: true }, orderBy: [asc(tags.name)] });
+
+  const ruleTypes = [...new Set(allRules.map(r => r.ruleType).filter((t): t is string => !!t))]
+    .sort((a, b) => a.localeCompare(b));
+
+  const rules: RuleRow[] = allRules.map(r => ({
+    id: r.id,
+    pattern: r.pattern,
+    priority: r.priority,
+    ruleType: r.ruleType,
+    categoryId: r.categoryId,
+    accountId: r.accountId,
+    category: r.category,
+    account: r.account,
+    tags: r.ruleTags.map(rt => rt.tag).sort((a, b) => a.name.localeCompare(b.name)),
+  }));
 
   return (
-    <div>
-      <div className="flex justify-between items-center mb-4">
-        <h1>Automation Rules</h1>
-        <div className="flex gap-2">
-          <form action={async () => {
-            'use server';
-            await applyRulesToAll();
-          }}>
-            <button type="submit" className="btn btn-secondary">
-              Apply to All
-            </button>
-          </form>
-          <form action={async () => {
-            'use server';
-            await applyRulesToUncategorized();
-          }}>
-            <button type="submit" className="btn btn-secondary">
-              Apply to Uncategorized
-            </button>
-          </form>
-        </div>
-      </div>
-
-      <div className="card mb-4">
-        <h2 className="card-title">Add New Rule</h2>
-        <p className="list-item-subtitle mb-3">
-          Use <code>*</code> as a wildcard (e.g. <code>AMAZON*</code>). Category rules apply to the <em>first</em> match by priority.
-        </p>
-        <AddRuleForm
-          allCategories={allCategories}
-          allAccounts={allAccounts}
-          allRuleTypes={allRuleTypes}
-          createAction={createRule}
-          createAndRunAction={createAndRunRule}
-        />
-      </div>
-
-      {/* Filters */}
-      <div className="card mb-4">
-        <form className="flex gap-3 items-end flex-wrap">
-          <div className="form-group" style={{ marginBottom: 0, flex: 2, minWidth: '160px' }}>
-            <label className="form-label">Search Pattern</label>
-            <input
-              type="text"
-              name="search"
-              className="form-input"
-              placeholder="Filter by pattern…"
-              defaultValue={search}
-            />
-          </div>
-          <div className="form-group" style={{ marginBottom: 0, minWidth: '160px' }}>
-            <label className="form-label">Rule Type</label>
-            <select name="ruleType" className="form-select" defaultValue={filterType}>
-              <option value="">All Types</option>
-              <option value="__none__">— No Type —</option>
-              {allRuleTypes.map(t => <option key={t} value={t}>{t}</option>)}
-            </select>
-          </div>
-          <div className="form-group" style={{ marginBottom: 0, minWidth: '160px' }}>
-            <label className="form-label">Category</label>
-            <select name="categoryId" className="form-select" defaultValue={filterCategoryId ?? ''}>
-              <option value="">All Categories</option>
-              {allCategories.map(cat => (
-                <option key={cat.id} value={cat.id}>{cat.name}</option>
-              ))}
-            </select>
-          </div>
-          <div className="flex gap-2 mb-4">
-            <button type="submit" className="btn btn-secondary">Filter</button>
-            {hasFilters && <Link href="/automation" className="btn btn-secondary">Clear</Link>}
-          </div>
-        </form>
-      </div>
-
-      {allRules.length === 0 ? (
-        <div className="card">
-          <p className="text-muted">{hasFilters ? 'No rules match your filters.' : 'No rules found. Add one above.'}</p>
-        </div>
-      ) : (
-        sortedTypes.map(ruleType => {
-          const rules = rulesByType[ruleType];
-          const showHeader = sortedTypes.length > 1 || !!ruleType;
-          const inner = (
-            <div className="list-container">
-              {rules.map((rule) => (
-                <div key={rule.id} className="list-item">
-                  <EditRuleForm
-                    rule={rule}
-                    allCategories={allCategories}
-                    allAccounts={allAccounts}
-                    allRuleTypes={allRuleTypes}
-                    updateAction={updateRule.bind(null, rule.id)}
-                  />
-                  <div className="flex gap-2" style={{ flexShrink: 0 }}>
-                    <form action={applySingleRule.bind(null, rule.id)}>
-                      <button type="submit" className="btn btn-secondary btn-sm">Run</button>
-                    </form>
-                    <div style={{ width: '1.5rem' }} />
-                    <ConfirmDeleteButton action={deleteRule.bind(null, rule.id)} />
-                  </div>
-                </div>
-              ))}
-            </div>
-          );
-          return showHeader ? (
-            <CollapsibleRuleGroup
-              key={ruleType || '__none__'}
-              title={ruleType || 'Ungrouped'}
-              count={rules.length}
-              muted={!ruleType}
-            >
-              {inner}
-            </CollapsibleRuleGroup>
-          ) : (
-            <div key="__single__" className="mb-4">{inner}</div>
-          );
-        })
-      )}
-    </div>
+    <RulesClient
+      rules={rules}
+      categoryOptions={categoryOptions}
+      accounts={allAccounts}
+      tags={allTags}
+      ruleTypes={ruleTypes}
+    />
   );
 }

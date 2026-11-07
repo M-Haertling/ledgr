@@ -83,21 +83,36 @@ export async function applyTransactionTags(transactionId: number, tagIds: number
     .onConflictDoNothing();
 }
 
+/**
+ * Rows a rule may categorize: not transfers, and not part of a split. A split
+ * parent's category must stay cleared (its line items carry the categories),
+ * and line items copy the parent's description, so letting rules touch them
+ * would stamp one category over every item and undo the split.
+ */
+function ruleTargetFilter() {
+  return and(
+    ne(transactions.type, 'transfer'),
+    eq(transactions.isSplit, false),
+    isNull(transactions.parentTransactionId),
+  );
+}
+
 async function applyCategoryRules(onlyUncategorized: boolean): Promise<number> {
   const engine = await loadRuleEngine();
   const categoryRules = engine.rules.filter(r => r.categoryId);
-  const txs = onlyUncategorized
-    ? await db.query.transactions.findMany({
-        where: and(isNull(transactions.categoryId), ne(transactions.type, 'transfer')),
-      })
-    : await db.query.transactions.findMany({ where: ne(transactions.type, 'transfer') });
+  const txs = await db.query.transactions.findMany({
+    where: onlyUncategorized
+      ? and(isNull(transactions.categoryId), ruleTargetFilter())
+      : ruleTargetFilter(),
+  });
 
   let updatedCount = 0;
   for (const tx of txs) {
     const rule = categoryRules.find(r => ruleMatchesTransaction(r, tx.description, tx.accountId));
     if (!rule) continue;
-    await db.update(transactions).set({ categoryId: rule.categoryId }).where(eq(transactions.id, tx.id));
     await applyTransactionTags(tx.id, tagsForApplication(engine, rule, rule.categoryId));
+    if (tx.categoryId === rule.categoryId) continue;
+    await db.update(transactions).set({ categoryId: rule.categoryId }).where(eq(transactions.id, tx.id));
     updatedCount++;
   }
   return updatedCount;
@@ -111,19 +126,73 @@ export function applyRulesToAll(): Promise<number> {
   return applyCategoryRules(false);
 }
 
-export async function applySingleRule(id: number): Promise<void> {
+/**
+ * Apply one rule to every transaction it matches (overriding existing
+ * categories). Returns how many transactions had their category changed.
+ */
+export async function applySingleRule(id: number): Promise<number> {
   const engine = await loadRuleEngine();
   const rule = engine.rules.find(r => r.id === id);
-  if (!rule) return;
+  if (!rule) return 0;
 
   const tagIds = tagsForApplication(engine, rule, rule.categoryId);
-  const allTransactions = await db.query.transactions.findMany();
-  for (const tx of allTransactions) {
-    if (tx.type === 'transfer') continue;
+  const candidates = await db.query.transactions.findMany({ where: ruleTargetFilter() });
+  let changed = 0;
+  for (const tx of candidates) {
+    // Belt and braces: the query already excludes these.
+    if (tx.type === 'transfer' || tx.isSplit || tx.parentTransactionId != null) continue;
     if (!ruleMatchesTransaction(rule, tx.description, tx.accountId)) continue;
-    if (rule.categoryId) {
-      await db.update(transactions).set({ categoryId: rule.categoryId }).where(eq(transactions.id, tx.id));
-    }
     await applyTransactionTags(tx.id, tagIds);
+    if (rule.categoryId && tx.categoryId !== rule.categoryId) {
+      await db.update(transactions).set({ categoryId: rule.categoryId }).where(eq(transactions.id, tx.id));
+      changed++;
+    }
   }
+  return changed;
+}
+
+export type RuleMatchCandidate = {
+  id: number;
+  description: string;
+  accountId: number;
+  categoryId: number | null;
+};
+
+export type RuleMatchSummary<T extends RuleMatchCandidate> = {
+  matchCount: number;
+  /** Matches whose category differs from the rule's (what Run would change). */
+  wouldChange: number;
+  samples: T[];
+};
+
+/**
+ * Pure preview of what a rule would hit, using exactly the engine's matcher.
+ * `rows` should already exclude transfers and split rows (see ruleTargetFilter).
+ */
+export function summarizeRuleMatches<T extends RuleMatchCandidate>(
+  rule: { pattern: string; accountId: number | null; categoryId: number | null },
+  rows: T[],
+  limit = 5,
+): RuleMatchSummary<T> {
+  if (!rule.pattern.trim()) return { matchCount: 0, wouldChange: 0, samples: [] };
+  let matchCount = 0;
+  let wouldChange = 0;
+  const samples: T[] = [];
+  for (const row of rows) {
+    if (!ruleMatchesTransaction(rule, row.description, row.accountId)) continue;
+    matchCount++;
+    if (rule.categoryId != null && row.categoryId !== rule.categoryId) wouldChange++;
+    if (samples.length < limit) samples.push(row);
+  }
+  return { matchCount, wouldChange, samples };
+}
+
+/** Load the rows a rule could apply to, for previews. Newest first so samples are recent. */
+export async function loadRuleCandidates() {
+  return db.query.transactions.findMany({
+    where: ruleTargetFilter(),
+    columns: { id: true, description: true, accountId: true, categoryId: true, date: true, amount: true, isCredit: true },
+    with: { category: { columns: { name: true, color: true } } },
+    orderBy: (t, { desc }) => [desc(t.date), desc(t.id)],
+  });
 }
