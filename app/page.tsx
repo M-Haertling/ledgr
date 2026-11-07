@@ -42,7 +42,7 @@ export default async function Home() {
       <div className="grid gap-4 mb-8">
         <div className="card">
           <div className="list-item-subtitle">Net Balance</div>
-          <div style={{ fontSize: '2rem', fontWeight: 'bold', color: balance >= 0 ? '#10b981' : '#ef4444' }}>
+          <div style={{ fontSize: '2rem', fontWeight: 'bold', color: balance >= 0 ? 'var(--success)' : 'var(--danger)' }}>
             {balance >= 0 ? '+' : '-'}${Math.abs(balance).toFixed(2)}
           </div>
         </div>

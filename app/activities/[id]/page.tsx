@@ -104,13 +104,13 @@ export default async function ActivityDetailPage({ params }: { params: Promise<{
             return (
               <span>
                 Spent:{' '}
-                <span style={{ fontWeight: 600, color: over ? '#ef4444' : '#22c55e' }}>
+                <span style={{ fontWeight: 600, color: over ? 'var(--danger)' : 'var(--success)' }}>
                   {formatCost(totalCost)}
                 </span>
                 {' / '}
                 <span style={{ color: 'var(--text)' }}>${budget.toFixed(2)} budget</span>
                 {' '}
-                <span style={{ color: over ? '#ef4444' : '#22c55e' }}>
+                <span style={{ color: over ? 'var(--danger)' : 'var(--success)' }}>
                   ({over ? '+' : '-'}${Math.abs(totalCost - budget).toFixed(2)} {over ? 'over' : 'under'})
                 </span>
               </span>

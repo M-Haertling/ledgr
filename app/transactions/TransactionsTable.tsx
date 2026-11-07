@@ -350,7 +350,7 @@ export default function TransactionsTable({
                   />
                 </td>
                 <td style={{ textAlign: 'right', fontWeight: 600, whiteSpace: 'nowrap' }}>
-                  <span style={{ color: tx.isCredit ? '#10b981' : 'inherit' }}>
+                  <span style={{ color: tx.isCredit ? 'var(--success)' : 'inherit' }}>
                     {tx.isCredit ? '+' : '-'}${Math.abs(Number(tx.amount)).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                   </span>
                 </td>

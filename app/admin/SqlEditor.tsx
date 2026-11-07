@@ -117,7 +117,7 @@ export default function SqlEditor() {
               <div className="flex gap-4 mb-4">
                 <div>
                   <div className="list-item-subtitle">Rows Returned</div>
-                  <div style={{ fontSize: '1.25rem', fontWeight: 'bold', color: '#10b981' }}>
+                  <div style={{ fontSize: '1.25rem', fontWeight: 'bold', color: 'var(--success)' }}>
                     {result.rowCount}
                   </div>
                 </div>
@@ -171,10 +171,10 @@ export default function SqlEditor() {
             </>
           ) : (
             <div style={{ padding: '1rem', backgroundColor: 'rgba(239, 68, 68, 0.1)', borderRadius: '6px' }}>
-              <div style={{ color: '#ef4444', fontWeight: 600, marginBottom: '0.5rem' }}>
+              <div style={{ color: 'var(--danger)', fontWeight: 600, marginBottom: '0.5rem' }}>
                 Error
               </div>
-              <div style={{ color: '#ef4444', fontSize: '0.875rem', fontFamily: 'monospace' }}>
+              <div style={{ color: 'var(--danger)', fontSize: '0.875rem', fontFamily: 'monospace' }}>
                 {result.error}
               </div>
             </div>

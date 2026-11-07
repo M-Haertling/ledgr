@@ -3,6 +3,8 @@
 import { useEffect, useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
 import { splitTransaction, unsplitTransaction, getTransactionSplits } from '@/lib/actions/transactions';
+import Modal from '@/app/components/Modal';
+import { formatCost } from '@/lib/utils/amount';
 
 type Category = { id: number; name: string; color: string | null; parentId?: number | null; parentName?: string | null };
 
@@ -132,133 +134,128 @@ export default function SplitTransactionDialog({
     `${cents < 0 ? '-' : ''}$${Math.abs(cents / 100).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 
   return (
-    <div
-      style={{
-        position: 'fixed',
-        inset: 0,
-        background: 'rgba(0,0,0,0.5)',
-        zIndex: 1000,
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-      }}
-      onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
-    >
-      <div className="card" style={{ width: '680px', maxWidth: '95vw', maxHeight: '90vh', overflow: 'auto', padding: '1.5rem' }}>
-        <h3 style={{ marginTop: 0, marginBottom: '0.25rem' }}>Split Transaction</h3>
-        <p className="text-muted" style={{ marginTop: 0, marginBottom: '1rem', fontSize: '0.85rem' }}>
-          {parentDescription} · total ${Number(parentAmount).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-        </p>
-
-        {!loaded ? (
-          <p className="text-muted">Loading line items…</p>
-        ) : (
+    <Modal
+      open
+      onClose={onClose}
+      title="Split transaction"
+      width={680}
+      busy={isPending}
+      footer={
+        loaded ? (
           <>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', marginBottom: '0.75rem' }}>
-              {rows.map((row, idx) => (
-                <div key={idx} style={{ display: 'flex', gap: '0.5rem', alignItems: 'flex-start', flexWrap: 'wrap' }}>
-                  <input
-                    type="text"
-                    value={row.description}
-                    onChange={(e) => updateRow(idx, { description: e.target.value })}
-                    placeholder="Description"
-                    className="form-input"
-                    style={{ flex: '2 1 160px', minWidth: '120px' }}
-                    disabled={isPending}
-                  />
-                  <select
-                    className="form-select"
-                    value={row.categoryId}
-                    onChange={(e) => updateRow(idx, { categoryId: e.target.value })}
-                    style={{ flex: '1 1 130px', minWidth: '120px' }}
-                    disabled={isPending}
-                  >
-                    <option value="">Uncategorized</option>
-                    {grouped.map((group) =>
-                      group.parentName ? (
-                        <optgroup key={group.parentName} label={group.parentName}>
-                          {group.items.map((c) => (
-                            <option key={c.id} value={c.id}>{c.name}</option>
-                          ))}
-                        </optgroup>
-                      ) : (
-                        group.items.map((c) => (
-                          <option key={c.id} value={c.id}>{c.name}</option>
-                        ))
-                      )
-                    )}
-                  </select>
-                  <input
-                    type="number"
-                    step="0.01"
-                    min="0"
-                    value={row.amount}
-                    onChange={(e) => updateRow(idx, { amount: e.target.value })}
-                    onDoubleClick={() => fillRemainder(idx)}
-                    title="Double-click to fill the remaining amount"
-                    placeholder="0.00"
-                    className="form-input"
-                    style={{ flex: '0 0 100px', width: '100px', textAlign: 'right' }}
-                    disabled={isPending}
-                  />
-                  <button
-                    type="button"
-                    onClick={() => removeRow(idx)}
-                    disabled={isPending || rows.length <= 2}
-                    title="Remove line item"
-                    style={{
-                      border: '1px solid var(--border)',
-                      background: 'none',
-                      borderRadius: '4px',
-                      cursor: rows.length <= 2 ? 'not-allowed' : 'pointer',
-                      padding: '0 0.5rem',
-                      color: 'var(--text-muted)',
-                    }}
-                  >
-                    ✕
-                  </button>
-                </div>
-              ))}
-            </div>
-
-            <div className="flex" style={{ justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
-              <button type="button" className="btn btn-secondary btn-sm" onClick={addRow} disabled={isPending}>
-                + Add line item
+            {isSplit && (
+              <button
+                type="button"
+                className="btn btn-secondary"
+                style={{ marginRight: 'auto' }}
+                onClick={handleUnsplit}
+                disabled={isPending}
+              >
+                Unsplit
               </button>
-              <span style={{ fontSize: '0.9rem' }}>
-                Remaining:{' '}
-                <strong style={{ color: remainingCents === 0 ? '#10b981' : '#ef4444' }}>
-                  {fmt(remainingCents)}
-                </strong>
-              </span>
-            </div>
-
-            {error && (
-              <p style={{ color: '#ef4444', fontSize: '0.85rem', marginBottom: '0.75rem' }}>{error}</p>
             )}
+            <button className="btn btn-secondary" onClick={onClose} disabled={isPending}>
+              Cancel
+            </button>
+            <button className="btn btn-primary" onClick={handleSave} disabled={isPending || !canSave}>
+              {isPending ? 'Saving…' : 'Save split'}
+            </button>
+          </>
+        ) : undefined
+      }
+    >
+      <p className="text-muted" style={{ marginTop: 0, marginBottom: '1rem', fontSize: '0.85rem' }}>
+        {parentDescription} · total {formatCost(Number(parentAmount))}
+      </p>
 
-            <div className="flex gap-2" style={{ justifyContent: 'flex-end' }}>
-              {isSplit && (
-                <button
-                  type="button"
-                  className="btn btn-sm"
-                  style={{ border: '1px solid var(--border)', marginRight: 'auto' }}
-                  onClick={handleUnsplit}
+      {!loaded ? (
+        <p className="text-muted">Loading line items…</p>
+      ) : (
+        <>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', marginBottom: '0.75rem' }}>
+            {rows.map((row, idx) => (
+              <div key={idx} style={{ display: 'flex', gap: '0.5rem', alignItems: 'flex-start', flexWrap: 'wrap' }}>
+                <input
+                  type="text"
+                  value={row.description}
+                  onChange={(e) => updateRow(idx, { description: e.target.value })}
+                  placeholder="Description"
+                  className="form-input"
+                  style={{ flex: '2 1 160px', minWidth: '120px' }}
+                  disabled={isPending}
+                />
+                <select
+                  className="form-select"
+                  value={row.categoryId}
+                  onChange={(e) => updateRow(idx, { categoryId: e.target.value })}
+                  style={{ flex: '1 1 130px', minWidth: '120px' }}
                   disabled={isPending}
                 >
-                  Unsplit
+                  <option value="">Uncategorized</option>
+                  {grouped.map((group) =>
+                    group.parentName ? (
+                      <optgroup key={group.parentName} label={group.parentName}>
+                        {group.items.map((c) => (
+                          <option key={c.id} value={c.id}>{c.name}</option>
+                        ))}
+                      </optgroup>
+                    ) : (
+                      group.items.map((c) => (
+                        <option key={c.id} value={c.id}>{c.name}</option>
+                      ))
+                    )
+                  )}
+                </select>
+                <input
+                  type="number"
+                  step="0.01"
+                  min="0"
+                  value={row.amount}
+                  onChange={(e) => updateRow(idx, { amount: e.target.value })}
+                  onDoubleClick={() => fillRemainder(idx)}
+                  title="Double-click to fill the remaining amount"
+                  placeholder="0.00"
+                  className="form-input"
+                  style={{ flex: '0 0 100px', width: '100px', textAlign: 'right' }}
+                  disabled={isPending}
+                />
+                <button
+                  type="button"
+                  onClick={() => removeRow(idx)}
+                  disabled={isPending || rows.length <= 2}
+                  title="Remove line item"
+                  style={{
+                    border: '1px solid var(--border)',
+                    background: 'none',
+                    borderRadius: '4px',
+                    cursor: rows.length <= 2 ? 'not-allowed' : 'pointer',
+                    padding: '0 0.5rem',
+                    color: 'var(--text-muted)',
+                  }}
+                >
+                  ✕
                 </button>
-              )}
-              <button className="btn btn-secondary" onClick={onClose} disabled={isPending}>
-                Cancel
-              </button>
-              <button className="btn btn-primary" onClick={handleSave} disabled={isPending || !canSave}>
-                {isPending ? 'Saving…' : 'Save split'}
-              </button>
-            </div>
-          </>
-        )}
-      </div>
-    </div>
+              </div>
+            ))}
+          </div>
+
+          <div className="flex" style={{ justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
+            <button type="button" className="btn btn-secondary btn-sm" onClick={addRow} disabled={isPending}>
+              + Add line item
+            </button>
+            <span style={{ fontSize: '0.9rem' }}>
+              Remaining:{' '}
+              <strong style={{ color: remainingCents === 0 ? 'var(--success)' : 'var(--danger)' }}>
+                {fmt(remainingCents)}
+              </strong>
+            </span>
+          </div>
+
+          {error && (
+            <p style={{ color: 'var(--danger)', fontSize: '0.85rem', marginBottom: '0.75rem' }}>{error}</p>
+          )}
+        </>
+      )}
+    </Modal>
   );
 }

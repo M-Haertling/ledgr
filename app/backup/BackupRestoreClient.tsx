@@ -141,12 +141,12 @@ export default function BackupRestoreClient({ tables }: { tables: TableDef[] }) 
           </label>
         </div>
         {bulkError && (
-          <p style={{ color: '#ef4444', fontSize: '0.875rem', marginTop: '0.75rem' }}>{bulkError}</p>
+          <p style={{ color: 'var(--danger)', fontSize: '0.875rem', marginTop: '0.75rem' }}>{bulkError}</p>
         )}
         {bulkResults && (
           <div style={{ marginTop: '0.75rem' }}>
             {bulkResults.map(r => (
-              <div key={r.key} style={{ fontSize: '0.875rem', color: '#10b981' }}>
+              <div key={r.key} style={{ fontSize: '0.875rem', color: 'var(--success)' }}>
                 {r.label}: {r.inserted} imported, {r.skipped} skipped
               </div>
             ))}
@@ -187,12 +187,12 @@ export default function BackupRestoreClient({ tables }: { tables: TableDef[] }) 
           </label>
         </div>
         {restoreResult && !('error' in restoreResult) && (
-          <p style={{ fontSize: '0.875rem', color: '#10b981' }}>
+          <p style={{ fontSize: '0.875rem', color: 'var(--success)' }}>
             {restoreResult.inserted} imported, {restoreResult.skipped} skipped
           </p>
         )}
         {restoreResult && 'error' in restoreResult && (
-          <p style={{ fontSize: '0.875rem', color: '#ef4444' }}>{restoreResult.error}</p>
+          <p style={{ fontSize: '0.875rem', color: 'var(--danger)' }}>{restoreResult.error}</p>
         )}
       </div>
     </>

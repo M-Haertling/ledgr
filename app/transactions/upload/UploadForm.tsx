@@ -418,7 +418,7 @@ export default function UploadForm({ accounts, templates: initialTemplates }: { 
               <div className="card mt-4" style={{ backgroundColor: 'var(--bg)' }}>
                 <div className="flex gap-4" style={{ flexWrap: 'wrap', justifyContent: 'center', marginBottom: '1rem' }}>
                   <div style={{ textAlign: 'center' }}>
-                    <div style={{ fontSize: '1.5rem', fontWeight: 'bold', color: '#10b981' }}>{result.imported}</div>
+                    <div style={{ fontSize: '1.5rem', fontWeight: 'bold', color: 'var(--success)' }}>{result.imported}</div>
                     <div className="list-item-subtitle">Imported</div>
                   </div>
                   <div style={{ textAlign: 'center' }}>
@@ -426,14 +426,14 @@ export default function UploadForm({ accounts, templates: initialTemplates }: { 
                     <div className="list-item-subtitle">Skipped (duplicates)</div>
                   </div>
                   <div style={{ textAlign: 'center' }}>
-                    <div style={{ fontSize: '1.5rem', fontWeight: 'bold', color: result.failed > 0 ? '#ef4444' : 'var(--text-muted)' }}>{result.failed}</div>
+                    <div style={{ fontSize: '1.5rem', fontWeight: 'bold', color: result.failed > 0 ? 'var(--danger)' : 'var(--text-muted)' }}>{result.failed}</div>
                     <div className="list-item-subtitle">Failed (invalid rows)</div>
                   </div>
                 </div>
 
                 {result.failedRows.length > 0 && (
                   <div className="mt-4 mb-4">
-                    <h4 className="mb-2" style={{ color: '#ef4444' }}>Failed Rows</h4>
+                    <h4 className="mb-2" style={{ color: 'var(--danger)' }}>Failed Rows</h4>
                     <div className="table-container">
                       <table className="table">
                         <thead>
@@ -452,7 +452,7 @@ export default function UploadForm({ accounts, templates: initialTemplates }: { 
                               <td>{mapping.date !== undefined ? fr.row[mapping.date] || '(empty)' : '(unmapped)'}</td>
                               <td>{mapping.description !== undefined ? fr.row[mapping.description] || '(empty)' : '(unmapped)'}</td>
                               <td>{getAmountDisplay(fr.row) || '(empty)'}</td>
-                              <td style={{ color: '#ef4444' }}>{fr.reason}</td>
+                              <td style={{ color: 'var(--danger)' }}>{fr.reason}</td>
                             </tr>
                           ))}
                         </tbody>

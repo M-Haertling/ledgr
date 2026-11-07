@@ -29,7 +29,7 @@ See `features.md`.
         - `Icon.tsx`: Shared stroked inline-SVG icons (`play`, `edit`, `trash`, `eye`, `note`, `tag`, `split`, `link`) that inherit `currentColor`. Pair with the `.icon-btn` / `.row-actions` classes in `globals.css` for Edit/Delete/View row actions on every list page.
         - `PageHeader.tsx`: Server-safe standard page header (title, optional muted `count`, optional `subtitle`, right-aligned `actions` slot). Used by Accounts, Categories, Tags, Activities, Upload, Backup and Reports; `.page-narrow` (720px, left-aligned) wraps the Upload form and Backup cards.
         - `NewItemDialog.tsx`: Header "+ New X" button that opens a `Modal` around a server-action form (`.dialog-form` / `.dialog-form-actions`); closes shortly after a valid submit and the page revalidates. Replaces the old inline "Add New X" cards.
-        - `Modal.tsx`: Centered dialog with backdrop, Esc/backdrop close (blocked while `busy`), first-field focus, pinned footer. Used by the rule dialog; older dialogs still hand-roll their overlays.
+        - `Modal.tsx`: Centered dialog with backdrop, Esc/backdrop close (blocked while `busy`), first-field focus, pinned footer. Every dialog in the app (rule, new-item, add/split/type/note/tag/transfer-link/activity-picker, and the activity transaction picker) uses it — don't hand-roll `position: fixed` overlays. Put action buttons in the `footer` prop (or in a `.dialog-form-actions` row inside a form).
         - `Toast.tsx`: `ToastProvider` + `useToast()` — bottom-right auto-dismissing status messages (success/error/info). Mounted per page, not globally.
     - `/automation`: Rule-based auto-categorization management.
         - `page.tsx`: Server component; loads rules (with category, account, tags), hierarchical category options, accounts, tags, and existing groups (`ruleType`), and renders `RulesClient`.
@@ -112,12 +112,15 @@ See `features.md`.
         - `date.ts`: `parseDateOnly` and `formatDate` — treat transaction/activity dates as pure calendar days. Dates are stored as a `timestamp` at **UTC midnight** of the intended day; `parseDateOnly` normalizes any imported/entered date string to UTC midnight (server-timezone independent) and `formatDate` renders in UTC, so the calendar day entered on import is exactly the day displayed everywhere regardless of server or browser timezone. All date rendering (transactions table, activity pages, transfer/candidate pickers, account "last transaction") and the transaction date filter's upper bound go through these.
         - `categories.ts`, `categoryOptions.ts`: category-tree expansion and select-option building.
         - `amount.ts`: `transactionCost`, `sumTransactionCost`, `formatCost` — transaction amounts are stored as unsigned magnitudes with `isCredit` carrying the direction, so anything totalling transactions must apply the sign or refunds inflate the total. Used by activity cost totals (list, detail, per-update) and their signed `-$x.xx` rendering.
+        - `accountType.ts`: `ACCOUNT_TYPES` and `accountTypeLabel` — normalizes legacy free-text account types ("credit", "savings", "bank") to display labels; the Accounts edit form keeps an unmatched legacy type selectable.
+        - `color.ts`: `readableTextColor` — picks light/dark text for a user-chosen background color (WCAG luminance); used by the Tags page category chips.
         - `chartColors.ts`: `distinctColors` — keeps each series' own category color but recolors later duplicates (two groups both orange) from `CHART_PALETTE`, so Reports lines/slices stay distinguishable. Applied to the over-time chart and the pie.
         - `csv.ts`: `parseCsvRows` / `parseCsvRecords` — RFC 4180 CSV parsing (quoted fields containing commas or newlines, `""` escapes, CRLF, BOM). Shared by the upload form's file preview and the `/api/restore` route so neither hand-rolls a naive `split(',')`. `repairSplitAmounts` (applied by the upload form) rejoins money values like Citi's unquoted `-$ 2,021.24` that RFC 4180 splits on the thousands comma — only on rows wider than the header, so well-formed rows are untouched.
     - `openapi.ts`: Builds the OpenAPI 3.0.3 spec from all Zod schemas using `@asteasolutions/zod-to-openapi`.
 - `/__tests__`: Vitest unit tests mirroring the `lib/` structure.
     - `lib/utils/date.test.ts`: `parseDateOnly` / `formatDate` UTC-normalization tests.
     - `lib/utils/csv.test.ts`: `parseCsvRows` / `parseCsvRecords` quoting, escaping, and line-ending tests.
+    - `lib/utils/display.test.ts`: `accountTypeLabel` and `readableTextColor`.
     - `lib/utils/chartColors.test.ts`: `distinctColors` duplicate/missing-color handling.
     - `lib/utils/amount.test.ts`: `transactionCost` / `sumTransactionCost` / `formatCost` credit-sign tests.
     - `lib/api/activities.test.ts`: `mergeActivityTransactions` dedup + credit-netting, and `syncActivityStatus` (DB mocked).

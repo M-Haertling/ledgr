@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useTransition } from 'react';
+import Modal from '@/app/components/Modal';
 import { addTransaction } from '@/lib/actions/transactions';
 
 type Account = { id: number; name: string };
@@ -60,25 +61,8 @@ export default function AddTransactionDialog({
         + Add Transaction
       </button>
 
-      {open && (
-        <div
-          style={{
-            position: 'fixed',
-            inset: 0,
-            background: 'rgba(0,0,0,0.5)',
-            zIndex: 1000,
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-          }}
-          onClick={(e) => { if (e.target === e.currentTarget) setOpen(false); }}
-        >
-          <div
-            className="card"
-            style={{ width: '480px', maxWidth: '90vw', maxHeight: '90vh', overflow: 'auto', padding: '1.5rem' }}
-          >
-            <h3 style={{ marginTop: 0, marginBottom: '1.25rem' }}>Add Transaction</h3>
-            <form onSubmit={handleSubmit}>
+      <Modal open={open} onClose={() => setOpen(false)} title="Add transaction" width={480} busy={isPending}>
+            <form onSubmit={handleSubmit} className="dialog-form">
               <div className="form-group">
                 <label className="form-label">Account</label>
                 <select className="form-select" value={accountId} onChange={e => setAccountId(e.target.value)} required>
@@ -145,7 +129,7 @@ export default function AddTransactionDialog({
                 />
               </div>
 
-              <div className="flex gap-2" style={{ justifyContent: 'flex-end', marginTop: '1rem' }}>
+              <div className="dialog-form-actions">
                 <button type="button" className="btn btn-secondary" onClick={() => setOpen(false)} disabled={isPending}>
                   Cancel
                 </button>
@@ -154,9 +138,7 @@ export default function AddTransactionDialog({
                 </button>
               </div>
             </form>
-          </div>
-        </div>
-      )}
+      </Modal>
     </>
   );
 }

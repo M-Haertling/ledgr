@@ -3,6 +3,8 @@
 import Icon from '@/app/components/Icon';
 import { useState, useTransition } from 'react';
 import { formatDate } from '@/lib/utils/date';
+import { formatCost } from '@/lib/utils/amount';
+import Modal from '@/app/components/Modal';
 
 type PairedTransaction = {
   id: number;
@@ -72,33 +74,19 @@ export default function TransferLinkPicker({
         <Icon name="link" />
       </button>
 
-      {pairDialogOpen && pairTransaction && (
-        <div
-          style={{
-            position: 'fixed',
-            inset: 0,
-            background: 'rgba(0,0,0,0.5)',
-            zIndex: 1000,
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-          }}
-          onClick={(e) => { if (e.target === e.currentTarget) setPairDialogOpen(false); }}
-        >
-          <div
-            className="card"
-            style={{
-              width: 'max-content',
-              minWidth: '500px',
-              maxWidth: '90vw',
-              maxHeight: '80vh',
-              overflow: 'auto',
-              padding: '1.5rem',
-            }}
-          >
-            <h3 style={{ marginTop: 0, marginBottom: '1.5rem' }}>Linked Transfer Pair</h3>
-
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.5rem', marginBottom: '1.5rem' }}>
+      <Modal
+        open={pairDialogOpen && !!pairTransaction}
+        onClose={() => setPairDialogOpen(false)}
+        title="Linked transfer pair"
+        width={640}
+        footer={
+          <button className="btn btn-secondary" onClick={() => setPairDialogOpen(false)}>
+            Close
+          </button>
+        }
+      >
+        {pairTransaction && (
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
               {/* Current transaction */}
               <div style={{ padding: '1rem', backgroundColor: 'var(--bg)', borderRadius: '6px' }}>
                 <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', textTransform: 'uppercase', marginBottom: '0.5rem' }}>
@@ -114,8 +102,8 @@ export default function TransferLinkPicker({
                 </div>
                 <div style={{ marginBottom: '0.75rem' }}>
                   <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Amount</div>
-                  <div style={{ fontWeight: 600, color: isCredit ? '#10b981' : '#ef4444' }}>
-                    {isCredit ? '+' : '-'}${Math.abs(Number(amount)).toFixed(2)}
+                  <div style={{ fontWeight: 600, color: isCredit ? 'var(--success)' : 'var(--danger)' }}>
+                    {isCredit ? '+' : '-'}{formatCost(Math.abs(Number(amount)))}
                   </div>
                 </div>
                 <div style={{ marginBottom: '0.75rem' }}>
@@ -143,8 +131,8 @@ export default function TransferLinkPicker({
                 </div>
                 <div style={{ marginBottom: '0.75rem' }}>
                   <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Amount</div>
-                  <div style={{ fontWeight: 600, color: pairTransaction.isCredit ? '#10b981' : '#ef4444' }}>
-                    {pairTransaction.isCredit ? '+' : '-'}${Math.abs(Number(pairTransaction.amount)).toFixed(2)}
+                  <div style={{ fontWeight: 600, color: pairTransaction.isCredit ? 'var(--success)' : 'var(--danger)' }}>
+                    {pairTransaction.isCredit ? '+' : '-'}{formatCost(Math.abs(Number(pairTransaction.amount)))}
                   </div>
                 </div>
                 <div style={{ marginBottom: '0.75rem' }}>
@@ -157,18 +145,8 @@ export default function TransferLinkPicker({
                 </div>
               </div>
             </div>
-
-            <div className="flex gap-2" style={{ justifyContent: 'flex-end' }}>
-              <button
-                className="btn btn-secondary"
-                onClick={() => setPairDialogOpen(false)}
-              >
-                Close
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+        )}
+      </Modal>
     </>
   );
 }

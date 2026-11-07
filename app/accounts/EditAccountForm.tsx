@@ -4,6 +4,7 @@ import { useState } from 'react';
 import ConfirmDeleteButton from '@/app/components/ConfirmDeleteButton';
 import Icon from '@/app/components/Icon';
 import { formatDate } from '@/lib/utils/date';
+import { ACCOUNT_TYPES, accountTypeLabel } from '@/lib/utils/accountType';
 
 type Account = { id: number; name: string; type: string };
 
@@ -21,6 +22,11 @@ export default function EditAccountForm({
   lastTransactionDate: Date | null;
 }) {
   const [editing, setEditing] = useState(false);
+  const typeLabel = accountTypeLabel(account.type);
+  // A legacy type with no canonical match (e.g. "Bank") stays selectable so saving doesn't silently change it.
+  const typeOptions: string[] = (ACCOUNT_TYPES as readonly string[]).includes(typeLabel)
+    ? [...ACCOUNT_TYPES]
+    : [...ACCOUNT_TYPES, typeLabel];
 
   const rowStyle: React.CSSProperties = {
     display: 'grid',
@@ -48,12 +54,10 @@ export default function EditAccountForm({
             required
             autoFocus
           />
-          <select name="type" defaultValue={account.type} className="form-select">
-            <option value="Checking">Checking</option>
-            <option value="Savings">Savings</option>
-            <option value="Credit Card">Credit Card</option>
-            <option value="Investment">Investment</option>
-            <option value="Other">Other</option>
+          <select name="type" defaultValue={typeLabel} className="form-select">
+            {typeOptions.map((t) => (
+              <option key={t} value={t}>{t}</option>
+            ))}
           </select>
           <button type="submit" className="btn btn-primary btn-sm">Save</button>
           <button type="button" className="btn btn-secondary btn-sm" onClick={() => setEditing(false)}>
@@ -68,7 +72,7 @@ export default function EditAccountForm({
     <div className="list-item" style={rowStyle}>
       <div>
         <div className="list-item-title">{account.name}</div>
-        <div className="list-item-subtitle">{account.type}</div>
+        <div className="list-item-subtitle">{typeLabel}</div>
       </div>
       <button
         type="button"

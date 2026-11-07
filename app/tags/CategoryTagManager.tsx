@@ -1,5 +1,6 @@
 'use client';
 
+import { readableTextColor } from '@/lib/utils/color';
 import { useState } from 'react';
 import { attachTagToCategory, detachTagFromCategory } from '@/lib/actions/tags';
 
@@ -42,11 +43,12 @@ export default function CategoryTagManager({
           <span
             key={cid}
             className="tag-badge"
-            style={{ backgroundColor: cat.color ?? undefined }}
+            style={cat.color ? { backgroundColor: cat.color, color: readableTextColor(cat.color), borderColor: 'transparent' } : undefined}
           >
             {cat.name}
             <button
               className="tag-badge-remove"
+              style={{ color: 'inherit', opacity: 0.7 }}
               onClick={() => handleDetach(cid)}
               disabled={pending === cid}
               title="Remove category link"

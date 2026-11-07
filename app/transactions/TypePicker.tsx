@@ -9,6 +9,8 @@ import {
   type TransferCandidate,
 } from '@/lib/actions/transactions';
 import { formatDate } from '@/lib/utils/date';
+import { formatCost } from '@/lib/utils/amount';
+import Modal from '@/app/components/Modal';
 
 export default function TypePicker({
   transactionId,
@@ -91,31 +93,23 @@ export default function TypePicker({
         <option value="transfer">Transfer</option>
       </select>
 
-      {dialogOpen && (
-        <div
-          style={{
-            position: 'fixed',
-            inset: 0,
-            background: 'rgba(0,0,0,0.5)',
-            zIndex: 1000,
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-          }}
-          onClick={(e) => { if (e.target === e.currentTarget) handleCancel(); }}
-        >
-          <div
-            className="card"
-            style={{
-              width: 'max-content',
-              minWidth: '420px',
-              maxWidth: '90vw',
-              maxHeight: '80vh',
-              overflow: 'auto',
-              padding: '1.5rem',
-            }}
-          >
-            <h3 style={{ marginTop: 0, marginBottom: '0.25rem' }}>Link Transfer</h3>
+      <Modal
+        open={dialogOpen}
+        onClose={handleCancel}
+        title="Link transfer"
+        width={680}
+        busy={isPending}
+        footer={
+          <>
+            <button className="btn btn-secondary" onClick={handleCancel} disabled={isPending}>
+              Cancel
+            </button>
+            <button className="btn btn-secondary" onClick={handleConvertWithoutLink} disabled={isPending}>
+              Convert without linking
+            </button>
+          </>
+        }
+      >
             <p style={{ color: 'var(--text-muted)', fontSize: '0.875rem', marginTop: 0, marginBottom: '1rem' }}>
               Select a matching transaction to link as the other side of this transfer, or convert without linking.
             </p>
@@ -147,8 +141,8 @@ export default function TypePicker({
                           <span className="badge">{c.account.name}</span>
                         </td>
                         <td style={{ textAlign: 'right', fontWeight: 600, whiteSpace: 'nowrap' }}>
-                          <span style={{ color: c.isCredit ? '#10b981' : '#ef4444' }}>
-                            {c.isCredit ? '+' : '-'}${Math.abs(Number(c.amount)).toFixed(2)}
+                          <span style={{ color: c.isCredit ? 'var(--success)' : 'var(--danger)' }}>
+                            {c.isCredit ? '+' : '-'}{formatCost(Math.abs(Number(c.amount)))}
                           </span>
                         </td>
                         <td style={{ textAlign: 'right' }}>
@@ -166,18 +160,7 @@ export default function TypePicker({
                 </table>
               </div>
             )}
-
-            <div className="flex gap-2" style={{ justifyContent: 'flex-end' }}>
-              <button className="btn btn-secondary" onClick={handleCancel} disabled={isPending}>
-                Cancel
-              </button>
-              <button className="btn btn-secondary" onClick={handleConvertWithoutLink} disabled={isPending}>
-                Convert without linking
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      </Modal>
     </>
   );
 }
