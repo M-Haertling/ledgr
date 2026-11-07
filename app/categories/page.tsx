@@ -7,6 +7,7 @@ import { asc } from 'drizzle-orm';
 import EditCategoryForm from './EditCategoryForm';
 import AddCategoryForm from './AddCategoryForm';
 import ConfirmDeleteButton from '@/app/components/ConfirmDeleteButton';
+import Icon from '@/app/components/Icon';
 
 export default async function CategoriesPage() {
   const allCategories = await db.query.categories.findMany({
@@ -43,14 +44,14 @@ export default async function CategoriesPage() {
           <>
             {parents.map((parent) => (
               <div key={parent.id}>
-                <div className="list-item" style={{ background: 'var(--bg-secondary, #f8f9fa)' }}>
+                <div className="list-item" style={{ background: 'var(--surface-muted)' }}>
                   <EditCategoryForm
                     category={parent}
                     parentOptions={[]}
                     updateAction={updateCategory.bind(null, parent.id)}
                   />
                   <div className="flex gap-2">
-                    <ConfirmDeleteButton action={deleteCategory.bind(null, parent.id)} />
+                    <ConfirmDeleteButton action={deleteCategory.bind(null, parent.id)} className="icon-btn icon-btn-danger" label={<Icon name="trash" />} confirmLabel="Delete?" title="Delete (click twice)" />
                   </div>
                 </div>
                 {parent.children.map((child) => (
@@ -61,7 +62,7 @@ export default async function CategoriesPage() {
                       updateAction={updateCategory.bind(null, child.id)}
                     />
                     <div className="flex gap-2">
-                      <ConfirmDeleteButton action={deleteCategory.bind(null, child.id)} />
+                      <ConfirmDeleteButton action={deleteCategory.bind(null, child.id)} className="icon-btn icon-btn-danger" label={<Icon name="trash" />} confirmLabel="Delete?" title="Delete (click twice)" />
                     </div>
                   </div>
                 ))}
@@ -71,7 +72,7 @@ export default async function CategoriesPage() {
             {orphans.length > 0 && (
               <>
                 {parents.length > 0 && (
-                  <div className="list-item" style={{ background: 'var(--bg-secondary, #f8f9fa)', fontWeight: 500, color: 'var(--text-muted)' }}>
+                  <div className="list-item" style={{ background: 'var(--surface-muted)', fontWeight: 500, color: 'var(--text-muted)' }}>
                     Ungrouped
                   </div>
                 )}
@@ -83,7 +84,7 @@ export default async function CategoriesPage() {
                       updateAction={updateCategory.bind(null, category.id)}
                     />
                     <div className="flex gap-2">
-                      <ConfirmDeleteButton action={deleteCategory.bind(null, category.id)} />
+                      <ConfirmDeleteButton action={deleteCategory.bind(null, category.id)} className="icon-btn icon-btn-danger" label={<Icon name="trash" />} confirmLabel="Delete?" title="Delete (click twice)" />
                     </div>
                   </div>
                 ))}

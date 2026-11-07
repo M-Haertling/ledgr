@@ -25,7 +25,8 @@ See `features.md`.
     - `/categories`: Category management CRUD with inline rename and color picker.
     - `/tags`: Tag management CRUD with inline rename.
     - `/components`: Shared client components.
-        - `ConfirmDeleteButton.tsx`: Click-twice confirm button (form action or `onClick`).
+        - `ConfirmDeleteButton.tsx`: Click-twice confirm button (form action or `onClick`). Row deletes use the quiet icon variant: `className="icon-btn icon-btn-danger"` with `label={<Icon name="trash" />}`.
+        - `Icon.tsx`: Shared stroked inline-SVG icons (`play`, `edit`, `trash`, `eye`) that inherit `currentColor`. Pair with the `.icon-btn` / `.row-actions` classes in `globals.css` for Edit/Delete/View row actions on every list page.
         - `Modal.tsx`: Centered dialog with backdrop, Esc/backdrop close (blocked while `busy`), first-field focus, pinned footer. Used by the rule dialog; older dialogs still hand-roll their overlays.
         - `Toast.tsx`: `ToastProvider` + `useToast()` — bottom-right auto-dismissing status messages (success/error/info). Mounted per page, not globally.
     - `/automation`: Rule-based auto-categorization management.

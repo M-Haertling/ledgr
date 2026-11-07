@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import Icon from '@/app/components/Icon';
 
 type Tag = { id: number; name: string };
 
@@ -17,8 +18,14 @@ export default function EditTagForm({
     return (
       <div className="flex items-center gap-3">
         <div className="list-item-title">#{tag.name}</div>
-        <button className="btn btn-secondary btn-sm" onClick={() => setEditing(true)}>
-          Rename
+        <button
+          type="button"
+          className="icon-btn"
+          onClick={() => setEditing(true)}
+          title="Rename"
+          aria-label={`Rename ${tag.name}`}
+        >
+          <Icon name="edit" />
         </button>
       </div>
     );

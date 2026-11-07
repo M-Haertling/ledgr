@@ -20,5 +20,9 @@ export function sumTransactionCost(transactions: SignedAmount[]): number {
 
 /** `$12.34` / `-$12.34` — a signed cost, formatted for display. */
 export function formatCost(value: number): string {
-  return `${value < 0 ? '-' : ''}$${Math.abs(value).toFixed(2)}`;
+  const abs = Math.abs(value).toLocaleString('en-US', {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  });
+  return `${value < 0 ? '-' : ''}$${abs}`;
 }

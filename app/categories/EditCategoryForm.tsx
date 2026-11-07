@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import ColorPicker from './ColorPicker';
+import Icon from '@/app/components/Icon';
 
 type Category = { id: number; name: string; color: string | null; parentId?: number | null };
 type ParentOption = { id: number; name: string; isGroup?: boolean };
@@ -29,8 +30,14 @@ export default function EditCategoryForm({
           )}
           <div className="list-item-title">{category.name}</div>
         </div>
-        <button className="btn btn-secondary btn-sm" onClick={() => setEditing(true)}>
-          Edit
+        <button
+          type="button"
+          className="icon-btn"
+          onClick={() => setEditing(true)}
+          title="Rename"
+          aria-label={`Edit ${category.name}`}
+        >
+          <Icon name="edit" />
         </button>
       </div>
     );

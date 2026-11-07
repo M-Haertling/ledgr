@@ -4,6 +4,7 @@ import { useState, useMemo, useRef, useEffect } from 'react';
 import Link from 'next/link';
 import { deleteActivity } from '@/lib/actions/activities';
 import ConfirmDeleteButton from '@/app/components/ConfirmDeleteButton';
+import Icon from '@/app/components/Icon';
 import { formatDate } from '@/lib/utils/date';
 import { formatCost } from '@/lib/utils/amount';
 
@@ -11,7 +12,7 @@ const STATUS_COLORS: Record<string, string> = {
   TODO: '#94a3b8',
   Planning: '#3b82f6',
   Started: '#f59e0b',
-  Finished: '#22c55e',
+  Finished: 'var(--success)',
 };
 
 type ActivityRow = {
@@ -277,21 +278,21 @@ export default function ActivitiesTable({ activities }: { activities: ActivityRo
                     <td style={{ whiteSpace: 'nowrap', fontSize: '0.875rem' }}>{fmt(a.endDate)}</td>
                     <td style={{ textAlign: 'right' }}>{a.updateCount}</td>
                     <td style={{ textAlign: 'right' }}>
-                      {a.budget != null ? `$${a.budget.toFixed(2)}` : <span className="text-muted">—</span>}
+                      {a.budget != null ? formatCost(a.budget) : <span className="text-muted">—</span>}
                     </td>
                     <td style={{ textAlign: 'right', fontWeight: 500 }}>
                       {a.budget != null ? (
-                        <span style={{ color: a.totalCost > a.budget ? '#ef4444' : '#22c55e' }}>
+                        <span style={{ color: a.totalCost > a.budget ? 'var(--danger)' : 'var(--success)' }}>
                           {formatCost(a.totalCost)}
                         </span>
                       ) : formatCost(a.totalCost)}
                     </td>
                     <td>
-                      <div className="flex gap-2" style={{ justifyContent: 'flex-end' }}>
-                        <Link href={`/activities/${a.id}`} className="btn btn-sm" style={{ border: '1px solid var(--border)' }}>
-                          View
+                      <div className="row-actions">
+                        <Link href={`/activities/${a.id}`} className="icon-btn" title="View" aria-label={`View ${a.name}`}>
+                          <Icon name="eye" />
                         </Link>
-                        <ConfirmDeleteButton action={deleteActivity.bind(null, a.id)} />
+                        <ConfirmDeleteButton action={deleteActivity.bind(null, a.id)} className="icon-btn icon-btn-danger" label={<Icon name="trash" />} confirmLabel="Delete?" title="Delete (click twice)" />
                       </div>
                     </td>
                   </tr>

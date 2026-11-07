@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import ConfirmDeleteButton from '@/app/components/ConfirmDeleteButton';
+import Icon from '@/app/components/Icon';
 import { formatDate } from '@/lib/utils/date';
 
 type Account = { id: number; name: string; type: string };
@@ -69,21 +70,27 @@ export default function EditAccountForm({
         <div className="list-item-title">{account.name}</div>
         <div className="list-item-subtitle">{account.type}</div>
       </div>
-      <button className="btn btn-secondary btn-sm" onClick={() => setEditing(true)}>
-        Edit
+      <button
+        type="button"
+        className="icon-btn"
+        onClick={() => setEditing(true)}
+        title="Edit"
+        aria-label={`Edit ${account.name}`}
+      >
+        <Icon name="edit" />
       </button>
       <div style={{
         fontSize: '0.8rem',
         textAlign: 'center',
         padding: '0.3rem 0.625rem',
         borderRadius: '6px',
-        background: 'var(--bg-secondary)',
+        background: 'var(--surface-muted)',
         color: 'var(--text-muted)',
         whiteSpace: 'nowrap',
       }}>
         {lastTransactionDate ? (
           <>
-            <div style={{ fontWeight: 500, color: 'var(--text-primary)', marginBottom: '0.1rem' }}>
+            <div style={{ fontWeight: 500, color: 'var(--text)', marginBottom: '0.1rem' }}>
               {formatDate(lastTransactionDate)}
             </div>
             <div>last transaction</div>
@@ -92,7 +99,13 @@ export default function EditAccountForm({
           'No transactions'
         )}
       </div>
-      <ConfirmDeleteButton action={deleteAction} />
+      <ConfirmDeleteButton
+        action={deleteAction}
+        className="icon-btn icon-btn-danger"
+        label={<Icon name="trash" />}
+        confirmLabel="Delete?"
+        title="Delete account (click twice)"
+      />
     </div>
   );
 }

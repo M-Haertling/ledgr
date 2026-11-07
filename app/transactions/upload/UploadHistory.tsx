@@ -3,6 +3,7 @@
 import { Fragment, useState, useTransition } from 'react';
 import Link from 'next/link';
 import ConfirmDeleteButton from '@/app/components/ConfirmDeleteButton';
+import Icon from '@/app/components/Icon';
 import { deleteUpload } from '@/lib/actions/uploads';
 import { formatDate } from '@/lib/utils/date';
 
@@ -165,7 +166,8 @@ export default function UploadHistory({ uploads }: { uploads: UploadRow[] }) {
                     <ConfirmDeleteButton
                       onClick={() => handleDelete(u.id)}
                       disabled={isPending}
-                      label={deletingId === u.id ? 'Deleting…' : 'Delete'}
+                      className="icon-btn icon-btn-danger"
+                      label={deletingId === u.id ? 'Deleting…' : <Icon name="trash" />}
                       confirmLabel={u.transactionCount > 0 ? `Delete ${u.transactionCount}?` : 'Remove?'}
                       title="Permanently delete this upload and every transaction it imported"
                     />

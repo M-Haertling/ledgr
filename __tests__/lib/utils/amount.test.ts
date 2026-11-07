@@ -33,6 +33,11 @@ describe('formatCost', () => {
     expect(formatCost(12.3)).toBe('$12.30');
   });
 
+  it('groups thousands', () => {
+    expect(formatCost(3416.49)).toBe('$3,416.49');
+    expect(formatCost(-1234567.5)).toBe('-$1,234,567.50');
+  });
+
   it('puts the sign ahead of the currency symbol for a negative cost', () => {
     expect(formatCost(-12.3)).toBe('-$12.30');
   });

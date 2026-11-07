@@ -3,6 +3,7 @@
 import { useMemo, useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
 import ConfirmDeleteButton from '@/app/components/ConfirmDeleteButton';
+import Icon from '@/app/components/Icon';
 import { ToastProvider, useToast } from '@/app/components/Toast';
 import { applyRulesToAll, applyRulesToUncategorized, deleteRule, runRule } from '@/lib/actions/rules';
 import CategorySelectOptions from './CategorySelectOptions';
@@ -30,20 +31,6 @@ type Props = {
 
 const NO_GROUP = '__none__';
 const plural = (n: number, word: string) => `${n.toLocaleString()} ${word}${n === 1 ? '' : 's'}`;
-
-function Icon({ name }: { name: 'play' | 'edit' | 'trash' }) {
-  const paths = {
-    play: <path d="M5 3.5v9l7.5-4.5z" fill="currentColor" stroke="none" />,
-    edit: <path d="M10.5 2.5l3 3L6 13H3v-3z M9 4l3 3" />,
-    trash: <path d="M3 4.5h10 M6.5 4.5V3h3v1.5 M4.5 4.5l.6 8.5h5.8l.6-8.5 M7 7v4 M9 7v4" />,
-  };
-  return (
-    <svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="currentColor"
-      strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-      {paths[name]}
-    </svg>
-  );
-}
 
 export default function RulesClient(props: Props) {
   return (
