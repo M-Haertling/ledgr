@@ -6,6 +6,8 @@ import { createCategory, deleteCategory, updateCategory } from '@/lib/actions/ca
 import { asc } from 'drizzle-orm';
 import EditCategoryForm from './EditCategoryForm';
 import AddCategoryForm from './AddCategoryForm';
+import PageHeader from '@/app/components/PageHeader';
+import NewItemDialog from '@/app/components/NewItemDialog';
 import ConfirmDeleteButton from '@/app/components/ConfirmDeleteButton';
 import Icon from '@/app/components/Icon';
 
@@ -24,21 +26,24 @@ export default async function CategoriesPage() {
 
   return (
     <div>
-      <h1 className="mb-4">Manage Categories</h1>
+      <PageHeader
+        title="Categories"
+        count={allCategories.length}
+        actions={
+          <NewItemDialog label="New category" title="New category" width={520}>
+            <AddCategoryForm
+              createAction={createCategory}
+              usedColors={usedColors}
+              parentOptions={parentOptions}
+            />
+          </NewItemDialog>
+        }
+      />
 
-      <div className="card">
-        <h2 className="card-title">Add New Category</h2>
-        <AddCategoryForm
-          createAction={createCategory}
-          usedColors={usedColors}
-          parentOptions={parentOptions}
-        />
-      </div>
-
-      <div className="list-container mt-4">
+      <div className="list-container" style={{ marginTop: 0 }}>
         {allCategories.length === 0 ? (
           <div className="list-item">
-            <p className="text-muted">No categories found. Add one above.</p>
+            <p className="text-muted">No categories yet. Use "+ New category" to add one.</p>
           </div>
         ) : (
           <>

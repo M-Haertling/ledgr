@@ -1029,3 +1029,37 @@ tr:hover .icon-btn:not(:disabled) { opacity: 0.85; }
 .icon-btn.btn-confirm-pending { color: #fff; opacity: 1; border-color: var(--danger); }
 
 .list-item-group { background: var(--surface-muted); }
+
+/* Page header (shared) */
+.page-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1.5rem;
+  flex-wrap: wrap;
+  margin-bottom: 1.25rem;
+}
+
+.page-header-text { flex: 1 1 18rem; min-width: 0; }
+
+.page-header-count {
+  margin-left: 0.5rem;
+  color: var(--text-muted);
+  font-size: 1rem;
+  font-weight: 400;
+}
+
+.page-header-subtitle {
+  margin: 0.25rem 0 0;
+  color: var(--text-muted);
+  font-size: 0.875rem;
+}
+
+.page-header-actions { display: flex; gap: 0.5rem; flex-wrap: wrap; align-items: center; }
+
+/* Narrow single-column page body (Upload form, Backup), left-aligned like every other page */
+.page-narrow { max-width: 720px; }
+
+/* Stacked dialog form */
+.dialog-form .form-group { margin-bottom: 1rem; }
+.dialog-form-actions { display: flex; justify-content: flex-end; gap: 0.5rem; margin-top: 1.25rem; }

@@ -5,6 +5,8 @@ import { accounts, transactions } from '@/lib/db/schema';
 import { createAccount, deleteAccount, updateAccount } from '@/lib/actions/accounts';
 import { desc, max } from 'drizzle-orm';
 import EditAccountForm from './EditAccountForm';
+import PageHeader from '@/app/components/PageHeader';
+import NewItemDialog from '@/app/components/NewItemDialog';
 
 export default async function AccountsPage() {
   const [allAccounts, latestDates] = await Promise.all([
@@ -21,44 +23,38 @@ export default async function AccountsPage() {
 
   return (
     <div>
-      <h1 className="mb-4">Manage Accounts</h1>
+      <PageHeader
+        title="Accounts"
+        count={allAccounts.length}
+        actions={
+          <NewItemDialog label="New account" title="New account">
+            <form action={createAccount} className="dialog-form">
+              <div className="form-group">
+                <label htmlFor="name" className="form-label">Account Name</label>
+                <input type="text" id="name" name="name" className="form-input" placeholder="e.g. Main Checking" required />
+              </div>
+              <div className="form-group">
+                <label htmlFor="type" className="form-label">Account Type</label>
+                <select id="type" name="type" className="form-select" required>
+                  <option value="Checking">Checking</option>
+                  <option value="Savings">Savings</option>
+                  <option value="Credit Card">Credit Card</option>
+                  <option value="Investment">Investment</option>
+                  <option value="Other">Other</option>
+                </select>
+              </div>
+              <div className="dialog-form-actions">
+                <button type="submit" className="btn btn-primary">Add account</button>
+              </div>
+            </form>
+          </NewItemDialog>
+        }
+      />
 
-      <div className="card">
-        <h2 className="card-title">Add New Account</h2>
-        <form action={createAccount}>
-          <div className="flex gap-4">
-            <div className="form-group w-full">
-              <label htmlFor="name" className="form-label">Account Name</label>
-              <input
-                type="text"
-                id="name"
-                name="name"
-                className="form-input"
-                placeholder="e.g. Main Checking"
-                required
-              />
-            </div>
-            <div className="form-group w-full">
-              <label htmlFor="type" className="form-label">Account Type</label>
-              <select id="type" name="type" className="form-select" required>
-                <option value="Checking">Checking</option>
-                <option value="Savings">Savings</option>
-                <option value="Credit Card">Credit Card</option>
-                <option value="Investment">Investment</option>
-                <option value="Other">Other</option>
-              </select>
-            </div>
-            <div className="flex items-center mt-4">
-              <button type="submit" className="btn btn-primary">Add Account</button>
-            </div>
-          </div>
-        </form>
-      </div>
-
-      <div className="list-container mt-4">
+      <div className="list-container" style={{ marginTop: 0 }}>
         {allAccounts.length === 0 ? (
           <div className="list-item">
-            <p className="text-muted">No accounts found. Add one above.</p>
+            <p className="text-muted">No accounts yet. Use "+ New account" to add one.</p>
           </div>
         ) : (
           allAccounts.map((account) => (

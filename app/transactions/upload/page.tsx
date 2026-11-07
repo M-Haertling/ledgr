@@ -3,6 +3,7 @@ export const dynamic = 'force-dynamic';
 import Link from 'next/link';
 import { db } from '@/lib/db';
 import UploadForm from './UploadForm';
+import PageHeader from '@/app/components/PageHeader';
 import UploadHistory from './UploadHistory';
 import { countUploads, listUploads } from '@/lib/api/uploads';
 
@@ -30,8 +31,8 @@ export default async function UploadPage({
 
   return (
     <div>
-      <div style={{ maxWidth: '600px', margin: '0 auto' }}>
-        <h1 className="mb-4">Upload Transactions</h1>
+      <PageHeader title="Upload" subtitle="Import a bank or card CSV, map its columns, and review past uploads below." />
+      <div className="page-narrow">
         <UploadForm accounts={allAccounts} templates={allTemplates} />
       </div>
 

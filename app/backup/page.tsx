@@ -1,6 +1,7 @@
 export const dynamic = 'force-dynamic';
 
 import BackupRestoreClient from './BackupRestoreClient';
+import PageHeader from '@/app/components/PageHeader';
 
 export const TABLES = [
   { key: 'accounts', label: 'Accounts', description: 'Account names and types' },
@@ -20,8 +21,9 @@ export const TABLES = [
 
 export default function BackupRestorePage() {
   return (
-    <div style={{ maxWidth: '700px' }}>
-      <h1 className="mb-4">Backup &amp; Restore</h1>
+    <div>
+      <PageHeader title="Backup" subtitle="Export every table as CSV, or restore from a previous export." />
+      <div className="page-narrow">
 
       {/* Bulk export */}
       <div className="card mb-4">
@@ -36,6 +38,7 @@ export default function BackupRestorePage() {
       </div>
 
       <BackupRestoreClient tables={TABLES} />
+      </div>
     </div>
   );
 }

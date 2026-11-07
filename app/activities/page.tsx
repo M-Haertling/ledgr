@@ -5,6 +5,8 @@ import { activities } from '@/lib/db/schema';
 import { createActivity } from '@/lib/actions/activities';
 import { desc } from 'drizzle-orm';
 import ActivitiesTable from './ActivitiesTable';
+import PageHeader from '@/app/components/PageHeader';
+import NewItemDialog from '@/app/components/NewItemDialog';
 import { mergeActivityTransactions } from '@/lib/api/activities';
 
 export default async function ActivitiesPage() {
@@ -54,13 +56,14 @@ export default async function ActivitiesPage() {
 
   return (
     <div>
-      <h1 className="mb-4">Activities</h1>
-
-      <div className="card mb-4">
-        <h2 className="card-title">New Activity</h2>
-        <form action={createActivity}>
-          <div className="flex gap-4" style={{ flexWrap: 'wrap' }}>
-            <div className="form-group" style={{ flex: '1 1 200px' }}>
+      <PageHeader
+        title="Activities"
+        count={activityRows.length}
+        actions={
+          <NewItemDialog label="New activity" title="New activity" width={520}>
+        <form action={createActivity} className="dialog-form">
+          <div>
+            <div className="form-group">
               <label htmlFor="name" className="form-label">Name</label>
               <input
                 type="text"
@@ -71,7 +74,7 @@ export default async function ActivitiesPage() {
                 required
               />
             </div>
-            <div className="form-group" style={{ flex: '2 1 300px' }}>
+            <div className="form-group">
               <label htmlFor="description" className="form-label">Description</label>
               <textarea
                 id="description"
@@ -82,7 +85,7 @@ export default async function ActivitiesPage() {
                 style={{ resize: 'vertical' }}
               />
             </div>
-            <div className="form-group" style={{ flex: '0 1 160px' }}>
+            <div className="form-group">
               <label htmlFor="status" className="form-label">Status</label>
               <select id="status" name="status" className="form-select">
                 <option value="TODO">TODO</option>
@@ -91,7 +94,7 @@ export default async function ActivitiesPage() {
                 <option value="Finished">Finished</option>
               </select>
             </div>
-            <div className="form-group" style={{ flex: '0 1 180px' }}>
+            <div className="form-group">
               <label htmlFor="type" className="form-label">Type</label>
               <input
                 type="text"
@@ -112,7 +115,7 @@ export default async function ActivitiesPage() {
                 <option value="Other" />
               </datalist>
             </div>
-            <div className="form-group" style={{ flex: '0 1 160px' }}>
+            <div className="form-group">
               <label htmlFor="budget" className="form-label">Budget</label>
               <input
                 type="number"
@@ -124,12 +127,14 @@ export default async function ActivitiesPage() {
                 step="0.01"
               />
             </div>
-            <div className="flex items-center mt-4">
-              <button type="submit" className="btn btn-primary">Add Activity</button>
+            <div className="dialog-form-actions">
+              <button type="submit" className="btn btn-primary">Add activity</button>
             </div>
           </div>
         </form>
-      </div>
+          </NewItemDialog>
+        }
+      />
 
       <div className="card">
         <ActivitiesTable activities={activityRows} />

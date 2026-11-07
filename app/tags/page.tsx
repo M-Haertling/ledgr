@@ -5,6 +5,8 @@ import { tags, categories, categoryTags } from '@/lib/db/schema';
 import { createTag, deleteTag, updateTag } from '@/lib/actions/tags';
 import { desc } from 'drizzle-orm';
 import EditTagForm from './EditTagForm';
+import PageHeader from '@/app/components/PageHeader';
+import NewItemDialog from '@/app/components/NewItemDialog';
 import CategoryTagManager from './CategoryTagManager';
 import ConfirmDeleteButton from '@/app/components/ConfirmDeleteButton';
 import Icon from '@/app/components/Icon';
@@ -26,34 +28,28 @@ export default async function TagsPage() {
 
   return (
     <div>
-      <h1 className="mb-4">Manage Tags</h1>
+      <PageHeader
+        title="Tags"
+        count={allTags.length}
+        actions={
+          <NewItemDialog label="New tag" title="New tag">
+            <form action={createTag} className="dialog-form">
+              <div className="form-group">
+                <label htmlFor="name" className="form-label">Tag Name</label>
+                <input type="text" id="name" name="name" className="form-input" placeholder="e.g. Personal, Business, Vacation" required />
+              </div>
+              <div className="dialog-form-actions">
+                <button type="submit" className="btn btn-primary">Add tag</button>
+              </div>
+            </form>
+          </NewItemDialog>
+        }
+      />
 
-      <div className="card">
-        <h2 className="card-title">Add New Tag</h2>
-        <form action={createTag}>
-          <div className="flex gap-4">
-            <div className="form-group w-full">
-              <label htmlFor="name" className="form-label">Tag Name</label>
-              <input
-                type="text"
-                id="name"
-                name="name"
-                className="form-input"
-                placeholder="e.g. Personal, Business, Vacation"
-                required
-              />
-            </div>
-            <div className="flex items-center mt-4">
-              <button type="submit" className="btn btn-primary">Add Tag</button>
-            </div>
-          </div>
-        </form>
-      </div>
-
-      <div className="list-container mt-4">
+      <div className="list-container" style={{ marginTop: 0 }}>
         {allTags.length === 0 ? (
           <div className="list-item">
-            <p className="text-muted">No tags found. Add one above.</p>
+            <p className="text-muted">No tags yet. Use "+ New tag" to add one.</p>
           </div>
         ) : (
           allTags.map((tag) => (

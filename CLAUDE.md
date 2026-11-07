@@ -27,6 +27,8 @@ See `features.md`.
     - `/components`: Shared client components.
         - `ConfirmDeleteButton.tsx`: Click-twice confirm button (form action or `onClick`). Row deletes use the quiet icon variant: `className="icon-btn icon-btn-danger"` with `label={<Icon name="trash" />}`.
         - `Icon.tsx`: Shared stroked inline-SVG icons (`play`, `edit`, `trash`, `eye`) that inherit `currentColor`. Pair with the `.icon-btn` / `.row-actions` classes in `globals.css` for Edit/Delete/View row actions on every list page.
+        - `PageHeader.tsx`: Server-safe standard page header (title, optional muted `count`, optional `subtitle`, right-aligned `actions` slot). Used by Accounts, Categories, Tags, Activities, Upload, Backup and Reports; `.page-narrow` (720px, left-aligned) wraps the Upload form and Backup cards.
+        - `NewItemDialog.tsx`: Header "+ New X" button that opens a `Modal` around a server-action form (`.dialog-form` / `.dialog-form-actions`); closes shortly after a valid submit and the page revalidates. Replaces the old inline "Add New X" cards.
         - `Modal.tsx`: Centered dialog with backdrop, Esc/backdrop close (blocked while `busy`), first-field focus, pinned footer. Used by the rule dialog; older dialogs still hand-roll their overlays.
         - `Toast.tsx`: `ToastProvider` + `useToast()` — bottom-right auto-dismissing status messages (success/error/info). Mounted per page, not globally.
     - `/automation`: Rule-based auto-categorization management.

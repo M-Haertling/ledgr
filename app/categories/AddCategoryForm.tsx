@@ -17,9 +17,9 @@ export default function AddCategoryForm({
   const [color, setColor] = useState(pickNextColor(usedColors));
 
   return (
-    <form action={createAction}>
-      <div className="flex gap-4" style={{ flexWrap: 'wrap', alignItems: 'flex-end' }}>
-        <div className="form-group w-full" style={{ maxWidth: '300px' }}>
+    <form action={createAction} className="dialog-form">
+      <div>
+        <div className="form-group">
           <label htmlFor="name" className="form-label">Category Name</label>
           <input
             type="text"
@@ -31,7 +31,7 @@ export default function AddCategoryForm({
           />
         </div>
         {parentOptions.length > 0 && (
-          <div className="form-group" style={{ minWidth: '180px' }}>
+          <div className="form-group">
             <label htmlFor="parentId" className="form-label">Group (optional)</label>
             <select id="parentId" name="parentId" className="form-input">
               <option value="">— None —</option>
@@ -56,8 +56,8 @@ export default function AddCategoryForm({
           <label className="form-label">Color</label>
           <ColorPicker name="color" value={color} onChange={setColor} />
         </div>
-        <div className="flex items-center mb-4">
-          <button type="submit" className="btn btn-primary">Add Category</button>
+        <div className="dialog-form-actions">
+          <button type="submit" className="btn btn-primary">Add category</button>
         </div>
       </div>
     </form>

@@ -1,5 +1,6 @@
 export const dynamic = 'force-dynamic';
 
+import PageHeader from '@/app/components/PageHeader';
 import { db } from '@/lib/db';
 import { transactions, categories, accounts, transactionTags } from '@/lib/db/schema';
 import { and, or, asc, eq, gte, lte, sql, inArray, exists, ne, isNotNull } from 'drizzle-orm';
@@ -270,7 +271,7 @@ export default async function ReportsPage({
 
   return (
     <div>
-      <h1 className="mb-4">Reports &amp; Insights</h1>
+      <PageHeader title="Reports" subtitle="Spending and income over time, by category or group." />
 
       <div className="card mb-4">
         {/* Preset buttons */}
