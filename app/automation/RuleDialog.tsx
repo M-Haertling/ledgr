@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useTransition } from 'react';
 import Modal from '@/app/components/Modal';
+import CategorySelectOptions from './CategorySelectOptions';
 import { previewRule, saveRule, type RulePreview, type SaveRuleResult } from '@/lib/actions/rules';
 import { formatDate } from '@/lib/utils/date';
 import { formatCost, transactionCost } from '@/lib/utils/amount';
@@ -181,11 +182,7 @@ export default function RuleDialog({
               aria-invalid={error?.field === 'categoryId'}
             >
               <option value="">Choose a category…</option>
-              {categoryOptions.map(c => (
-                <option key={c.id} value={c.id} style={c.isParent ? { fontWeight: 600 } : undefined}>
-                  {c.indent ? `   ${c.name}` : c.name}
-                </option>
-              ))}
+              <CategorySelectOptions options={categoryOptions} />
             </select>
             {error?.field === 'categoryId' && <div className="rule-form-error">{error.message}</div>}
           </div>

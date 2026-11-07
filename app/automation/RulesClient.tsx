@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import ConfirmDeleteButton from '@/app/components/ConfirmDeleteButton';
 import { ToastProvider, useToast } from '@/app/components/Toast';
 import { applyRulesToAll, applyRulesToUncategorized, deleteRule, runRule } from '@/lib/actions/rules';
+import CategorySelectOptions from './CategorySelectOptions';
 import RuleDialog, { EMPTY_RULE, type CategoryOption, type NamedOption, type RuleDraft } from './RuleDialog';
 
 export type RuleRow = {
@@ -147,8 +148,7 @@ function RulesView({ rules, categoryOptions, accounts, tags, ruleTypes }: Props)
         <div>
           <h1>Automation Rules</h1>
           <p className="rules-subtitle">
-            Rules set a category on transactions whose description matches. <code>*</code> is a wildcard;
-            when several rules match, the highest priority wins.
+            Rules categorize transactions by description. <code>*</code> is a wildcard; higher priority wins.
           </p>
         </div>
         <div className="rules-header-actions">
@@ -191,9 +191,7 @@ function RulesView({ rules, categoryOptions, accounts, tags, ruleTypes }: Props)
         </select>
         <select className="form-select" value={categoryFilter} onChange={e => setCategoryFilter(e.target.value)} aria-label="Category">
           <option value="">All categories</option>
-          {categoryOptions.map(c => (
-            <option key={c.id} value={c.id}>{c.indent ? `   ${c.name}` : c.name}</option>
-          ))}
+          <CategorySelectOptions options={categoryOptions} />
         </select>
         {hasFilters && (
           <button
@@ -220,19 +218,13 @@ function RulesView({ rules, categoryOptions, accounts, tags, ruleTypes }: Props)
           <table className="table rules-table">
             <colgroup>
               <col />
-              <col style={{ width: '22%' }} />
-              <col style={{ width: '17%' }} />
-              <col style={{ width: '16%' }} />
-              <col style={{ width: '5.5rem' }} />
+              <col style={{ width: '42%' }} />
               <col style={{ width: '7.5rem' }} />
             </colgroup>
             <thead>
               <tr>
                 <th>Pattern</th>
                 <th>Category</th>
-                <th>Account</th>
-                <th>Tags</th>
-                <th style={{ textAlign: 'right' }}>Priority</th>
                 <th><span className="sr-only">Actions</span></th>
               </tr>
             </thead>
@@ -242,7 +234,7 @@ function RulesView({ rules, categoryOptions, accounts, tags, ruleTypes }: Props)
                 <tbody key={groupKey || NO_GROUP}>
                   {(groups.length > 1 || groupKey) && (
                     <tr className="rules-group-row">
-                      <td colSpan={6}>
+                      <td colSpan={3}>
                         <button
                           type="button"
                           className={`rules-group-toggle${groupKey ? '' : ' is-muted'}`}
@@ -259,14 +251,24 @@ function RulesView({ rules, categoryOptions, accounts, tags, ruleTypes }: Props)
                   {!isCollapsed && groupRules.map(r => (
                       <tr key={r.id} className={busyRuleId === r.id ? 'is-busy' : undefined}>
                         <td>
-                          <button
-                            type="button"
-                            className="rules-pattern"
-                            onClick={() => openDialog(editDraft(r))}
-                            title={`Edit “${r.pattern}”`}
-                          >
-                            {r.pattern}
-                          </button>
+                          <div className="rules-pattern-cell">
+                            <button
+                              type="button"
+                              className="rules-pattern"
+                              onClick={() => openDialog(editDraft(r))}
+                              title={`Edit “${r.pattern}”`}
+                            >
+                              {r.pattern}
+                            </button>
+                            {/* Only non-default settings get a badge, so unusual rules stand out. */}
+                            {r.account && (
+                              <span className="rules-meta" title={`Only for ${r.account.name}`}>{r.account.name}</span>
+                            )}
+                            {r.priority !== 0 && (
+                              <span className="rules-meta" title="Priority">priority {r.priority}</span>
+                            )}
+                            {r.tags.map(t => <span key={t.id} className="rules-meta rules-meta-tag">#{t.name}</span>)}
+                          </div>
                         </td>
                         <td>
                           {r.category ? (
@@ -278,22 +280,6 @@ function RulesView({ rules, categoryOptions, accounts, tags, ruleTypes }: Props)
                             <span className="text-muted">—</span>
                           )}
                         </td>
-                        <td>
-                          {r.account
-                            ? <span className="rules-ellipsis" title={r.account.name}>{r.account.name}</span>
-                            : <span className="text-muted">All accounts</span>}
-                        </td>
-                        <td>
-                          {r.tags.length === 0 ? (
-                            <span className="text-muted">—</span>
-                          ) : (
-                            <span className="rules-tags" title={r.tags.map(t => `#${t.name}`).join(' ')}>
-                              {r.tags.slice(0, 2).map(t => <span key={t.id} className="tag-badge">#{t.name}</span>)}
-                              {r.tags.length > 2 && <span className="text-muted">+{r.tags.length - 2}</span>}
-                            </span>
-                          )}
-                        </td>
-                        <td style={{ textAlign: 'right' }}>{r.priority}</td>
                         <td>
                           <div className="rules-actions">
                             <button

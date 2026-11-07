@@ -755,21 +755,44 @@ a:hover {
   letter-spacing: normal;
 }
 
+.rules-pattern-cell {
+  display: flex;
+  align-items: center;
+  gap: 0.375rem;
+  min-width: 0;
+}
+
 .rules-pattern {
-  display: block;
-  max-width: 100%;
+  flex: 0 1 auto;
+  min-width: 0;
   padding: 0;
   border: none;
   background: none;
   color: var(--text);
   font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
   font-size: 0.8125rem;
-  font-weight: 600;
+  font-weight: 500;
   text-align: left;
   cursor: pointer;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+/* Non-default rule settings (account scope, priority, tags) shown inline. */
+.rules-meta {
+  flex-shrink: 0;
+  padding: 0.05rem 0.45rem;
+  font-size: 0.7rem;
+  color: var(--text-muted);
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 9999px;
+  white-space: nowrap;
+}
+
+.rules-meta-tag {
+  color: var(--primary);
 }
 
 .rules-pattern:hover { color: var(--primary); text-decoration: underline; }
@@ -794,14 +817,6 @@ a:hover {
   text-overflow: ellipsis;
   white-space: nowrap;
 }
-
-.rules-tags {
-  display: flex;
-  align-items: center;
-  gap: 0.25rem;
-  overflow: hidden;
-}
-
 .rules-actions {
   display: flex;
   justify-content: flex-end;
@@ -818,24 +833,30 @@ a:hover {
   border: 1px solid transparent;
   border-radius: 0.375rem;
   background: none;
-  color: var(--text-muted);
+  color: var(--text);
+  opacity: 0.55;
   font-size: 0.75rem;
   font-weight: 600;
   cursor: pointer;
   white-space: nowrap;
+  transition: opacity 0.15s, background-color 0.15s;
 }
 
-.rules-icon-btn:hover:not(:disabled) {
+.rules-table tbody tr:hover .rules-icon-btn:not(:disabled) {
+  opacity: 0.85;
+}
+
+.rules-table tbody tr .rules-icon-btn:hover:not(:disabled) {
+  opacity: 1;
   background: var(--card-bg);
   border-color: var(--border);
-  color: var(--text);
 }
 
 .rules-icon-btn-danger:hover:not(:disabled) { color: var(--danger); }
 
-.rules-icon-btn:disabled { opacity: 0.4; cursor: default; }
+.rules-icon-btn:disabled { opacity: 0.25; cursor: default; }
 
-.rules-icon-btn.btn-confirm-pending { color: #fff; }
+.rules-icon-btn.btn-confirm-pending { color: #fff; opacity: 1; }
 
 .rules-spinner {
   width: 0.85rem;
