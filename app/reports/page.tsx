@@ -9,6 +9,7 @@ import Link from 'next/link';
 import SpendingIncomeChart from './SpendingIncomeChart';
 import CategoryPieChart from './CategoryPieChart';
 import SpendingByCategoryChart, { type MonthlyCategoryRow } from './SpendingByCategoryChart';
+import { distinctColors } from '@/lib/utils/chartColors';
 import ReportsFiltersClient from './ReportsFiltersClient';
 import { expandCategoryIds } from '@/lib/utils/categories';
 import { buildCategoryOptions } from '@/lib/utils/categoryOptions';
@@ -215,7 +216,7 @@ export default async function ReportsPage({
   });
   const stackedChartData = Object.values(categorySpendingByMonth);
 
-  const pieData = categorySpending
+  const rawPieData = categorySpending
     .filter(cat => parseFloat(cat.total) > 0)
     .map(cat => ({
       name: cat.categoryName || 'Uncategorized',
@@ -223,10 +224,12 @@ export default async function ReportsPage({
       color: cat.categoryColor || '#94a3b8',
       categoryId: cat.categoryId ?? null,
     }));
+  const pieColors = distinctColors(rawPieData.map(d => d.color));
+  const pieData = rawPieData.map((d, i) => ({ ...d, color: pieColors[i] }));
 
   // For SpendingByCategoryChart: only include categories that have >0 spending in at least one month
   const activeChartCategoryIds = new Set(monthlyCategoryData.map(r => r.categoryId?.toString() ?? 'null'));
-  const chartCategories = groupBy === 'parent'
+  const rawChartCategories = groupBy === 'parent'
     ? [
         ...categorySpending
           .filter(c => c.categoryId !== null && activeChartCategoryIds.has(c.categoryId.toString()))
@@ -237,6 +240,9 @@ export default async function ReportsPage({
         ...allCategories.filter(c => activeChartCategoryIds.has(c.id.toString())),
         ...(includeUncategorized && activeChartCategoryIds.has('null') ? [{ id: null as null, name: 'Uncategorized', color: '#94a3b8' }] : []),
       ];
+
+  const seriesColors = distinctColors(rawChartCategories.map(c => c.color));
+  const chartCategories = rawChartCategories.map((c, i) => ({ ...c, color: seriesColors[i] }));
 
   const allAccounts = await db.query.accounts.findMany();
   const allTags = await db.query.tags.findMany();
@@ -336,21 +342,21 @@ export default async function ReportsPage({
         <a className="card w-full" style={{ textAlign: 'center', cursor: 'pointer', textDecoration: 'none' }}
           href={buildTxUrl({ type: 'debit' })} target="_blank" rel="noopener noreferrer">
           <div className="list-item-subtitle">Expenses</div>
-          <div style={{ fontSize: '1.5rem', fontWeight: 'bold', color: '#ef4444' }}>
+          <div style={{ fontSize: '1.5rem', fontWeight: 'bold', color: 'var(--danger)' }}>
             -${expenseSum.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
           </div>
         </a>
         <a className="card w-full" style={{ textAlign: 'center', cursor: 'pointer', textDecoration: 'none' }}
           href={buildTxUrl({ type: 'credit' })} target="_blank" rel="noopener noreferrer">
           <div className="list-item-subtitle">Income</div>
-          <div style={{ fontSize: '1.5rem', fontWeight: 'bold', color: '#10b981' }}>
+          <div style={{ fontSize: '1.5rem', fontWeight: 'bold', color: 'var(--success)' }}>
             +${incomeSum.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
           </div>
         </a>
         <a className="card w-full" style={{ textAlign: 'center', cursor: 'pointer', textDecoration: 'none' }}
           href={buildTxUrl()} target="_blank" rel="noopener noreferrer">
           <div className="list-item-subtitle">Net</div>
-          <div style={{ fontSize: '1.5rem', fontWeight: 'bold', color: net >= 0 ? '#10b981' : '#ef4444' }}>
+          <div style={{ fontSize: '1.5rem', fontWeight: 'bold', color: net >= 0 ? 'var(--success)' : 'var(--danger)' }}>
             {net >= 0 ? '+' : '-'}${Math.abs(net).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
           </div>
         </a>

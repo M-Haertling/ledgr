@@ -1,5 +1,6 @@
 'use client';
 
+import Icon from '@/app/components/Icon';
 import { Fragment, useMemo, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import CategoryPicker from './CategoryPicker';
@@ -325,7 +326,7 @@ export default function TransactionsTable({
                   <span
                     className="badge"
                     title={tx.account.name}
-                    style={{ display: 'inline-block', maxWidth: '130px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', verticalAlign: 'middle' }}
+                    style={{ display: 'inline-block', maxWidth: '190px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', verticalAlign: 'middle' }}
                   >
                     {tx.account.name}
                   </span>
@@ -413,7 +414,7 @@ export default function TransactionsTable({
                           {tx.isCredit ? '+' : '-'}${Math.abs(Number(item.amount)).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                         </td>
                         <td style={{ textAlign: 'center', color: 'var(--text-muted)' }} title={item.notes ?? ''}>
-                          {item.notes ? '📝' : ''}
+                          {item.notes ? <Icon name="note" size={13} /> : ''}
                         </td>
                       </tr>
                     ))

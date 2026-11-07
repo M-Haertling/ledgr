@@ -1,5 +1,6 @@
 'use client';
 
+import Icon from '@/app/components/Icon';
 import { useState, useTransition } from 'react';
 import { updateTransactionNotes } from '@/lib/actions/transactions';
 
@@ -29,10 +30,10 @@ export default function NotePicker({
         className="tx-icon-btn"
         onClick={() => setDialogOpen(true)}
         disabled={isPending}
-        style={{ color: hasNotes ? 'var(--primary)' : 'var(--text-muted)' }}
+        style={{ color: hasNotes ? 'var(--primary)' : 'var(--text-muted)', opacity: hasNotes ? 1 : 0.7 }}
         title={hasNotes ? 'Edit note' : 'Add note'}
       >
-        {hasNotes ? '📝' : '📄'}
+        <Icon name="note" />
       </button>
 
       {dialogOpen && (

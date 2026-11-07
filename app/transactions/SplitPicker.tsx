@@ -1,5 +1,6 @@
 'use client';
 
+import Icon from '@/app/components/Icon';
 import { useState } from 'react';
 import SplitTransactionDialog from './SplitTransactionDialog';
 
@@ -39,7 +40,7 @@ export default function SplitPicker({
           whiteSpace: 'nowrap',
         }}
       >
-        ✂{isSplit ? <sup style={{ fontSize: '0.65rem' }}>{splitCount}</sup> : ''}
+        <Icon name="split" />{isSplit ? <sup style={{ fontSize: '0.65rem' }}>{splitCount}</sup> : ''}
       </button>
 
       {open && (

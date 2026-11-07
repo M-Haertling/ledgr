@@ -1,5 +1,6 @@
 'use client';
 
+import Icon from '@/app/components/Icon';
 import { useState } from 'react';
 import { attachTag, detachTag, createTagDirect } from '@/lib/actions/tags';
 
@@ -85,7 +86,7 @@ export default function TagPicker({
       <button
         className="tx-icon-btn"
         onClick={() => setDialogOpen(true)}
-        style={{ filter: hasTags ? 'none' : 'grayscale(1) opacity(0.4)' }}
+        style={{ color: hasTags ? 'var(--warning)' : 'var(--text-muted)', opacity: hasTags ? 1 : 0.5 }}
         title={
           hasTags
             ? `Tags: ${[
@@ -95,7 +96,7 @@ export default function TagPicker({
             : 'Add tags'
         }
       >
-        🏷️
+        <Icon name="tag" />
       </button>
 
       {dialogOpen && (

@@ -57,11 +57,11 @@ export default function SpendingIncomeChart({
           <XAxis dataKey="month" tick={{ fontSize: 12 }} />
           <YAxis tickFormatter={(v) => `$${v.toLocaleString()}`} tick={{ fontSize: 12 }} />
           <Tooltip formatter={(value) => `$${Number(value).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`} />
-          <Legend />
+          <Legend itemSorter={null} />
           <Bar
             dataKey="income"
             name="Income"
-            fill="#10b981"
+            fill="var(--success)"
             radius={[3, 3, 0, 0]}
             style={{ cursor: 'pointer' }}
             onClick={(d) => openMonth((d as unknown as { month: string }).month, 'credit')}
@@ -69,7 +69,7 @@ export default function SpendingIncomeChart({
           <Bar
             dataKey="expenses"
             name="Expenses"
-            fill="#ef4444"
+            fill="var(--danger)"
             radius={[3, 3, 0, 0]}
             style={{ cursor: 'pointer' }}
             onClick={(d) => openMonth((d as unknown as { month: string }).month, 'debit')}

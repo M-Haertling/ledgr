@@ -1,5 +1,6 @@
 'use client';
 
+import Icon from '@/app/components/Icon';
 import { useState, useTransition } from 'react';
 import { formatDate } from '@/lib/utils/date';
 
@@ -68,7 +69,7 @@ export default function TransferLinkPicker({
         style={{ color: 'var(--primary)', fontSize: '0.85rem' }}
         title={`View linked transfer (ID: ${transferPairId})`}
       >
-        🔗
+        <Icon name="link" />
       </button>
 
       {pairDialogOpen && pairTransaction && (

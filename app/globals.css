@@ -509,6 +509,13 @@ a:hover {
   border-radius: 0;
   border: none;
   border-right: 1px solid var(--border);
+  background-color: var(--card-bg);
+  color: var(--text);
+  text-decoration: none;
+}
+.btn-group .btn:hover:not(.active) {
+  background-color: var(--surface-muted);
+  text-decoration: none;
 }
 .btn-group .btn:last-child {
   border-right: none;
