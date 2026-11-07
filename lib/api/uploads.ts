@@ -1,6 +1,6 @@
 import { db } from '@/lib/db';
 import { accounts, transactions, transactionTags, uploads } from '@/lib/db/schema';
-import { and, desc, eq, inArray, isNull, sql } from 'drizzle-orm';
+import { and, count, desc, eq, inArray, isNull, sql } from 'drizzle-orm';
 
 export type UploadSummary = {
   id: number;
@@ -16,7 +16,10 @@ export type UploadSummary = {
   failedCount: number;
   /** Top-level transactions still linked to this upload (imported minus any deleted since). */
   transactionCount: number;
-  /** Earliest / latest transaction date in the upload, as `YYYY-MM-DD` (UTC calendar day). */
+  /** Earliest / latest date across every row in the CSV (including duplicates), as `YYYY-MM-DD`. Null for legacy uploads. */
+  fileMinDate: string | null;
+  fileMaxDate: string | null;
+  /** Earliest / latest date of the transactions this upload actually added (post-dedup), as `YYYY-MM-DD`. */
   minDate: string | null;
   maxDate: string | null;
   /** Sum of debit magnitudes (money out), excluding transfers. */
@@ -32,7 +35,9 @@ export type UploadSummary = {
  * still linked to it. Only top-level rows are counted: a split parent stands for
  * its line items, so counting both would double the totals.
  */
-export async function listUploads(): Promise<UploadSummary[]> {
+export async function listUploads(
+  { limit, offset = 0 }: { limit?: number; offset?: number } = {},
+): Promise<UploadSummary[]> {
   const t = transactions;
   const rows = await db
     .select({
@@ -47,6 +52,8 @@ export async function listUploads(): Promise<UploadSummary[]> {
       importedCount: uploads.importedCount,
       skippedCount: uploads.skippedCount,
       failedCount: uploads.failedCount,
+      fileMinDate: sql<string | null>`to_char(${uploads.fileMinDate}, 'YYYY-MM-DD')`,
+      fileMaxDate: sql<string | null>`to_char(${uploads.fileMaxDate}, 'YYYY-MM-DD')`,
       transactionCount: sql<number>`COUNT(${t.id})::int`,
       minDate: sql<string | null>`to_char(MIN(${t.date}), 'YYYY-MM-DD')`,
       maxDate: sql<string | null>`to_char(MAX(${t.date}), 'YYYY-MM-DD')`,
@@ -61,7 +68,9 @@ export async function listUploads(): Promise<UploadSummary[]> {
     .innerJoin(accounts, eq(accounts.id, uploads.accountId))
     .leftJoin(t, and(eq(t.uploadId, uploads.id), isNull(t.parentTransactionId)))
     .groupBy(uploads.id, accounts.name)
-    .orderBy(desc(uploads.createdAt), desc(uploads.id));
+    .orderBy(desc(uploads.createdAt), desc(uploads.id))
+    .limit(limit ?? Number.MAX_SAFE_INTEGER)
+    .offset(offset);
 
   return rows.map(r => ({
     ...r,
@@ -71,6 +80,12 @@ export async function listUploads(): Promise<UploadSummary[]> {
     transferCount: Number(r.transferCount),
     uncategorizedCount: Number(r.uncategorizedCount),
   }));
+}
+
+/** Total number of uploads, for paginating `listUploads`. */
+export async function countUploads(): Promise<number> {
+  const [{ total }] = await db.select({ total: count() }).from(uploads);
+  return Number(total);
 }
 
 /**

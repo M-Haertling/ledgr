@@ -29,6 +29,12 @@ export const uploads = pgTable('uploads', {
   importedCount: integer('imported_count').notNull().default(0),
   skippedCount: integer('skipped_count').notNull().default(0),
   failedCount: integer('failed_count').notNull().default(0),
+  // Earliest/latest valid date across every row in the file — including rows
+  // skipped as duplicates — i.e. the period the statement covers, as opposed
+  // to the dates of the transactions it actually added. UTC midnight, like
+  // transactions.date.
+  fileMinDate: timestamp('file_min_date'),
+  fileMaxDate: timestamp('file_max_date'),
   isLegacy: boolean('is_legacy').notNull().default(false),
   createdAt: timestamp('created_at').defaultNow().notNull(),
 });

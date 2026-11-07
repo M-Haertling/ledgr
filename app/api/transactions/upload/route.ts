@@ -40,6 +40,8 @@ export async function POST(req: Request) {
       templateName: typeof templateName === 'string' && templateName.trim() ? templateName.trim() : null,
     }).returning({ id: uploads.id });
     let rowCount = 0;
+    let fileMinDate: Date | null = null;
+    let fileMaxDate: Date | null = null;
     let imported = 0;
     let skipped = 0;
     const failedRows: FailedRow[] = [];
@@ -62,6 +64,8 @@ export async function POST(req: Request) {
 
       const date = parseDateOnly(dateStr);
       if (!date) { fail(rowIndex, row, `Invalid date: "${dateStr}"`); continue; }
+      if (!fileMinDate || date < fileMinDate) fileMinDate = date;
+      if (!fileMaxDate || date > fileMaxDate) fileMaxDate = date;
 
       // Check for category from CSV if column is mapped
       let categoryIdFromCsv: number | null = null;
@@ -147,6 +151,8 @@ export async function POST(req: Request) {
       importedCount: imported,
       skippedCount: skipped,
       failedCount: failedRows.length,
+      fileMinDate,
+      fileMaxDate,
     }).where(eq(uploads.id, upload.id));
 
     return NextResponse.json({ success: true, uploadId: upload.id, imported, skipped, failed: failedRows.length, failedRows });

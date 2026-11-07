@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useTransition } from 'react';
+import { Fragment, useState, useTransition } from 'react';
 import Link from 'next/link';
 import ConfirmDeleteButton from '@/app/components/ConfirmDeleteButton';
 import { deleteUpload } from '@/lib/actions/uploads';
@@ -19,6 +19,8 @@ export type UploadRow = {
   skippedCount: number;
   failedCount: number;
   transactionCount: number;
+  fileMinDate: string | null;
+  fileMaxDate: string | null;
   minDate: string | null;
   maxDate: string | null;
   debitTotal: number;
@@ -27,19 +29,40 @@ export type UploadRow = {
   uncategorizedCount: number;
 };
 
+const COLUMN_COUNT = 9;
+
 const money = (n: number) =>
   n.toLocaleString('en-US', { style: 'currency', currency: 'USD' });
 
 function dateRange(min: string | null, max: string | null) {
-  if (!min || !max) return '—';
+  if (!min || !max) return null;
   const a = formatDate(min);
   const b = formatDate(max);
   return a === b ? a : `${a} – ${b}`;
 }
 
+const muted: React.CSSProperties = { color: 'var(--text-muted)' };
+
+function Detail({ label, children }: { label: string; children: React.ReactNode }) {
+  return (
+    <div>
+      <div style={{ fontSize: '0.75rem', ...muted }}>{label}</div>
+      <div>{children}</div>
+    </div>
+  );
+}
+
 export default function UploadHistory({ uploads }: { uploads: UploadRow[] }) {
   const [isPending, startTransition] = useTransition();
   const [deletingId, setDeletingId] = useState<number | null>(null);
+  const [expanded, setExpanded] = useState<Set<number>>(new Set());
+
+  const toggle = (id: number) =>
+    setExpanded(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      return next;
+    });
 
   const handleDelete = (id: number) => {
     setDeletingId(id);
@@ -53,24 +76,25 @@ export default function UploadHistory({ uploads }: { uploads: UploadRow[] }) {
   };
 
   if (uploads.length === 0) {
-    return <p style={{ color: 'var(--text-muted)' }}>No uploads yet.</p>;
+    return <p style={muted}>No uploads yet.</p>;
   }
 
   return (
     <div className="table-container">
-      <table className="table">
+      <table className="table table-uploads">
         <thead>
           <tr>
+            <th style={{ width: '2rem' }}></th>
             <th>Uploaded</th>
             <th>Account</th>
             <th>File</th>
-            <th>Transaction Dates</th>
-            <th style={{ textAlign: 'right' }}>Transactions</th>
-            <th style={{ textAlign: 'right' }} title="CSV rows: imported / skipped as duplicates / failed">
-              Rows (new / dup / failed)
+            <th title="Earliest – latest date of every row in the CSV, including rows skipped as duplicates">
+              File Dates
             </th>
-            <th style={{ textAlign: 'right' }}>Money Out</th>
-            <th style={{ textAlign: 'right' }}>Money In</th>
+            <th title="Earliest – latest date of the transactions this upload actually added (after dedup)">
+              Imported Dates
+            </th>
+            <th style={{ textAlign: 'right' }}>Transactions</th>
             <th style={{ textAlign: 'right' }}>Uncategorized</th>
             <th></th>
           </tr>
@@ -80,84 +104,103 @@ export default function UploadHistory({ uploads }: { uploads: UploadRow[] }) {
             const uploaded = new Date(u.uploadedAt);
             const viewHref = `/transactions?uploadId=${u.id}`;
             const removedSince = u.importedCount - u.transactionCount;
+            const isOpen = expanded.has(u.id);
+            const fileRange = dateRange(u.fileMinDate, u.fileMaxDate);
+            const importedRange = dateRange(u.minDate, u.maxDate);
             return (
-              <tr key={u.id} style={{ opacity: deletingId === u.id ? 0.5 : 1 }}>
-                <td style={{ whiteSpace: 'nowrap' }} suppressHydrationWarning>
-                  {u.isLegacy
-                    ? uploaded.toLocaleDateString()
-                    : uploaded.toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' })}
-                </td>
-                <td>{u.accountName}</td>
-                <td>
-                  {u.isLegacy ? (
-                    <span
-                      className="badge"
-                      title="Recorded before upload tracking existed — grouped by account and entry date, so manually added transactions from that day are included."
+              <Fragment key={u.id}>
+                <tr
+                  className={isOpen ? 'upload-row-open' : undefined}
+                  style={{ opacity: deletingId === u.id ? 0.5 : 1 }}
+                >
+                  <td>
+                    <button
+                      type="button"
+                      className="upload-expand-btn"
+                      onClick={() => toggle(u.id)}
+                      aria-expanded={isOpen}
+                      aria-label={isOpen ? 'Hide details' : 'Show details'}
+                      title={isOpen ? 'Hide details' : 'Show details'}
                     >
-                      Legacy
-                    </span>
-                  ) : (
-                    <span style={{ wordBreak: 'break-all' }}>{u.fileName ?? <em>unknown</em>}</span>
-                  )}
-                  {u.templateName && (
-                    <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
-                      Template: {u.templateName}
-                    </div>
-                  )}
-                </td>
-                <td style={{ whiteSpace: 'nowrap' }}>{dateRange(u.minDate, u.maxDate)}</td>
-                <td style={{ textAlign: 'right' }}>
-                  {u.transactionCount > 0 ? (
-                    <Link href={viewHref}>{u.transactionCount.toLocaleString()}</Link>
-                  ) : (
-                    0
-                  )}
-                  {u.transferCount > 0 && (
-                    <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
-                      {u.transferCount} transfer{u.transferCount !== 1 ? 's' : ''}
-                    </div>
-                  )}
-                  {removedSince > 0 && (
-                    <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
-                      {removedSince} deleted since
-                    </div>
-                  )}
-                </td>
-                <td style={{ textAlign: 'right', whiteSpace: 'nowrap' }}>
-                  {u.isLegacy ? (
-                    <span style={{ color: 'var(--text-muted)' }}>—</span>
-                  ) : (
-                    <>
-                      {u.importedCount} / {u.skippedCount} /{' '}
-                      <span style={{ color: u.failedCount > 0 ? 'var(--danger)' : undefined }}>
-                        {u.failedCount}
+                      {isOpen ? '▾' : '▸'}
+                    </button>
+                  </td>
+                  <td style={{ whiteSpace: 'nowrap' }} suppressHydrationWarning>
+                    {u.isLegacy
+                      ? uploaded.toLocaleDateString()
+                      : uploaded.toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' })}
+                  </td>
+                  <td className="wrap">{u.accountName}</td>
+                  <td className="wrap">
+                    {u.isLegacy ? (
+                      <span
+                        className="badge"
+                        title="Recorded before upload tracking existed — grouped by account and entry date, so manually added transactions from that day are included."
+                      >
+                        Legacy
                       </span>
-                    </>
-                  )}
-                </td>
-                <td style={{ textAlign: 'right' }}>{money(u.debitTotal)}</td>
-                <td style={{ textAlign: 'right' }}>{money(u.creditTotal)}</td>
-                <td style={{ textAlign: 'right' }}>
-                  {u.uncategorizedCount > 0 ? (
-                    <Link href={`${viewHref}&uncategorized=true`}>{u.uncategorizedCount}</Link>
-                  ) : (
-                    0
-                  )}
-                </td>
-                <td>
-                  <ConfirmDeleteButton
-                    onClick={() => handleDelete(u.id)}
-                    disabled={isPending}
-                    label={deletingId === u.id ? 'Deleting…' : 'Delete'}
-                    confirmLabel={
-                      u.transactionCount > 0
-                        ? `Delete ${u.transactionCount} txn${u.transactionCount !== 1 ? 's' : ''}?`
-                        : 'Remove?'
-                    }
-                    title="Permanently delete this upload and every transaction it imported"
-                  />
-                </td>
-              </tr>
+                    ) : (
+                      <span style={{ wordBreak: 'break-all' }}>{u.fileName ?? <em>unknown</em>}</span>
+                    )}
+                  </td>
+                  <td className="wrap">{fileRange ?? <span style={muted}>—</span>}</td>
+                  <td className="wrap">
+                    {importedRange ?? <span style={muted}>{u.isLegacy ? '—' : 'nothing new'}</span>}
+                  </td>
+                  <td style={{ textAlign: 'right' }}>
+                    {u.transactionCount > 0 ? (
+                      <Link href={viewHref}>{u.transactionCount.toLocaleString()}</Link>
+                    ) : (
+                      0
+                    )}
+                  </td>
+                  <td style={{ textAlign: 'right' }}>
+                    {u.uncategorizedCount > 0 ? (
+                      <Link href={`${viewHref}&uncategorized=true`}>{u.uncategorizedCount}</Link>
+                    ) : (
+                      0
+                    )}
+                  </td>
+                  <td>
+                    <ConfirmDeleteButton
+                      onClick={() => handleDelete(u.id)}
+                      disabled={isPending}
+                      label={deletingId === u.id ? 'Deleting…' : 'Delete'}
+                      confirmLabel={u.transactionCount > 0 ? `Delete ${u.transactionCount}?` : 'Remove?'}
+                      title="Permanently delete this upload and every transaction it imported"
+                    />
+                  </td>
+                </tr>
+                {isOpen && (
+                  <tr className="upload-detail-row">
+                    <td colSpan={COLUMN_COUNT}>
+                      <div className="upload-details">
+                        <Detail label="CSV rows">
+                          {u.isLegacy ? (
+                            <span style={muted}>not recorded</span>
+                          ) : (
+                            <>
+                              {u.rowCount} total · {u.importedCount} new · {u.skippedCount} duplicate ·{' '}
+                              <span style={{ color: u.failedCount > 0 ? 'var(--danger)' : undefined }}>
+                                {u.failedCount} failed
+                              </span>
+                            </>
+                          )}
+                        </Detail>
+                        <Detail label="Money out">{money(u.debitTotal)}</Detail>
+                        <Detail label="Money in">{money(u.creditTotal)}</Detail>
+                        <Detail label="Transfers">{u.transferCount}</Detail>
+                        {removedSince > 0 && (
+                          <Detail label="Deleted since upload">{removedSince}</Detail>
+                        )}
+                        <Detail label="Template">
+                          {u.templateName ?? <span style={muted}>none</span>}
+                        </Detail>
+                      </div>
+                    </td>
+                  </tr>
+                )}
+              </Fragment>
             );
           })}
         </tbody>

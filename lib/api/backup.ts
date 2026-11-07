@@ -47,6 +47,8 @@ export const tableExports: TableExport[] = [
       imported_count: r.importedCount,
       skipped_count: r.skippedCount,
       failed_count: r.failedCount,
+      file_min_date: r.fileMinDate?.toISOString() ?? null,
+      file_max_date: r.fileMaxDate?.toISOString() ?? null,
       is_legacy: r.isLegacy,
       created_at: r.createdAt.toISOString(),
     })),

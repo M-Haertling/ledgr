@@ -57,6 +57,8 @@ export async function POST(req: Request) {
           importedCount: parseInt(r.imported_count) || 0,
           skippedCount: parseInt(r.skipped_count) || 0,
           failedCount: parseInt(r.failed_count) || 0,
+          fileMinDate: r.file_min_date ? new Date(r.file_min_date) : null,
+          fileMaxDate: r.file_max_date ? new Date(r.file_max_date) : null,
           isLegacy: r.is_legacy === 'true',
           createdAt: r.created_at ? new Date(r.created_at) : new Date(),
         }).onConflictDoNothing().returning({ id: uploads.id });

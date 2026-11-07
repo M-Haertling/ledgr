@@ -333,6 +333,57 @@ a:hover {
   border-bottom: none;
 }
 
+/* Upload History: many columns in the 1200px content area. Tighter padding,
+   and headers plus the text columns (account, file, date range) may wrap so
+   the row fits without pushing the Delete button off the edge. */
+.table-uploads th,
+.table-uploads td {
+  padding: 0.5rem 0.5rem;
+}
+
+.table-uploads th,
+.table-uploads td.wrap {
+  white-space: normal;
+}
+
+.table-uploads th {
+  vertical-align: bottom;
+}
+
+.upload-expand-btn {
+  width: 1.5rem;
+  height: 1.5rem;
+  padding: 0;
+  border: none;
+  background: none;
+  color: var(--text-muted);
+  font-size: 1.125rem;
+  line-height: 1;
+  cursor: pointer;
+  border-radius: 0.25rem;
+}
+
+.upload-expand-btn:hover {
+  background-color: var(--bg);
+  color: var(--text);
+}
+
+/* The expanded row and its details read as one block. */
+.table-uploads tr.upload-row-open td {
+  border-bottom: none;
+}
+
+.table-uploads tr.upload-detail-row td {
+  background-color: var(--bg);
+  padding: 0.75rem 1rem 0.75rem 2.5rem;
+}
+
+.upload-details {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem 2rem;
+}
+
 /* Compact padding for the dense, many-column transactions table so a full row
    fits without horizontal scrolling. */
 .table-transactions th,
